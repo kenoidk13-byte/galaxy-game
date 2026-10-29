@@ -994,7 +994,12 @@
   const Music = (() => {
     const DEFAULT_VOLUME = 0.1;
     const FADE = 4;
-    const TRACKS = ["audio/dark-orbit.mp3", "audio/pixel-drift.mp3"];
+    const TRACKS = [
+      "audio/dark-orbit.mp3",
+      "audio/dark-orbit-extended.mp3",
+      "audio/pixel-drift.mp3",
+      "audio/orbital-silence.mp3"
+    ];
     let els = null;
     let idx = 0;
     let started = false;
@@ -1005,15 +1010,22 @@
     function build() {
       els = TRACKS.map((src) => {
         const el = new window.Audio(src);
-        el.preload = "auto";
+        el.preload = "metadata";
         el.volume = 0;
         el.playsInline = true;
         el.addEventListener("timeupdate", () => tick(el));
         el.addEventListener("ended", () => {
-          if (el === els[idx] && started && !paused) crossfade(true);
+          if (el === els[idx] && started && !paused) next(true);
         });
         return el;
       });
+    }
+
+    function prefetch() {
+      for (const i of [idx, (idx + 1) % els.length]) {
+        const el = els[i];
+        if (el && el.preload !== "auto") el.preload = "auto";
+      }
     }
 
     function playEl(el) {
@@ -1033,24 +1045,48 @@
       if (p < 1) {
         fade.raf = requestAnimationFrame(step);
       } else {
-        fade.from.pause();
-        try { fade.from.currentTime = 0; } catch (_) {}
-        fade.from.volume = 0;
-        fade.to.volume = volume;
-        fade = null;
+        endFade();
       }
     }
 
-    function crossfade(force) {
-      if (fade) return;
+    function endFade() {
+      if (!fade) return;
+      cancelAnimationFrame(fade.raf);
+      fade.from.pause();
+      try { fade.from.currentTime = 0; } catch (_) {}
+      fade.from.volume = 0;
+      fade.to.volume = volume;
+      fade = null;
+    }
+
+    function select(i, animate) {
+      const to = els[i];
+      if (!to) return;
       const from = els[idx];
-      const to = els[(idx + 1) % 2];
-      idx = (idx + 1) % 2;
+      if (to === from) {
+        if (!paused) { to.volume = volume; playEl(to); }
+        return;
+      }
+      endFade();
+      idx = i;
       try { to.currentTime = 0; } catch (_) {}
-      to.volume = 0;
-      playEl(to);
-      fade = { from, to, t0: performance.now(), dur: FADE * 1000, raf: 0 };
-      fade.raf = requestAnimationFrame(step);
+      if (animate && started && !paused && volume > 0 && !from.paused) {
+        to.volume = 0;
+        playEl(to);
+        fade = { from, to, t0: performance.now(), dur: FADE * 1000, raf: 0 };
+        fade.raf = requestAnimationFrame(step);
+      } else {
+        from.pause();
+        try { from.currentTime = 0; } catch (_) {}
+        from.volume = 0;
+        to.volume = volume;
+        playEl(to);
+      }
+      prefetch();
+    }
+
+    function next(animate) {
+      select((idx + 1) % els.length, animate !== false);
     }
 
     function tick(el) {
@@ -1059,16 +1095,14 @@
       const d = el.duration;
       if (!d || !isFinite(d)) return;
       const remain = d - el.currentTime;
-      if (remain > 0 && remain <= FADE) crossfade();
+      if (remain > 0 && remain <= FADE) next(true);
     }
 
     function start() {
       if (!els) build();
       started = true;
       paused = false;
-      const el = els[idx];
-      el.volume = volume;
-      playEl(el);
+      select(Math.floor(Math.random() * els.length), true);
     }
 
     function setVolume(v) {
@@ -1083,14 +1117,7 @@
       if (!els || paused === p) return;
       paused = p;
       if (p) {
-        if (fade) {
-          cancelAnimationFrame(fade.raf);
-          fade.from.pause();
-          try { fade.from.currentTime = 0; } catch (_) {}
-          fade.from.volume = 0;
-          fade.to.volume = volume;
-          fade = null;
-        }
+        endFade();
         for (const el of els) if (!el.paused) el.pause();
       } else if (started) {
         playEl(els[idx]);
