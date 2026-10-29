@@ -813,6 +813,8 @@
     (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
+  const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
+
   const LOW_END =
     IS_TOUCH &&
     ((navigator.deviceMemory && navigator.deviceMemory <= 3) ||
@@ -1138,7 +1140,7 @@
     powerups: [],
     queued: [],
     ship: {
-      x: 0, y: 0, r: 15,
+      x: 0, y: 0, r: 15 * OBJ_SCALE,
       vx: 0, vy: 0,
       alive: true,
       lives: 3,
@@ -1490,7 +1492,7 @@
       type,
       x,
       y: atY != null ? atY : -40,
-      r: def.r,
+      r: def.r * OBJ_SCALE,
       hp: def.hp,
       maxHp: def.hp,
       score: def.score,
@@ -1551,7 +1553,7 @@
       type: "boss",
       x: G.w / 2,
       y: -140,
-      r: 62 + Math.min(level - 1, 4) * 4,
+      r: (62 + Math.min(level - 1, 4) * 4) * OBJ_SCALE,
       hp,
       maxHp: hp,
       score: 400 + (level - 1) * 250,
@@ -2835,6 +2837,7 @@
 
     ctx.save();
     ctx.translate(s.x, s.y);
+    ctx.scale(OBJ_SCALE, OBJ_SCALE);
     ctx.rotate(clamp(s.vx / 1600, -0.3, 0.3));
     ctx.globalAlpha = blink ? 0.45 : 1;
 
