@@ -1458,6 +1458,58 @@
     guardian: { r: 18, hp: 4, score: 46, color: "#5ce1b4", speed: [30, 44] }
   };
 
+  const BOSS_DEFS = [
+    {
+      key: "warden", name: "СТРАЖ", tag: "страж сектора",
+      color: COLORS.pink, style: "eye", r: 62, hpMul: 1,
+      move: { amp: 0.3, speed: 0.55, yAmp: 12, ySpeed: 1.15 },
+      atk: [
+        { kind: "aim", cd: [1.5, 2.1], n: 3, spread: 0.2, speed: 270, r: 5 },
+        { kind: "ring", cd: [3.4, 4.4], speed: 140, grow: 8, r: 4.2 },
+        { kind: "minion", cd: [7, 10], n: 2 }
+      ]
+    },
+    {
+      key: "vortex", name: "ВИХРЬ", tag: "класс 2 · вихрь",
+      color: COLORS.violet, style: "vortex", r: 58, hpMul: 1.05,
+      move: { amp: 0.34, speed: 0.8, yAmp: 20, ySpeed: 1.6 },
+      atk: [
+        { kind: "spiral", cd: [0.22, 0.3], arms: 2, step: 0.55, speed: 235, r: 3.8 },
+        { kind: "ring", cd: [4.4, 5.4], speed: 128, grow: 7, r: 4 }
+      ]
+    },
+    {
+      key: "bomber", name: "БОМБАРДИР", tag: "класс 3 · осадный",
+      color: COLORS.amber, style: "bomber", r: 70, hpMul: 1.2,
+      move: { amp: 0.22, speed: 0.4, yAmp: 10, ySpeed: 0.9 },
+      atk: [
+        { kind: "burst", cd: [3.0, 3.8], n: 12, speed: 135, r: 5 },
+        { kind: "minion", cd: [4.6, 6.2], n: 2, pool: ["bomber", "charger"] },
+        { kind: "aim", cd: [3.4, 4.6], n: 5, spread: 0.3, speed: 220, r: 4.4 }
+      ]
+    },
+    {
+      key: "marksman", name: "СНАЙПЕР", tag: "класс 4 · прицельный",
+      color: COLORS.ice, style: "marksman", r: 54, hpMul: 0.95,
+      move: { amp: 0.4, speed: 0.95, yAmp: 22, ySpeed: 1.9 },
+      atk: [
+        { kind: "aim", cd: [0.85, 1.2], n: 2, spread: 0.1, speed: 340, r: 4.2 },
+        { kind: "ring", cd: [5.2, 6.4], speed: 118, grow: 6, r: 3.8 },
+        { kind: "minion", cd: [9, 12], n: 1, pool: ["sniper"] }
+      ]
+    },
+    {
+      key: "swarm", name: "РОЙ", tag: "класс 5 · улей",
+      color: COLORS.mint, style: "swarm", r: 50, hpMul: 1.1,
+      move: { amp: 0.44, speed: 1.05, yAmp: 26, ySpeed: 2.1 },
+      atk: [
+        { kind: "minion", cd: [2.4, 3.2], n: 3, pool: ["drone", "runner", "weaver"] },
+        { kind: "spiral", cd: [0.5, 0.75], arms: 3, step: 0.3, speed: 205, r: 3.4 },
+        { kind: "aim", cd: [2.0, 2.8], n: 3, spread: 0.26, speed: 230, r: 4 }
+      ]
+    }
+  ];
+
   function pickType() {
     const w = G.wave;
     const pool = [
@@ -1547,34 +1599,37 @@
 
   function spawnBoss() {
     const level = Math.max(1, Math.floor(G.wave / 7));
-    const hp = 80 + (level - 1) * 70 + level * 20;
+    const def = BOSS_DEFS[(level - 1) % BOSS_DEFS.length];
+    const hp = Math.round((80 + (level - 1) * 70 + level * 20) * def.hpMul);
     const e = {
       id: ++ENEMY_ID,
       type: "boss",
       x: G.w / 2,
       y: -140,
-      r: (62 + Math.min(level - 1, 4) * 4) * OBJ_SCALE,
+      r: (def.r + Math.min(level - 1, 4) * 4) * OBJ_SCALE,
       hp,
       maxHp: hp,
       score: 400 + (level - 1) * 250,
-      color: level % 2 ? COLORS.pink : COLORS.violet,
+      color: def.color,
       t: 0,
       seed: Math.random() * TAU,
       speed: 0,
       flash: 0,
       angle: 0,
       level,
+      def,
+      name: def.name,
+      style: def.style,
+      move: def.move,
+      cds: def.atk.map((a) => rand(a.cd[0], a.cd[1])),
+      spinA: 0,
       entering: true,
-      atk: 2.2,
-      ring: 3.6,
-      minion: 7,
-      spiral: 0,
       enraged: false,
       aimY: 0
     };
     G.enemies.push(e);
     G.bossSpawned = true;
-    banner("БОСС", level === 1 ? "страж сектора" : `класс ${level} · усиленная броня`);
+    banner(def.name, def.tag);
     Audio.bossWarn();
     buzz(60);
   }
@@ -1734,8 +1789,7 @@
       });
       if (e.type === "boss" && e.hp < e.maxHp * 0.45 && !e.enraged) {
         e.enraged = true;
-        e.atk = Math.min(e.atk, 1.1);
-        e.ring = Math.min(e.ring, 2.6);
+        if (e.cds) for (let i = 0; i < e.cds.length; i++) e.cds[i] = Math.min(e.cds[i], 1.1);
         banner("БОСС В ЯРОСТИ", "атаки ускорены");
         explode(e.x, e.y, { size: 30, color: e.color, rings: 2, shake: 10 });
       }
@@ -1848,7 +1902,7 @@
     dropWeapon(cx, cy);
     G.bulletSpeed *= 1.07;
     G.waveDelay = 2.6;
-    banner("БОСС ПОВЕРЖЕН", `оружие сброшено · снаряды +${Math.round((G.bulletSpeed - 1) * 100)}%`);
+    banner(`${e.name} ПОВЕРЖЕН`, `оружие сброшено · снаряды +${Math.round((G.bulletSpeed - 1) * 100)}%`);
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
@@ -2473,11 +2527,12 @@
   }
 
   function bossBullet(e, angle, speed, r, color) {
+    const sp = speed * (IS_TOUCH ? 0.82 : 1);
     G.ebullets.push({
       x: e.x + Math.cos(angle) * e.r * 0.55,
       y: e.y + Math.sin(angle) * e.r * 0.55,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
+      vx: Math.cos(angle) * sp,
+      vy: Math.sin(angle) * sp,
       r,
       life: 6,
       color,
@@ -2485,36 +2540,54 @@
     });
   }
 
-  function bossAim(e) {
-    const s = G.ship;
-    const base = Math.atan2(s.y - e.y, s.x - e.x);
-    const n = e.enraged ? 5 : 3;
-    const spread = IS_TOUCH ? 0.3 : 0.2;
-    const spd = IS_TOUCH ? 215 : 270;
-    for (let i = 0; i < n; i++) {
-      const off = (i - (n - 1) / 2) * spread;
-      bossBullet(e, base + off, e.enraged ? spd + (IS_TOUCH ? 40 : 50) : spd, 5, COLORS.pink);
-    }
-    Audio.bossShot();
-  }
+  function fireBossAttack(e, a) {
+    const enr = e.enraged;
+    const col = a.color || e.color;
 
-  function bossRing(e) {
-    const n = 16 + e.level * 2;
-    const spin = e.t * 0.8;
-    const spd = (IS_TOUCH ? 112 : 140) + e.level * (IS_TOUCH ? 6 : 8);
-    for (let i = 0; i < n; i++) {
-      const a = (i / n) * TAU + spin;
-      bossBullet(e, a, spd, 4.2, e.color);
+    if (a.kind === "aim") {
+      const s = G.ship;
+      const base = Math.atan2(s.y - e.y, s.x - e.x);
+      const n = a.n + (enr ? 2 : 0);
+      const spread = a.spread * (IS_TOUCH ? 1.2 : 1) * (enr ? 0.92 : 1);
+      for (let i = 0; i < n; i++) {
+        bossBullet(e, base + (i - (n - 1) / 2) * spread, a.speed + (enr ? 45 : 0), a.r, col);
+      }
+      Audio.bossShot();
+    } else if (a.kind === "ring") {
+      const n = 14 + e.level * 2;
+      const spin = e.t * 0.8;
+      const spd = a.speed + e.level * a.grow;
+      for (let i = 0; i < n; i++) {
+        bossBullet(e, (i / n) * TAU + spin, spd, a.r, col);
+      }
+      Audio.boom(false);
+      G.shake = Math.min(G.shake + 5, 20);
+    } else if (a.kind === "spiral") {
+      e.spinA += a.step * (enr ? 1.35 : 1);
+      const arms = a.arms + (enr ? 1 : 0);
+      for (let i = 0; i < arms; i++) {
+        bossBullet(e, e.spinA + (i / arms) * TAU, a.speed, a.r, col);
+      }
+    } else if (a.kind === "burst") {
+      const n = a.n + (enr ? 4 : 0);
+      const off = Math.random() * TAU;
+      for (let i = 0; i < n; i++) {
+        bossBullet(e, off + (i / n) * TAU, a.speed * (i % 2 ? 1.28 : 1), a.r, col);
+      }
+      Audio.boom(false);
+      G.shake = Math.min(G.shake + 4, 18);
+    } else if (a.kind === "minion") {
+      const pool = a.pool || (Math.random() < 0.6 ? ["drone"] : ["runner"]);
+      const n = a.n + (enr ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const m = spawnEnemy(
+          clamp(e.x + rand(-e.r, e.r), 30, G.w - 30),
+          e.y + rand(0, 20),
+          pool[(Math.random() * pool.length) | 0]
+        );
+        m.y = e.y + rand(-10, 20);
+      }
     }
-    Audio.boom(false);
-    G.shake = Math.min(G.shake + 5, 20);
-  }
-
-  function bossSpiral(e) {
-    const a = e.t * 4.2;
-    const spd = IS_TOUCH ? 185 : 240;
-    bossBullet(e, a, spd, 3.6, COLORS.cyan);
-    bossBullet(e, a + Math.PI, spd, 3.6, COLORS.cyan);
   }
 
   function updateBoss(e, dt) {
@@ -2528,41 +2601,20 @@
       return;
     }
 
-    const swing = Math.max(G.w * 0.3 - e.r * 0.5, 40);
-    e.x = G.w / 2 + Math.sin(e.t * 0.55 + e.seed) * swing;
-    e.y = targetY + Math.sin(e.t * 1.15) * 12;
+    const mv = e.move;
+    const swing = Math.max(G.w * mv.amp - e.r * 0.5, 40);
+    e.x = G.w / 2 + Math.sin(e.t * mv.speed + e.seed) * swing;
+    e.y = targetY + Math.sin(e.t * mv.ySpeed) * mv.yAmp;
     e.angle += dt * (e.enraged ? 0.9 : 0.5);
 
     if (!s.alive) return;
 
-    e.atk -= dt;
-    if (e.atk <= 0) {
-      bossAim(e);
-      e.atk = e.enraged ? rand(0.95, 1.35) : rand(1.5, 2.1);
-    }
-    e.ring -= dt;
-    if (e.ring <= 0) {
-      bossRing(e);
-      e.ring = e.enraged ? rand(2.1, 2.8) : rand(3.4, 4.4);
-    }
-    e.minion -= dt;
-    if (e.minion <= 0) {
-      const n = e.enraged ? 3 : 2;
-      for (let i = 0; i < n; i++) {
-        const m = spawnEnemy(
-          clamp(e.x + rand(-e.r, e.r), 30, G.w - 30),
-          e.y + rand(0, 20),
-          Math.random() < 0.6 ? "drone" : "runner"
-        );
-        m.y = e.y + rand(-10, 20);
-      }
-      e.minion = rand(7, 10);
-    }
-    if (e.enraged) {
-      e.spiral -= dt;
-      if (e.spiral <= 0) {
-        bossSpiral(e);
-        e.spiral = 0.14;
+    const atk = e.def.atk;
+    for (let i = 0; i < atk.length; i++) {
+      e.cds[i] -= dt;
+      if (e.cds[i] <= 0) {
+        fireBossAttack(e, atk[i]);
+        e.cds[i] = rand(atk[i].cd[0], atk[i].cd[1]) * (e.enraged ? 0.68 : 1);
       }
     }
   }
@@ -3807,6 +3859,91 @@
     }
     ctx.stroke();
 
+    // уникальные детали по типу босса
+    if (e.style === "vortex") {
+      ctx.save();
+      ctx.rotate(-e.t * 1.5);
+      ctx.strokeStyle = rgba(fill, 0.6);
+      ctx.lineWidth = 1.6;
+      for (let arm = 0; arm < 3; arm++) {
+        ctx.beginPath();
+        for (let k = 0; k <= 16; k++) {
+          const a = (arm / 3) * TAU + k * 0.16;
+          const rad = r * (0.26 + k * 0.04);
+          const px = Math.cos(a) * rad;
+          const py = Math.sin(a) * rad;
+          k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (e.style === "bomber") {
+      ctx.save();
+      ctx.rotate(-e.angle * 0.4);
+      ctx.strokeStyle = rgba(fill, 0.45);
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * TAU;
+        ctx.moveTo(Math.cos(a) * r * 0.5, Math.sin(a) * r * 0.5);
+        ctx.lineTo(Math.cos(a) * r * 0.98, Math.sin(a) * r * 0.98);
+      }
+      ctx.stroke();
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + Math.PI / 4;
+        ctx.fillStyle = rgba(fill, 0.3);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * r * 0.74, Math.sin(a) * r * 0.74, r * 0.1, 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = rgba(fill, 0.55);
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      ctx.restore();
+    } else if (e.style === "marksman") {
+      ctx.save();
+      ctx.strokeStyle = rgba(fill, 0.75);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (const a of [Math.PI / 2, -Math.PI / 2]) {
+        ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+        ctx.lineTo(Math.cos(a) * r * 1.34, Math.sin(a) * r * 1.34);
+      }
+      ctx.stroke();
+      ctx.strokeStyle = rgba(fill, 0.4);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.4, 0, TAU);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.16, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    } else if (e.style === "swarm") {
+      ctx.save();
+      for (let i = 0; i < 6; i++) {
+        const a = e.t * 1.2 + (i / 6) * TAU;
+        const rad = r * (0.99 + Math.sin(e.t * 2.4 + i) * 0.07);
+        ctx.fillStyle = rgba(fill, 0.85);
+        ctx.beginPath();
+        ctx.arc(Math.cos(a) * rad, Math.sin(a) * rad, r * 0.07, 0, TAU);
+        ctx.fill();
+      }
+      ctx.strokeStyle = rgba(fill, 0.18);
+      ctx.lineWidth = 0.8;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = e.t * 1.2 + (i / 6) * TAU;
+        const rad = r * 0.99;
+        const px = Math.cos(a) * rad;
+        const py = Math.sin(a) * rad;
+        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // боковые орудия
     for (const side of [-1, 1]) {
       ctx.save();
@@ -4043,7 +4180,7 @@
     ctx.textBaseline = "middle";
     ctx.font = "700 11px 'Google Sans Flex', sans-serif";
     ctx.fillStyle = rgba(boss.color, 0.95);
-    ctx.fillText(boss.enraged ? "БОСС · ЯРОСТЬ" : "БОСС", w / 2, by + 7);
+    ctx.fillText(boss.enraged ? `${boss.name} · ЯРОСТЬ` : boss.name, w / 2, by + 7);
 
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(bx, by + 16, bw, 7);
