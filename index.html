@@ -813,6 +813,11 @@
     (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
+  const LOW_END =
+    IS_TOUCH &&
+    ((navigator.deviceMemory && navigator.deviceMemory <= 3) ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));
+
   function buzz(ms) {
     if (IS_TOUCH && navigator.vibrate) {
       try { navigator.vibrate(ms); } catch (_) {}
@@ -1150,10 +1155,13 @@
   };
 
   const bg = { grad: null, nebula: null };
+  const DPR_START = LOW_END ? 1.15 : IS_TOUCH ? 1.5 : 2;
+  let dprCap = DPR_START;
+  const perf = { acc: 0, n: 0, drops: 0 };
 
   /* ---------------- resize ---------------- */
   function resize() {
-    G.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    G.dpr = Math.min(window.devicePixelRatio || 1, dprCap);
     G.w = window.innerWidth;
     G.h = window.innerHeight;
     canvas.width = Math.floor(G.w * G.dpr);
@@ -1206,7 +1214,8 @@
 
   function initStars() {
     G.stars = [];
-    const count = Math.round(clamp((G.w * G.h) / 5200, 120, 420));
+    const maxStars = LOW_END ? 80 : IS_TOUCH ? 130 : 420;
+    const count = Math.round(clamp((G.w * G.h) / 5200, IS_TOUCH ? 70 : 120, maxStars));
     for (let i = 0; i < count; i++) {
       const depth = rand(0.25, 1);
       G.stars.push({
@@ -1221,7 +1230,7 @@
   }
 
   /* ---------------- particles / explosions ---------------- */
-  const MAX_PARTICLES = 1400;
+  const MAX_PARTICLES = LOW_END ? 420 : IS_TOUCH ? 750 : 1400;
 
   function pushParticle(p) {
     if (G.particles.length >= MAX_PARTICLES) G.particles.splice(0, 60);
@@ -2670,19 +2679,20 @@
       const s = st.size;
 
       if (s > 1.9) {
-        ctx.save();
-        ctx.globalCompositeOperation = "lighter";
-        const g = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, s * 3.2);
-        g.addColorStop(0, color);
-        g.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(st.x, st.y, s * 3.2, 0, TAU);
-        ctx.fill();
-        ctx.restore();
-
+        const arm = s * (IS_TOUCH ? 1.7 : 2.4);
+        if (!IS_TOUCH) {
+          ctx.save();
+          ctx.globalCompositeOperation = "lighter";
+          const g = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, s * 3.2);
+          g.addColorStop(0, color);
+          g.addColorStop(1, "rgba(0,0,0,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(st.x, st.y, s * 3.2, 0, TAU);
+          ctx.fill();
+          ctx.restore();
+        }
         ctx.fillStyle = color;
-        const arm = s * 2.4;
         ctx.fillRect(st.x - arm, st.y - 0.4, arm * 2, 0.8);
         ctx.fillRect(st.x - 0.4, st.y - arm, 0.8, arm * 2);
       }
@@ -2704,6 +2714,26 @@
       const c = b.color || COLORS.cyan;
       const ang = Math.atan2(b.vy, b.vx);
       const len = b.len || 20;
+
+      if (IS_TOUCH) {
+        ctx.strokeStyle = c;
+        ctx.lineWidth = b.thin ? 1.6 : b.heavy ? 5 : 3;
+        ctx.beginPath();
+        ctx.moveTo(b.x - Math.cos(ang) * len, b.y - Math.sin(ang) * len);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+        if (b.orb) {
+          ctx.fillStyle = c;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r * 2.2, 0, TAU);
+          ctx.fill();
+        }
+        ctx.fillStyle = "rgba(235,250,255,0.95)";
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.orb ? b.r * 0.9 : b.thin ? 1.4 : 2.1, 0, TAU);
+        ctx.fill();
+        continue;
+      }
 
       if (b.orb) {
         const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.4);
@@ -2771,14 +2801,21 @@
         ctx.lineTo(b.x, b.y);
         ctx.stroke();
       }
-      const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.4);
-      grd.addColorStop(0, rgba(b.color, 0.95));
-      grd.addColorStop(0.35, rgba(b.color, 0.4));
-      grd.addColorStop(1, rgba(b.color, 0));
-      ctx.fillStyle = grd;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 3.4, 0, TAU);
-      ctx.fill();
+      if (IS_TOUCH) {
+        ctx.fillStyle = rgba(b.color, 0.9);
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r * 1.5, 0, TAU);
+        ctx.fill();
+      } else {
+        const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.4);
+        grd.addColorStop(0, rgba(b.color, 0.95));
+        grd.addColorStop(0.35, rgba(b.color, 0.4));
+        grd.addColorStop(1, rgba(b.color, 0));
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r * 3.4, 0, TAU);
+        ctx.fill();
+      }
       ctx.fillStyle = "#fff";
       ctx.beginPath();
       ctx.arc(b.x, b.y, b.r * 0.55, 0, TAU);
@@ -3770,15 +3807,20 @@
       const a = clamp(p.life / p.max, 0, 1);
 
       if (p.kind === "flash") {
-        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * (0.35 + a * 0.9));
-        g.addColorStop(0, rgba("#ffffff", a));
-        g.addColorStop(0.35, rgba(p.color, a * 0.85));
-        g.addColorStop(1, rgba(p.color, 0));
+        const rad = p.size * (0.35 + a * 0.9);
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
-        ctx.fillStyle = g;
+        if (IS_TOUCH) {
+          ctx.fillStyle = rgba(p.color, a * 0.8);
+        } else {
+          const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+          g.addColorStop(0, rgba("#ffffff", a));
+          g.addColorStop(0.35, rgba(p.color, a * 0.85));
+          g.addColorStop(1, rgba(p.color, 0));
+          ctx.fillStyle = g;
+        }
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size * (0.35 + a * 0.9), 0, TAU);
+        ctx.arc(p.x, p.y, rad, 0, TAU);
         ctx.fill();
         ctx.restore();
         continue;
@@ -3813,15 +3855,20 @@
         continue;
       }
 
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.size * (p.kind === "ember" ? 2.6 : 1.6) * (0.5 + a * 0.7));
-      g.addColorStop(0, rgba(p.color, a * 0.95));
-      g.addColorStop(0.5, rgba(p.color, a * 0.35));
-      g.addColorStop(1, rgba(p.color, 0));
+      const rad = p.size * (p.kind === "ember" ? 2.6 : 1.6) * (0.5 + a * 0.7);
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      ctx.fillStyle = g;
+      if (IS_TOUCH) {
+        ctx.fillStyle = rgba(p.color, a * 0.8);
+      } else {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+        g.addColorStop(0, rgba(p.color, a * 0.95));
+        g.addColorStop(0.5, rgba(p.color, a * 0.35));
+        g.addColorStop(1, rgba(p.color, 0));
+        ctx.fillStyle = g;
+      }
       ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (p.kind === "ember" ? 2.6 : 1.6) * (0.5 + a * 0.7), 0, TAU);
+      ctx.arc(p.x, p.y, rad, 0, TAU);
       ctx.fill();
       ctx.restore();
     }
@@ -3829,11 +3876,15 @@
     for (const p of smokePass) {
       const a = clamp(p.life / p.max, 0, 1) * 0.5;
       const rad = p.size * (1 + (1 - a) * 1.6);
-      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
-      g.addColorStop(0, `rgba(34,28,56,${a * 0.5})`);
-      g.addColorStop(0.6, `rgba(20,16,36,${a * 0.3})`);
-      g.addColorStop(1, "rgba(12,10,24,0)");
-      ctx.fillStyle = g;
+      if (IS_TOUCH) {
+        ctx.fillStyle = `rgba(26,22,44,${a * 0.22})`;
+      } else {
+        const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+        g.addColorStop(0, `rgba(34,28,56,${a * 0.5})`);
+        g.addColorStop(0.6, `rgba(20,16,36,${a * 0.3})`);
+        g.addColorStop(1, "rgba(12,10,24,0)");
+        ctx.fillStyle = g;
+      }
       ctx.beginPath();
       ctx.arc(p.x, p.y, rad, 0, TAU);
       ctx.fill();
@@ -3921,6 +3972,24 @@
 
     update(dt);
     draw();
+
+    if (IS_TOUCH && G.mode === "play" && !G.paused && !document.hidden) {
+      perf.acc += dt;
+      perf.n++;
+      if (perf.acc >= 2) {
+        const fps = perf.n / perf.acc;
+        perf.acc = 0;
+        perf.n = 0;
+        if (fps < 48 && dprCap > 1.01 && perf.drops < 3) {
+          dprCap = Math.max(1, dprCap - 0.2);
+          perf.drops++;
+          resize();
+        }
+      }
+    } else {
+      perf.acc = 0;
+      perf.n = 0;
+    }
 
     requestAnimationFrame(frame);
   }
