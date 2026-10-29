@@ -1099,10 +1099,14 @@
     }
 
     function start() {
-      if (!els) build();
+      if (!els) {
+        build();
+        idx = Math.floor(Math.random() * els.length);
+        prefetch();
+      }
       started = true;
       paused = false;
-      select(Math.floor(Math.random() * els.length), true);
+      select(idx, true);
     }
 
     function setVolume(v) {
