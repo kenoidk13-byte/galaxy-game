@@ -2487,9 +2487,11 @@
     const s = G.ship;
     const base = Math.atan2(s.y - e.y, s.x - e.x);
     const n = e.enraged ? 5 : 3;
+    const spread = IS_TOUCH ? 0.3 : 0.2;
+    const spd = IS_TOUCH ? 215 : 270;
     for (let i = 0; i < n; i++) {
-      const off = (i - (n - 1) / 2) * 0.2;
-      bossBullet(e, base + off, e.enraged ? 320 : 270, 5, COLORS.pink);
+      const off = (i - (n - 1) / 2) * spread;
+      bossBullet(e, base + off, e.enraged ? spd + (IS_TOUCH ? 40 : 50) : spd, 5, COLORS.pink);
     }
     Audio.bossShot();
   }
@@ -2497,9 +2499,10 @@
   function bossRing(e) {
     const n = 16 + e.level * 2;
     const spin = e.t * 0.8;
+    const spd = (IS_TOUCH ? 112 : 140) + e.level * (IS_TOUCH ? 6 : 8);
     for (let i = 0; i < n; i++) {
       const a = (i / n) * TAU + spin;
-      bossBullet(e, a, 140 + e.level * 8, 4.2, e.color);
+      bossBullet(e, a, spd, 4.2, e.color);
     }
     Audio.boom(false);
     G.shake = Math.min(G.shake + 5, 20);
@@ -2507,8 +2510,9 @@
 
   function bossSpiral(e) {
     const a = e.t * 4.2;
-    bossBullet(e, a, 240, 3.6, COLORS.cyan);
-    bossBullet(e, a + Math.PI, 240, 3.6, COLORS.cyan);
+    const spd = IS_TOUCH ? 185 : 240;
+    bossBullet(e, a, spd, 3.6, COLORS.cyan);
+    bossBullet(e, a + Math.PI, spd, 3.6, COLORS.cyan);
   }
 
   function updateBoss(e, dt) {
@@ -2838,17 +2842,17 @@
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const flicker = Math.sin(s.engine * 46) * 0.18 + Math.sin(s.engine * 13) * 0.1;
-    for (const side of [-6, 6]) {
+    for (const side of [-4.6, 4.6]) {
       const flame = 20 + flicker * 20 + (side < 0 ? 3 : 0);
-      const eg = ctx.createLinearGradient(side, 9, side, 9 + flame);
+      const eg = ctx.createLinearGradient(side, 11, side, 11 + flame);
       eg.addColorStop(0, "rgba(220,240,255,0.95)");
       eg.addColorStop(0.35, rgba(wcol, 0.6));
       eg.addColorStop(1, rgba(wcol, 0));
       ctx.fillStyle = eg;
       ctx.beginPath();
-      ctx.moveTo(side - 4, 8);
-      ctx.lineTo(side, 10 + flame);
-      ctx.lineTo(side + 4, 8);
+      ctx.moveTo(side - 3.2, 10.6);
+      ctx.lineTo(side, 12 + flame);
+      ctx.lineTo(side + 3.2, 10.6);
       ctx.closePath();
       ctx.fill();
     }
@@ -2861,66 +2865,185 @@
     ctx.fill();
     ctx.restore();
 
-    // hull
-    const hull = ctx.createLinearGradient(0, -24, 0, 16);
+    // wings — layered plates tucked under the fuselage
+    for (const m of [-1, 1]) {
+      ctx.save();
+      ctx.scale(m, 1);
+
+      const wing = ctx.createLinearGradient(6, -5, 22, 13);
+      wing.addColorStop(0, "#8b97ff");
+      wing.addColorStop(0.45, "#4f47d6");
+      wing.addColorStop(1, "#231c78");
+      ctx.fillStyle = wing;
+      ctx.beginPath();
+      ctx.moveTo(5.4, -5.5);
+      ctx.lineTo(12.5, -1.2);
+      ctx.lineTo(22, 9.6);
+      ctx.lineTo(18.4, 12.4);
+      ctx.lineTo(8.6, 11);
+      ctx.lineTo(5.4, 7.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(205,218,255,0.5)";
+      ctx.lineWidth = 0.85;
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(235,246,255,0.9)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(6, -4.4);
+      ctx.lineTo(12.4, -0.6);
+      ctx.lineTo(21.6, 9.4);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(18,16,68,0.55)";
+      ctx.lineWidth = 0.65;
+      ctx.beginPath();
+      ctx.moveTo(9.5, 1.2);
+      ctx.lineTo(15.6, 8.4);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(16,14,62,0.65)";
+      for (const [rx, ry] of [[11, 3.2], [13.2, 5.6], [15.4, 7.9]]) {
+        ctx.beginPath();
+        ctx.arc(rx, ry, 0.5, 0, TAU);
+        ctx.fill();
+      }
+
+      const pod = ctx.createLinearGradient(17.5, 7.5, 21.5, 12.5);
+      pod.addColorStop(0, "#9aa8ff");
+      pod.addColorStop(1, "#2c2596");
+      ctx.fillStyle = pod;
+      ctx.beginPath();
+      ctx.ellipse(19.3, 10.1, 3.2, 1.8, 0.5, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(210,222,255,0.45)";
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(120,132,255,0.9)";
+      ctx.beginPath();
+      ctx.moveTo(4.6, -13.5);
+      ctx.lineTo(9.4, -10.6);
+      ctx.lineTo(4.9, -8.4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = "#3a33b4";
+      ctx.beginPath();
+      ctx.moveTo(3.6, 9.4);
+      ctx.lineTo(7.8, 12.6);
+      ctx.lineTo(6.2, 15.4);
+      ctx.lineTo(3.2, 13.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = "rgba(190,205,255,0.35)";
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    // fuselage
+    const hull = ctx.createLinearGradient(0, -26, 0, 15);
     hull.addColorStop(0, "#ffffff");
-    hull.addColorStop(0.28, "#dcecff");
-    hull.addColorStop(0.62, "#8296ff");
-    hull.addColorStop(1, "#3f36c8");
+    hull.addColorStop(0.22, "#e4efff");
+    hull.addColorStop(0.5, "#9fadff");
+    hull.addColorStop(0.78, "#5b52e0");
+    hull.addColorStop(1, "#2a238c");
     ctx.fillStyle = hull;
     ctx.beginPath();
-    ctx.moveTo(0, -24);
-    ctx.lineTo(6, -8);
-    ctx.lineTo(10, -2);
-    ctx.lineTo(21, 12);
-    ctx.lineTo(7, 9);
-    ctx.lineTo(0, 15);
-    ctx.lineTo(-7, 9);
-    ctx.lineTo(-21, 12);
-    ctx.lineTo(-10, -2);
-    ctx.lineTo(-6, -8);
+    ctx.moveTo(0, -26);
+    ctx.lineTo(4.4, -18);
+    ctx.lineTo(6.4, -8);
+    ctx.lineTo(7.6, 3);
+    ctx.lineTo(5.2, 13.5);
+    ctx.lineTo(-5.2, 13.5);
+    ctx.lineTo(-7.6, 3);
+    ctx.lineTo(-6.4, -8);
+    ctx.lineTo(-4.4, -18);
     ctx.closePath();
     ctx.fill();
-
     ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(255,255,255,0.78)";
-    ctx.lineWidth = 1.1;
+    ctx.strokeStyle = "rgba(240,248,255,0.85)";
+    ctx.lineWidth = 1;
     ctx.stroke();
 
-    // panel lines
-    ctx.strokeStyle = "rgba(30,30,90,0.55)";
+    // dorsal seams
+    ctx.strokeStyle = "rgba(32,30,104,0.5)";
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(0, -23);
+    ctx.lineTo(0, 11);
+    ctx.moveTo(-6.2, -2.5);
+    ctx.lineTo(6.2, -2.5);
+    ctx.moveTo(-6.8, 5.5);
+    ctx.lineTo(6.8, 5.5);
+    ctx.stroke();
+
+    // nose accent stripes
+    ctx.strokeStyle = rgba(wcol, 0.75);
+    ctx.lineWidth = 0.9;
+    ctx.beginPath();
+    ctx.moveTo(-2.4, -20.5);
+    ctx.lineTo(-3.2, -13.5);
+    ctx.moveTo(2.4, -20.5);
+    ctx.lineTo(3.2, -13.5);
+    ctx.stroke();
+
+    // cockpit canopy
+    const cock = ctx.createLinearGradient(0, -19, 0, 0);
+    cock.addColorStop(0, "#ffffff");
+    cock.addColorStop(0.38, "#cdf1ff");
+    cock.addColorStop(0.74, "#4aa2ff");
+    cock.addColorStop(1, "#1c3e9c");
+    ctx.fillStyle = cock;
+    ctx.beginPath();
+    ctx.moveTo(0, -19.5);
+    ctx.quadraticCurveTo(4.4, -15.5, 3.8, -7);
+    ctx.quadraticCurveTo(3, -1.4, 0, -0.4);
+    ctx.quadraticCurveTo(-3, -1.4, -3.8, -7);
+    ctx.quadraticCurveTo(-4.4, -15.5, 0, -19.5);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "rgba(186,228,255,0.75)";
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.9)";
     ctx.lineWidth = 0.8;
     ctx.beginPath();
-    ctx.moveTo(0, -21);
-    ctx.lineTo(0, 12);
-    ctx.moveTo(-13, 7);
-    ctx.lineTo(-6, 2);
-    ctx.moveTo(13, 7);
-    ctx.lineTo(6, 2);
+    ctx.moveTo(-1.6, -16.4);
+    ctx.quadraticCurveTo(-2.5, -11, -1.3, -6.4);
     ctx.stroke();
+
+    ctx.strokeStyle = "rgba(38,36,120,0.55)";
+    ctx.lineWidth = 0.7;
+    ctx.beginPath();
+    ctx.moveTo(-3.4, -5.2);
+    ctx.lineTo(3.4, -5.2);
+    ctx.stroke();
+
+    // engine nozzles
+    for (const nx of [-4.6, 4.6]) {
+      ctx.fillStyle = "rgba(24,20,80,0.9)";
+      ctx.beginPath();
+      ctx.ellipse(nx, 11.6, 2.1, 1.2, 0, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(180,200,255,0.4)";
+      ctx.lineWidth = 0.55;
+      ctx.stroke();
+    }
 
     // wingtip nav lights
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.fillStyle = "rgba(77,225,255,0.95)";
     ctx.beginPath();
-    ctx.arc(-19, 11, 1.7, 0, TAU);
-    ctx.arc(19, 11, 1.7, 0, TAU);
+    ctx.arc(-20.4, 10.4, 1.5, 0, TAU);
+    ctx.arc(20.4, 10.4, 1.5, 0, TAU);
     ctx.fill();
     ctx.restore();
-
-    // cockpit
-    const cock = ctx.createLinearGradient(0, -16, 0, 2);
-    cock.addColorStop(0, "#ffffff");
-    cock.addColorStop(0.45, "#bfefff");
-    cock.addColorStop(1, "#2f86ff");
-    ctx.fillStyle = cock;
-    ctx.beginPath();
-    ctx.ellipse(0, -9, 3.8, 8, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.55)";
-    ctx.lineWidth = 0.7;
-    ctx.stroke();
 
     // weapon emitter accents
     ctx.save();
@@ -2928,10 +3051,10 @@
     ctx.strokeStyle = rgba(wcol, 0.95);
     ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(-16, 8);
-    ctx.lineTo(-8, 1);
-    ctx.moveTo(16, 8);
-    ctx.lineTo(8, 1);
+    ctx.moveTo(-18.2, 8.6);
+    ctx.lineTo(-7.4, 1.4);
+    ctx.moveTo(18.2, 8.6);
+    ctx.lineTo(7.4, 1.4);
     ctx.stroke();
     ctx.restore();
 
