@@ -21,6 +21,8 @@
     --cyan: #4de1ff;
     --pink: #ff5c8a;
     --amber: #ffc46b;
+    --mint: #63ffc4;
+    --ice: #9fe8ff;
     --line: rgba(160, 170, 255, 0.14);
     --glass: rgba(12, 14, 32, 0.55);
     --font-ui: "Google Sans Flex", ui-sans-serif, system-ui, sans-serif;
@@ -318,6 +320,7 @@
   .chip--rapid { color: var(--amber); }
   .chip--triple { color: var(--violet); }
   .chip--shield { color: var(--cyan); }
+  .chip--drone { color: var(--mint); }
   .chip--weapon {
     color: #ff9df0;
     border-color: rgba(255, 157, 240, 0.4);
@@ -676,6 +679,7 @@
         <span class="chip chip--rapid" data-chip="rapid">Скорострел <b data-timer>0</b></span>
         <span class="chip chip--triple" data-chip="triple">Тройной <b data-timer>0</b></span>
         <span class="chip chip--shield" data-chip="shield">Щит <b data-timer>0</b></span>
+        <span class="chip chip--drone" data-chip="drone">Дрон <b data-timer>0</b></span>
       </div>
     </div>
 
@@ -767,7 +771,8 @@
       weapon: document.querySelector('[data-chip="weapon"]'),
       rapid: document.querySelector('[data-chip="rapid"]'),
       triple: document.querySelector('[data-chip="triple"]'),
-      shield: document.querySelector('[data-chip="shield"]')
+      shield: document.querySelector('[data-chip="shield"]'),
+      drone: document.querySelector('[data-chip="drone"]')
     },
     menu: document.getElementById("menu"),
     over: document.getElementById("over"),
@@ -837,6 +842,8 @@
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
+  const MAX_LIVES = 5;
+  const DRONE_TIME = 10;
 
   const LOW_END =
     IS_TOUCH &&
@@ -1009,6 +1016,12 @@
       },
       bossShot() {
         tone({ freq: 260, to: 120, dur: 0.14, type: "sawtooth", gain: 0.0256 });
+      },
+      droneShoot() {
+        tone({ freq: 1240, to: 820, dur: 0.055, type: "triangle", gain: 0.014 });
+      },
+      droneHit() {
+        tone({ freq: 420, to: 160, dur: 0.12, type: "square", gain: 0.05 });
       }
     };
   })();
@@ -1194,6 +1207,7 @@
     enemies: [],
     particles: [],
     powerups: [],
+    drone: null,
     queued: [],
     ship: {
       x: 0, y: 0, r: 15 * OBJ_SCALE,
@@ -1492,6 +1506,14 @@
         if (label) label.textContent = w.name;
         if (timer) timer.textContent = Math.ceil(w.t);
       }
+    }
+    const dChip = el.chips.drone;
+    if (dChip) {
+      const d = G.drone;
+      const on = !!d;
+      dChip.classList.toggle("on", on);
+      const timer = dChip.querySelector("[data-timer]");
+      if (timer) timer.textContent = on ? Math.ceil(d.t) : "";
     }
   }
 
@@ -1833,16 +1855,27 @@
   }
 
   function dropPowerup(x, y) {
-    if (Math.random() > 0.16) return;
-    const roll = Math.random();
-    const kind = roll < 0.4 ? "shield" : roll < 0.72 ? "rapid" : "triple";
+    // редкий дроп: жизнь (1.6%), защитный дрон (4%), обычные бонусы (12%)
+    const chance = Math.random();
+    let kind = null;
+    if (chance < 0.016) {
+      kind = "life";
+    } else if (chance < 0.056) {
+      kind = "drone";
+    } else if (chance < 0.176) {
+      const roll = Math.random();
+      kind = roll < 0.4 ? "shield" : roll < 0.72 ? "rapid" : "triple";
+    }
+    if (!kind) return;
+    const rare = kind === "life" || kind === "drone";
     G.powerups.push({
       x, y,
-      r: 11,
+      r: rare ? 13 : 11,
       kind,
       t: 0,
       vy: rand(58, 92),
-      vx: rand(-16, 16)
+      vx: rand(-16, 16),
+      life: rare ? 12 : null
     });
   }
 
@@ -2173,7 +2206,8 @@
     G.galagaTimer = 1.6;
     G.waveDelay = 0;
     G.spawnTimer = (G.bossWave || G.galagaWave) ? 1.4 : 0.8;
-    G.ship.lives = Math.min(3, G.ship.lives + (G.wave % 3 === 0 ? 1 : 0));
+    G.ship.lives = Math.min(MAX_LIVES, G.ship.lives + (G.wave % 3 === 0 ? 1 : 0));
+    syncLives();
 
     if (G.bossWave) {
       G.bossLevel = Math.floor(G.wave / 7);
@@ -2319,6 +2353,7 @@
     G.particles = [];
     G.powerups = [];
     G.queued = [];
+    G.drone = null;
     Object.assign(G.ship, {
       x: G.w / 2,
       y: G.h * 0.8,
@@ -2473,6 +2508,8 @@
       });
     }
 
+    updateDrone(dt);
+
     // spawn
     G.spawnTimer -= dt;
     if (G.bossWave) {
@@ -2616,6 +2653,103 @@
     }
   }
 
+  function updateDrone(dt) {
+    const d = G.drone;
+    if (!d) return;
+    const s = G.ship;
+
+    if (!s.alive) {
+      G.drone = null;
+      updateChips();
+      return;
+    }
+
+    d.t -= dt;
+    d.bossCd = Math.max(0, d.bossCd - dt);
+
+    if (d.t <= 0) {
+      explode(d.x, d.y, {
+        size: 26, color: COLORS.mint, secondary: COLORS.white,
+        rings: 1, smoke: false, debris: false, sound: false
+      });
+      addParticles(d.x, d.y, 16, {
+        color: COLORS.mint, speed: 210, size: 2, life: 0.5, kind: "spark"
+      });
+      G.drone = null;
+      updateChips();
+      return;
+    }
+
+    // дрон держится рядом с кораблём, медленно облетая его
+    d.orbit += dt * 1.7;
+    const tx = s.x + Math.cos(d.orbit) * 42;
+    const ty = s.y + Math.sin(d.orbit) * 18 - 4;
+    const k = Math.min(1, dt * 7);
+    d.x += (tx - d.x) * k;
+    d.y += (ty - d.y) * k;
+
+    d.cool -= dt;
+    if (d.cool <= 0) {
+      const target = nearestEnemy(d.x, d.y, 540);
+      if (target) {
+        const a = Math.atan2(target.y - d.y, target.x - d.x);
+        pushBullet({
+          x: d.x, y: d.y,
+          vx: Math.cos(a) * 660, vy: Math.sin(a) * 660,
+          r: 2.6, len: 16, dmg: 1, life: 1.5,
+          color: COLORS.mint, thin: true
+        });
+        addParticles(d.x, d.y, 2, {
+          color: COLORS.mint, speed: 90, size: 1.4, life: 0.16,
+          angle: a, spread: 0.4
+        });
+        Audio.droneShoot();
+        d.cool = 0.22;
+      } else {
+        d.cool = 0.12;
+      }
+    }
+  }
+
+  function nearestEnemy(x, y, maxD) {
+    let best = null;
+    let bd = maxD * maxD;
+    for (const e of G.enemies) {
+      if (e.dead) continue;
+      const dx = e.x - x;
+      const dy = e.y - y;
+      const dd = dx * dx + dy * dy;
+      if (dd < bd) { bd = dd; best = e; }
+    }
+    return best;
+  }
+
+  // враг, коснувшийся дрона, взрывается
+  function droneRam(e) {
+    const d = G.drone;
+    if (!d) return false;
+    const dx = e.x - d.x;
+    const dy = e.y - d.y;
+    const rr = e.r + d.r + 2;
+    if (dx * dx + dy * dy > rr * rr) return false;
+
+    const boss = e.type === "boss";
+    if (boss && d.bossCd > 0) return false;
+    if (boss) d.bossCd = 0.6;
+
+    explode(d.x, d.y, {
+      size: boss ? 26 : 32, color: COLORS.mint, secondary: e.color,
+      rings: boss ? 1 : 2, smoke: false, debris: false, sound: false
+    });
+    addParticles(d.x, d.y, boss ? 10 : 18, {
+      color: COLORS.mint, speed: 260, size: 2.2, life: 0.4, kind: "spark"
+    });
+    G.shake = Math.min(G.shake + (boss ? 2 : 4), 18);
+    damageEnemy(e, boss ? 12 : 9999);
+    Audio.droneHit();
+    return !!e.dead;
+  }
+
   function updateEnemies(dt) {
     const s = G.ship;
     for (let i = G.enemies.length - 1; i >= 0; i--) {
@@ -2623,6 +2757,9 @@
       if (e.dead) { G.enemies.splice(i, 1); continue; }
       e.t += dt;
       e.flash = Math.max(0, e.flash - dt);
+
+      // защитный дрон уничтожает врагов, коснувшихся его
+      if (droneRam(e)) continue;
 
       if (e.type === "boss") {
         updateBoss(e, dt);
@@ -2906,6 +3043,52 @@
             });
             Audio.unique();
             buzz(30);
+          } else if (p.kind === "life") {
+            const full = s.lives >= MAX_LIVES;
+            s.lives = Math.min(MAX_LIVES, s.lives + 1);
+            if (full) G.score += 250;
+            syncLives();
+            updateHud();
+            banner(
+              full ? "КОРПУС УСИЛЕН" : "РЕМОНТ КОРПУСА",
+              full ? `${s.lives} жизни · запас +250` : "+1 жизнь"
+            );
+            explode(p.x, p.y, {
+              size: 40, color: COLORS.pink, secondary: COLORS.white,
+              rings: 2, shake: 10, sound: false
+            });
+            addParticles(p.x, p.y, 24, {
+              color: COLORS.pink, speed: 260, size: 2.4, life: 0.7, kind: "spark"
+            });
+            Audio.unique();
+            buzz(28);
+          } else if (p.kind === "drone") {
+            const d = G.drone;
+            if (d) {
+              d.t = DRONE_TIME;
+            } else {
+              G.drone = {
+                x: s.x + 36,
+                y: s.y - 22,
+                t: DRONE_TIME,
+                max: DRONE_TIME,
+                cool: 0.22,
+                orbit: 0,
+                bossCd: 0,
+                r: 9,
+                seed: rand(0, TAU)
+              };
+            }
+            banner("ДРОН-ЩИТ", `${DRONE_TIME} сек · прикрывает огнём`);
+            explode(p.x, p.y, {
+              size: 36, color: COLORS.mint, secondary: COLORS.white,
+              rings: 2, shake: 8, sound: false
+            });
+            addParticles(p.x, p.y, 22, {
+              color: COLORS.mint, speed: 240, size: 2.2, life: 0.6, kind: "spark"
+            });
+            Audio.unique();
+            buzz(24);
           } else {
             if (p.kind === "shield") s.shield = true;
             else if (p.kind === "rapid") s.rapid = Math.min(14, s.rapid + 8);
@@ -2949,6 +3132,7 @@
     drawBullets();
     drawEBullets();
     if (G.ship.alive && G.mode === "play") drawShip();
+    drawDrone();
     drawParticles();
     drawBanner();
 
@@ -3465,6 +3649,158 @@
       ctx.stroke();
       ctx.restore();
     }
+
+    ctx.restore();
+  }
+
+  /* ---------------- defensive drone ---------------- */
+  function drawDrone() {
+    const d = G.drone;
+    if (!d) return;
+    const s = G.ship;
+    const t = G.time;
+    const low = d.t < 3;
+    const blink = low && Math.floor(t * 10) % 2 === 0;
+    const pulse = 1 + Math.sin(t * 9) * 0.05;
+
+    // энергетическая связь с кораблём
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const link = ctx.createLinearGradient(s.x, s.y, d.x, d.y);
+    link.addColorStop(0, rgba(COLORS.mint, 0));
+    link.addColorStop(0.45, rgba(COLORS.mint, 0.22));
+    link.addColorStop(1, rgba(COLORS.mint, 0.55));
+    ctx.strokeStyle = link;
+    ctx.lineWidth = 1.4;
+    ctx.setLineDash([4, 5]);
+    ctx.lineDashOffset = -t * 40;
+    ctx.beginPath();
+    ctx.moveTo(s.x, s.y);
+    ctx.lineTo(d.x, d.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(d.x, d.y);
+    ctx.scale(pulse, pulse);
+    ctx.globalAlpha = blink ? 0.55 : 1;
+
+    // ореол
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, 26);
+    halo.addColorStop(0, rgba(COLORS.mint, 0.38));
+    halo.addColorStop(0.5, rgba(COLORS.mint, 0.1));
+    halo.addColorStop(1, rgba(COLORS.mint, 0));
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(0, 0, 26, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // боковые импульсные стойки
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = rgba(COLORS.mint, 0.85);
+    for (const m of [-1, 1]) {
+      ctx.beginPath();
+      ctx.ellipse(m * 8.6, 2.4, 1.7, 3.1, m * 0.35, 0, TAU);
+      ctx.fill();
+    }
+    // выхлоп вниз
+    const fl = 8 + Math.sin(t * 34 + d.seed) * 2.4;
+    const eg = ctx.createLinearGradient(0, 6, 0, 6 + fl);
+    eg.addColorStop(0, rgba(COLORS.mint, 0.9));
+    eg.addColorStop(1, rgba(COLORS.mint, 0));
+    ctx.fillStyle = eg;
+    ctx.beginPath();
+    ctx.moveTo(-2.6, 6);
+    ctx.lineTo(0, 6 + fl);
+    ctx.lineTo(2.6, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // титановый корпус — шестигранник
+    const body = ctx.createLinearGradient(0, -9, 0, 9);
+    body.addColorStop(0, "#dffcf1");
+    body.addColorStop(0.34, "#8eecc4");
+    body.addColorStop(0.62, "#2f9c76");
+    body.addColorStop(1, "#0d3a2c");
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i / 6) * TAU;
+      const px = Math.cos(a) * 7.4;
+      const py = Math.sin(a) * 7.4;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(226,255,246,0.7)";
+    ctx.lineWidth = 0.9;
+    ctx.stroke();
+
+    // панельные швы
+    ctx.strokeStyle = "rgba(8,48,38,0.55)";
+    ctx.lineWidth = 0.6;
+    ctx.beginPath();
+    ctx.moveTo(-4.6, -3.4);
+    ctx.lineTo(0, -6.4);
+    ctx.lineTo(4.6, -3.4);
+    ctx.moveTo(-4.8, 1.2);
+    ctx.lineTo(4.8, 1.2);
+    ctx.stroke();
+
+    // линза-сканер
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const lens = ctx.createRadialGradient(0, -1.2, 0, 0, -1.2, 4.6);
+    lens.addColorStop(0, "#ffffff");
+    lens.addColorStop(0.35, rgba(COLORS.ice, 0.95));
+    lens.addColorStop(1, rgba(COLORS.cyan, 0));
+    ctx.fillStyle = lens;
+    ctx.beginPath();
+    ctx.arc(0, -1.2, 4.6, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = "rgba(6,32,44,0.9)";
+    ctx.beginPath();
+    ctx.arc(0, -1.2, 2.1, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = "#eafffb";
+    ctx.beginPath();
+    ctx.arc(-0.7, -2, 0.7, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // навигационный огонёк
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = rgba(low ? COLORS.pink : COLORS.mint, 0.6 + Math.sin(t * 6 + d.seed) * 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 6.6, 1.3, 0, TAU);
+    ctx.fill();
+    ctx.restore();
+
+    // дуга таймера
+    const frac = clamp(d.t / d.max, 0, 1);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = rgba(COLORS.mint, 0.25);
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.arc(0, 0, 12.6, 0, TAU);
+    ctx.stroke();
+    ctx.strokeStyle = rgba(low ? COLORS.pink : COLORS.mint, 0.9);
+    ctx.lineWidth = 1.9;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, 12.6, -Math.PI / 2, -Math.PI / 2 + TAU * frac);
+    ctx.stroke();
+    ctx.restore();
 
     ctx.restore();
   }
@@ -5230,10 +5566,15 @@
   function drawPowerups() {
     for (const p of G.powerups) {
       const isWeapon = p.kind === "weapon";
+      const isRare = p.kind === "life" || p.kind === "drone";
       const def = isWeapon ? WEAPONS[p.weapon] : null;
       const color = isWeapon
         ? def.color
-        : p.kind === "shield" ? COLORS.cyan : p.kind === "rapid" ? COLORS.amber : COLORS.violet;
+        : p.kind === "shield" ? COLORS.cyan
+          : p.kind === "rapid" ? COLORS.amber
+            : p.kind === "life" ? COLORS.pink
+              : p.kind === "drone" ? COLORS.mint
+                : COLORS.violet;
       const rr = p.r;
 
       ctx.save();
@@ -5242,7 +5583,7 @@
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rr * 3.4);
-      halo.addColorStop(0, rgba(color, isWeapon ? 0.55 : 0.4));
+      halo.addColorStop(0, rgba(color, isWeapon ? 0.55 : isRare ? 0.5 : 0.4));
       halo.addColorStop(0.55, rgba(color, 0.12));
       halo.addColorStop(1, rgba(color, 0));
       ctx.fillStyle = halo;
@@ -5250,7 +5591,7 @@
       ctx.arc(0, 0, rr * 3.4, 0, TAU);
       ctx.fill();
 
-      if (isWeapon) {
+      if (isWeapon || isRare) {
         ctx.strokeStyle = rgba(color, 0.55);
         ctx.lineWidth = 1.2;
         ctx.setLineDash([5, 6]);
@@ -5258,17 +5599,23 @@
         ctx.arc(0, 0, rr * 2.1, p.t * 0.8, p.t * 0.8 + TAU);
         ctx.stroke();
         ctx.setLineDash([]);
-        for (let i = 0; i < 3; i++) {
-          const a = p.t * 2 + (i / 3) * TAU;
+        const dots = isRare ? 4 : 3;
+        for (let i = 0; i < dots; i++) {
+          const a = p.t * 2 + (i / dots) * TAU;
           ctx.fillStyle = rgba(color, 0.85);
           ctx.beginPath();
-          ctx.arc(Math.cos(a) * rr * 2.1, Math.sin(a) * rr * 2.1, 1.8, 0, TAU);
+          ctx.arc(Math.cos(a) * rr * 2.1, Math.sin(a) * rr * 2.1, isRare ? 2.1 : 1.8, 0, TAU);
           ctx.fill();
         }
       }
       ctx.restore();
 
-      ctx.rotate(p.t * 1.1);
+      // если редкий бонус доживает последние секунды — мигаем
+      if (isRare && p.life != null && p.life < 3 && Math.floor(p.t * 7) % 2 === 0) {
+        ctx.globalAlpha *= 0.55;
+      }
+
+      ctx.rotate(p.t * (isRare ? 0.55 : 1.1));
       const fg = ctx.createLinearGradient(0, -rr, 0, rr);
       fg.addColorStop(0, rgba(color, 0.45));
       fg.addColorStop(1, rgba(color, 0.08));
@@ -5287,15 +5634,60 @@
         ctx.strokeRect(-rr + 3, -rr + 3, rr * 2 - 6, rr * 2 - 6);
       }
 
-      ctx.rotate(-p.t * 1.1);
-      ctx.fillStyle = "#fff";
-      ctx.font = "700 12px 'Google Sans Flex', sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(
-        isWeapon ? p.weapon[0].toUpperCase() : p.kind === "shield" ? "S" : p.kind === "rapid" ? "R" : "T",
-        0, 0.5
-      );
+      ctx.rotate(-p.t * (isRare ? 0.55 : 1.1));
+      if (p.kind === "life") {
+        // сердце-«ремкомплект»
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.fillStyle = "rgba(255,235,244,0.95)";
+        ctx.beginPath();
+        const k = rr * 0.62;
+        ctx.moveTo(0, k * 0.78);
+        ctx.bezierCurveTo(-k * 1.5, -k * 0.1, -k * 0.62, -k * 1.05, 0, -k * 0.36);
+        ctx.bezierCurveTo(k * 0.62, -k * 1.05, k * 1.5, -k * 0.1, 0, k * 0.78);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = rgba(color, 0.9);
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+        ctx.restore();
+      } else if (p.kind === "drone") {
+        // мини-дрон
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        const body = ctx.createLinearGradient(0, -6, 0, 6);
+        body.addColorStop(0, "rgba(240,255,250,0.98)");
+        body.addColorStop(1, rgba(color, 0.7));
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI / 2 + (i / 6) * TAU;
+          const px = Math.cos(a) * 5.4;
+          const py = Math.sin(a) * 5.4;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "rgba(8,38,32,0.9)";
+        ctx.beginPath();
+        ctx.arc(0, -0.6, 1.7, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.95)";
+        ctx.beginPath();
+        ctx.arc(-0.6, -1.3, 0.6, 0, TAU);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        ctx.fillStyle = "#fff";
+        ctx.font = "700 12px 'Google Sans Flex', sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(
+          isWeapon ? p.weapon[0].toUpperCase() : p.kind === "shield" ? "S" : p.kind === "rapid" ? "R" : "T",
+          0, 0.5
+        );
+      }
       ctx.restore();
     }
   }
