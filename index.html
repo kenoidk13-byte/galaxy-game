@@ -1844,6 +1844,7 @@
       cds: def.atk.map((a) => rand(a.cd[0], a.cd[1])),
       spinA: 0,
       entering: true,
+      mt: 0,
       enraged: false,
       aimY: 0
     };
@@ -2979,15 +2980,25 @@
 
     if (e.entering) {
       e.y += 130 * dt;
-      if (e.y >= targetY) { e.y = targetY; e.entering = false; }
+      if (e.y >= targetY) {
+        e.y = targetY;
+        e.x = G.w / 2;
+        e.entering = false;
+        e.mt = 0;
+      }
       e.angle += dt * 0.5;
       return;
     }
 
     const mv = e.move;
     const swing = Math.max(G.w * mv.amp - e.r * 0.5, 40);
-    e.x = G.w / 2 + Math.sin(e.t * mv.speed + e.seed) * swing;
-    e.y = targetY + Math.sin(e.t * mv.ySpeed) * mv.yAmp;
+    // плавный разгон после входа в бой: без скачка и дёрганья
+    e.mt = (e.mt || 0) + dt;
+    const ramp = clamp(e.mt / 0.9, 0, 1);
+    const ease = ramp * ramp * (3 - 2 * ramp);
+    const dir = Math.sin(e.seed) >= 0 ? 1 : -1;
+    e.x = G.w / 2 + Math.sin(e.mt * mv.speed) * swing * dir * ease;
+    e.y = targetY + Math.sin(e.mt * mv.ySpeed) * mv.yAmp * ease;
     e.angle += dt * (e.enraged ? 0.9 : 0.5);
 
     if (!s.alive) return;
