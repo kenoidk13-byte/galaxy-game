@@ -563,22 +563,53 @@
     z-index: 5;
   }
   .pause-layer.on { opacity: 1; visibility: visible; pointer-events: auto; cursor: pointer; }
+  .pause-layer > div {
+    width: 100%;
+    text-align: center;
+  }
   .pause-layer p {
     font-family: var(--font-display);
     font-size: clamp(1.6rem, 5vw, 2.6rem);
     letter-spacing: 0.24em;
+    padding-left: 0.24em;
     text-transform: uppercase;
     margin: 0;
   }
   .pause-layer small {
     display: block;
     margin-top: 14px;
+    padding-left: 0.24em;
     font-family: var(--font-ui);
     font-size: 11px;
     letter-spacing: 0.24em;
     color: var(--muted);
     text-align: center;
   }
+  .pause-exit {
+    margin-top: 30px;
+    padding: 12px 26px 12px calc(26px + 0.18em);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 200ms var(--ease), border-color 200ms var(--ease), background 200ms var(--ease), transform 200ms var(--ease);
+  }
+  .pause-exit:hover {
+    color: var(--ink);
+    border-color: rgba(160, 170, 255, 0.34);
+    background: rgba(124, 92, 255, 0.14);
+    transform: translateY(-1px);
+  }
+  .pause-exit:active { transform: translateY(0) scale(0.985); }
+  .pause-exit:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 
   .credit {
     position: absolute;
@@ -713,6 +744,7 @@
         <span class="only-desktop">Нажми ESC, чтобы продолжить</span>
         <span class="only-touch">Коснись экрана, чтобы продолжить</span>
       </small>
+      <button class="pause-exit" id="pauseExit" type="button">Выйти в меню</button>
     </div>
   </div>
 </div>
@@ -747,7 +779,8 @@
     overBest: document.getElementById("overBest"),
     newBest: document.getElementById("newBest"),
     pause: document.getElementById("pauseLayer"),
-    pauseBtn: document.getElementById("pauseBtn")
+    pauseBtn: document.getElementById("pauseBtn"),
+    pauseExit: document.getElementById("pauseExit")
   };
 
   const COLORS = {
@@ -2245,6 +2278,20 @@
     Music.setPaused(G.paused);
   }
 
+  function exitToMenu() {
+    resetGame();
+    G.mode = "menu";
+    G.paused = false;
+    el.pause.classList.remove("on");
+    if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
+    el.menu.classList.remove("hidden");
+    el.over.classList.add("hidden");
+    el.hud.classList.add("is-hidden");
+    el.menuBest.textContent = G.best.toLocaleString("ru-RU");
+    Music.setPaused(true);
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
   /* ---------------- reset / start ---------------- */
   function resetGame() {
     G.score = 0;
@@ -2312,6 +2359,13 @@
   el.startBtn.addEventListener("click", startGame);
   el.retryBtn.addEventListener("click", startGame);
   el.pause.addEventListener("click", () => { if (G.paused) togglePause(); });
+
+  if (el.pauseExit) {
+    el.pauseExit.addEventListener("click", (e) => {
+      e.stopPropagation();
+      exitToMenu();
+    });
+  }
 
   if (el.pauseBtn) {
     el.pauseBtn.addEventListener("click", (e) => {
