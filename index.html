@@ -401,12 +401,13 @@
     width: 100%;
     height: auto;
     filter:
-      drop-shadow(0 0 34px rgba(77, 225, 255, 0.22))
-      drop-shadow(0 18px 46px rgba(124, 92, 255, 0.3));
+      drop-shadow(0 0 32px rgba(77, 225, 255, 0.2))
+      drop-shadow(0 0 56px rgba(124, 92, 255, 0.22));
   }
 
   .lede {
-    margin: 26px 0 0;
+    /* 19px + line-height leading ≈ 26px visual gap below the logo */
+    margin: 19px 0 0;
     max-width: 42ch;
     font-size: clamp(14px, 2.2vw, 16.5px);
     line-height: 1.65;
@@ -603,7 +604,7 @@
     .title { width: min(100%, 340px); }
     .eyebrow { margin-bottom: 14px; padding: 6px 12px; }
     .lede { display: none; }
-    .cta { margin-top: 22px; }
+    .cta { margin-top: 14px; }
     .hints { margin-top: 20px; }
     .score-grid { margin-top: 20px; }
     .over__title { font-size: clamp(1.6rem, 6vh, 2.4rem); }
