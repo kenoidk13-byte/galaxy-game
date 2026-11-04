@@ -393,29 +393,16 @@
   .title {
     position: relative;
     margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: clamp(3.4rem, 14vw, 8.6rem);
-    line-height: 0.86;
-    letter-spacing: -0.045em;
-    padding-right: 0.12em;
-    margin-right: -0.12em;
-    padding-bottom: 0.04em;
-    background: linear-gradient(180deg, #ffffff 8%, #cdd3ff 46%, #7c5cff 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    filter: drop-shadow(0 0 52px rgba(124, 92, 255, 0.35));
+    width: min(100%, 560px);
+    line-height: 0;
   }
-  .title::after {
-    content: "GALAXY";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    color: transparent;
-    -webkit-text-stroke: 1px rgba(124, 92, 255, 0.22);
-    transform: translate(0, 10px) scale(1.02);
-    filter: blur(10px);
+  .title img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter:
+      drop-shadow(0 0 34px rgba(77, 225, 255, 0.22))
+      drop-shadow(0 18px 46px rgba(124, 92, 255, 0.3));
   }
 
   .lede {
@@ -613,7 +600,7 @@
   }
 
   @media (max-height: 560px) {
-    .title { font-size: clamp(2.2rem, 9vh, 4.2rem); }
+    .title { width: min(100%, 340px); }
     .eyebrow { margin-bottom: 14px; padding: 6px 12px; }
     .lede { display: none; }
     .cta { margin-top: 22px; }
@@ -678,7 +665,9 @@
   <section class="screen" id="menu">
     <div class="panel">
       <span class="eyebrow">Аркада · глубокий космос</span>
-      <h1 class="title">GALAXY</h1>
+      <h1 class="title">
+        <img src="assets/galaxy-logo.png" alt="GALAXY" width="541" height="127" fetchpriority="high" />
+      </h1>
       <p class="lede">
         Ты — последний пилот сектора. Держи курс сквозь волны роя,
         собирай <b>усиления</b> и не дай тьме добраться до ядра.
