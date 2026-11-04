@@ -1856,14 +1856,14 @@
   }
 
   function dropPowerup(x, y) {
-    // редкий дроп: жизнь (1.6%), защитный дрон (4%), обычные бонусы (12%)
+    // редкий дроп: жизнь (0.32%), защитный дрон (1.33%), обычные бонусы (12%)
     const chance = Math.random();
     let kind = null;
-    if (chance < 0.016) {
+    if (chance < 0.0032) {
       kind = "life";
-    } else if (chance < 0.056) {
+    } else if (chance < 0.01655) {
       kind = "drone";
-    } else if (chance < 0.176) {
+    } else if (chance < 0.13655) {
       const roll = Math.random();
       kind = roll < 0.4 ? "shield" : roll < 0.72 ? "rapid" : "triple";
     }
