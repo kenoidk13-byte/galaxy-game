@@ -28,6 +28,7 @@
     --font-ui: "Google Sans Flex", ui-sans-serif, system-ui, sans-serif;
     --font-display: "Google Sans Flex", ui-sans-serif, system-ui, sans-serif;
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --heart: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21S1.5 14.7 1.5 7.9A5.2 5.2 0 0 1 12 5.7a5.2 5.2 0 0 1 10.5 2.2C22.5 14.7 12 21 12 21z' fill='%23fff'/%3E%3C/svg%3E");
   }
 
   * { box-sizing: border-box; }
@@ -121,29 +122,105 @@
     font-weight: 500;
   }
 
-  .wave {
-    display: flex;
+  /* ---------- заряд плазмагана ---------- */
+  .plasma {
+    display: none;
+    flex: 1 1 auto;
+    align-self: center;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    gap: 6px;
+    min-width: 0;
+    width: 100%;
+    max-width: 340px;
+    margin: 3px clamp(10px, 2vw, 30px) 0;
   }
-  .wave__pips {
+  .plasma.is-on { display: flex; }
+  .plasma__head {
     display: flex;
-    gap: 4px;
-    height: 6px;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 9.5px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .plasma__label { white-space: nowrap; }
+  .plasma__pct {
+    font-variant-numeric: tabular-nums;
+    color: #ffb3c2;
+    letter-spacing: 0.1em;
+  }
+  .plasma__track {
+    height: 7px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 59, 92, 0.3);
+    background: rgba(255, 59, 92, 0.12);
+    overflow: hidden;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.65);
+    transition: border-color 220ms var(--ease);
+  }
+  .plasma__fill {
+    width: 0%;
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7d0f2b, #ff3b5c 58%, #ff9db0);
+    box-shadow: 0 0 14px rgba(255, 59, 92, 0.8);
+    transition: width 140ms linear;
+  }
+  .plasma.is-ready .plasma__label,
+  .plasma.is-ready .plasma__pct { color: #ffdbe2; }
+  .plasma.is-ready .plasma__track { border-color: rgba(255, 120, 145, 0.75); }
+  .plasma.is-ready .plasma__fill { animation: plasmaPulse 1.05s var(--ease) infinite; }
+  .plasma.is-active .plasma__fill {
+    background: linear-gradient(90deg, #ff3b5c, #ffd9e1);
+    transition: width 90ms linear;
+  }
+  @keyframes plasmaPulse {
+    50% { filter: brightness(1.45); box-shadow: 0 0 24px rgba(255, 59, 92, 1); }
+  }
+
+  /* кнопка активации для тача */
+  .plasma-btn {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 58px);
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 124px);
+    z-index: 7;
+    display: none;
     align-items: center;
+    gap: 9px;
+    padding: 12px 19px;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 90, 120, 0.65);
+    background: linear-gradient(180deg, rgba(255, 59, 92, 0.34), rgba(110, 9, 32, 0.62));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: #ffe3e9;
+    font-family: var(--font-ui);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    cursor: pointer;
+    pointer-events: auto;
+    touch-action: manipulation;
+    box-shadow: 0 0 28px -6px rgba(255, 59, 92, 0.85);
+    transition: transform 140ms var(--ease), filter 200ms var(--ease);
   }
-  .wave__pips i {
-    width: 14px;
-    height: 2px;
-    border-radius: 2px;
-    background: rgba(160, 170, 255, 0.18);
-    transition: background 200ms var(--ease), box-shadow 200ms var(--ease);
+  body.is-touch .plasma-btn.on { display: inline-flex; }
+  .plasma-btn::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 0 10px #fff, 0 0 20px #ff3b5c;
+    animation: plasmaPulse 1.05s var(--ease) infinite;
   }
-  .wave__pips i.on {
-    background: var(--cyan);
-    box-shadow: 0 0 10px rgba(77, 225, 255, 0.8);
-  }
+  .plasma-btn:active { transform: translateX(-50%) scale(0.96); filter: brightness(1.15); }
 
   .hud__bottom {
     display: flex;
@@ -261,25 +338,26 @@
   }
   body.is-touch .music-vol { display: none; }
 
+  /* сердца вместо ромбиков — та же иконка, что у дропа жизни */
   .lives {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
   }
   .lives i {
-    width: 9px;
-    height: 9px;
-    transform: rotate(45deg);
-    border: 1px solid rgba(77, 225, 255, 0.7);
-    background: var(--cyan);
-    box-shadow: 0 0 12px rgba(77, 225, 255, 0.65);
-    transition: opacity 200ms var(--ease), transform 200ms var(--ease);
+    width: 14px;
+    height: 13px;
+    background: linear-gradient(180deg, #ffd7e4, #ff5c8a 58%, #cf2f57);
+    -webkit-mask: var(--heart) center / contain no-repeat;
+    mask: var(--heart) center / contain no-repeat;
+    filter: drop-shadow(0 0 7px rgba(255, 92, 138, 0.85));
+    transition: opacity 200ms var(--ease), transform 200ms var(--ease), filter 200ms var(--ease);
   }
   .lives i.dead {
-    opacity: 0.18;
-    background: transparent;
-    box-shadow: none;
-    transform: rotate(45deg) scale(0.75);
+    opacity: 0.22;
+    background: #8b8fb3;
+    filter: none;
+    transform: scale(0.82);
   }
 
   .chips {
@@ -493,6 +571,185 @@
   }
   .bestline b { color: var(--amber); font-weight: 600; }
 
+  /* ---------- предполётный выбор ---------- */
+  .panel--loadout { max-width: 720px; }
+  .loadout__title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.7rem, 5.5vw, 2.8rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.03em;
+  }
+  .loadout__lede {
+    margin: 14px 0 0;
+    max-width: 48ch;
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .loadout__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    width: 100%;
+    max-width: 720px;
+    margin-top: 28px;
+  }
+  .pick {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+    padding: 19px 20px 17px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(18, 20, 44, 0.82), rgba(9, 11, 26, 0.92));
+    color: var(--ink);
+    font-family: var(--font-ui);
+    text-align: left;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 200ms var(--ease), border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+  }
+  .pick::after {
+    content: "";
+    position: absolute;
+    inset: auto -30% -60% -30%;
+    height: 150px;
+    background: radial-gradient(circle at 50% 0%, var(--pick-glow), transparent 66%);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+  .pick:hover,
+  .pick:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--pick-line);
+    box-shadow: 0 22px 48px -24px var(--pick-glow);
+    outline: none;
+  }
+  .pick:active { transform: translateY(-1px) scale(0.99); }
+  .pick--plasma {
+    --pick-line: rgba(255, 90, 120, 0.62);
+    --pick-glow: rgba(255, 59, 92, 0.4);
+  }
+  .pick--lives {
+    --pick-line: rgba(255, 138, 178, 0.62);
+    --pick-glow: rgba(255, 92, 138, 0.34);
+  }
+  .pick__tag,
+  .pick__name,
+  .pick__desc,
+  .pick__action { position: relative; z-index: 1; }
+  .pick__tag {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .pick__name {
+    padding-right: 54px;
+    font-family: var(--font-display);
+    font-size: clamp(20px, 3vw, 25px);
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .pick--plasma .pick__name { color: #ff8ea2; }
+  .pick--lives .pick__name { color: #ffb3c9; }
+  .pick__desc {
+    font-size: 12px;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+  .pick__desc b { color: var(--ink); font-weight: 600; }
+  .pick__action {
+    margin-top: 9px;
+    padding-top: 11px;
+    border-top: 1px solid rgba(160, 170, 255, 0.12);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(200, 205, 255, 0.55);
+  }
+  .pick--plasma .pick__action { color: rgba(255, 142, 162, 0.82); }
+  .pick--lives .pick__action { color: rgba(255, 179, 201, 0.82); }
+
+  .pick__icon {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    z-index: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+  }
+  .pick__icon--plasma::before {
+    content: "";
+    position: absolute;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 45%, rgba(255, 59, 92, 0.5), rgba(255, 59, 92, 0.06) 62%, transparent 74%);
+  }
+  .pick__icon--plasma::after {
+    content: "";
+    position: absolute;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    border: 1px solid rgba(255, 100, 128, 0.55);
+    border-top-color: #ffdbe2;
+    transform: rotate(-32deg);
+    box-shadow: inset 0 0 16px rgba(255, 59, 92, 0.35), 0 0 18px rgba(255, 59, 92, 0.22);
+  }
+  .pick__icon--plasma i {
+    position: relative;
+    width: 30px;
+    height: 8px;
+    border-radius: 3px 5px 5px 3px;
+    background: linear-gradient(90deg, #ffe4ea, #ff3b5c 58%, #a80f31);
+    box-shadow: 0 0 18px rgba(255, 59, 92, 0.95);
+    transform: rotate(-26deg);
+  }
+  .pick__icon--plasma i::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    bottom: -5px;
+    width: 9px;
+    height: 8px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #ff5c7a, #7d0f2b);
+    box-shadow: 0 0 10px rgba(255, 59, 92, 0.7);
+  }
+  .pick__icon--lives { gap: 4px; }
+  .pick__icon--lives i {
+    width: 17px;
+    height: 16px;
+    background: linear-gradient(180deg, #ffe0e9, #ff5c8a 58%, #cf2f57);
+    -webkit-mask: var(--heart) center / contain no-repeat;
+    mask: var(--heart) center / contain no-repeat;
+    filter: drop-shadow(0 0 9px rgba(255, 92, 138, 0.75));
+  }
+  .pick__icon--lives i:nth-child(2) { transform: translateY(-3px) scale(1.1); }
+
+  .loadout__hint {
+    display: flex;
+    gap: 22px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 24px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+  .loadout__hint span { display: inline-flex; align-items: center; gap: 8px; }
+
   /* game over */
   .over__label {
     margin: 0 0 18px;
@@ -511,7 +768,7 @@
   }
   .score-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1px;
     width: 100%;
     max-width: 460px;
@@ -632,6 +889,20 @@
     .chips { gap: 6px; }
     .chip { font-size: 9px; padding: 5px 9px; }
     .credit { display: none; }
+    .plasma { margin-top: 2px; max-width: none; }
+    .plasma__head { font-size: 8.5px; letter-spacing: 0.16em; }
+    .plasma__track { height: 6px; }
+    .loadout__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
+    .loadout__lede { font-size: 12.5px; }
+    .pick { padding: 16px 18px 15px; }
+    .pick__name { padding-right: 48px; font-size: 21px; }
+    .pick__desc { font-size: 11.5px; }
+    .pick__icon { top: 13px; right: 13px; width: 44px; height: 44px; }
+    .pick__icon--plasma::before { width: 48px; height: 48px; }
+    .pick__icon--plasma::after { width: 34px; height: 34px; }
+    .pick__icon--plasma i { width: 26px; height: 7px; }
+    .pick__icon--lives i { width: 15px; height: 14px; }
+    .loadout__hint { margin-top: 18px; gap: 14px; }
   }
 
   @media (max-height: 560px) {
@@ -643,6 +914,9 @@
     .score-grid { margin-top: 20px; }
     .over__title { font-size: clamp(1.6rem, 6vh, 2.4rem); }
     .credit { display: none; }
+    .loadout__lede { display: none; }
+    .loadout__grid { margin-top: 18px; }
+    .loadout__hint { margin-top: 14px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -661,10 +935,12 @@
         <span class="stat__label">Очки</span>
         <span class="stat__value" id="hudScore">0</span>
       </div>
-      <div class="wave">
-        <span class="stat__label">Волна</span>
-        <span class="stat__value" id="hudWave">01</span>
-        <div class="wave__pips" id="wavePips"></div>
+      <div class="plasma" id="plasma" role="progressbar" aria-label="Заряд плазмагана" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="plasma__head">
+          <span class="plasma__label" id="plasmaLabel">Плазма</span>
+          <span class="plasma__pct" id="plasmaPct">0%</span>
+        </div>
+        <div class="plasma__track"><div class="plasma__fill" id="plasmaFill"></div></div>
       </div>
       <div class="stat stat--right">
         <span class="stat__label">Рекорд</span>
@@ -686,6 +962,8 @@
     <button class="pause-btn" id="pauseBtn" type="button" aria-label="Пауза">
       <i></i>
     </button>
+
+    <button class="plasma-btn" id="plasmaBtn" type="button">Плазма · активировать</button>
   </div>
 
   <div class="music-vol" id="musicVol">
@@ -705,7 +983,7 @@
         <img src="assets/galaxy-logo.png" alt="GALAXY" width="541" height="127" fetchpriority="high" />
       </h1>
       <p class="lede">
-        Ты — последний пилот сектора. Держи курс сквозь волны роя,
+        Ты — последний пилот сектора. Держи курс сквозь бесконечный рой,
         собирай <b>усиления</b> и не дай тьме добраться до ядра.
       </p>
       <button class="cta" id="startBtn" type="button">Начать полёт</button>
@@ -722,13 +1000,50 @@
     <span class="credit">Galaxy · Canvas Arcade</span>
   </section>
 
+  <section class="screen hidden" id="loadout">
+    <div class="panel panel--loadout">
+      <span class="eyebrow">Предполётная подготовка</span>
+      <h2 class="loadout__title">Выбери модуль</h2>
+      <p class="loadout__lede">
+        Один бонус на весь полёт. Перед каждым запуском можно выбрать заново.
+      </p>
+      <div class="loadout__grid">
+        <button class="pick pick--plasma" id="pickPlasma" type="button">
+          <span class="pick__tag">Супероружие</span>
+          <span class="pick__name">Плазмаган</span>
+          <span class="pick__icon pick__icon--plasma" aria-hidden="true"><i></i></span>
+          <span class="pick__desc">
+            Детали выпадают из врагов и заполняют шкалу до 100%. Затем
+            <b>ПКМ</b> — 10 секунд урона <b>×5</b> насквозь.
+          </span>
+          <span class="pick__action">Выбрать плазмаган</span>
+        </button>
+        <button class="pick pick--lives" id="pickLives" type="button">
+          <span class="pick__tag">Запас прочности</span>
+          <span class="pick__name">+3 жизни</span>
+          <span class="pick__icon pick__icon--lives" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="pick__desc">
+            Три дополнительных сердца на старте. Больше права на ошибку
+            в плотном рое.
+          </span>
+          <span class="pick__action">Выбрать +3 жизни</span>
+        </button>
+      </div>
+      <p class="loadout__hint">
+        <span class="only-desktop"><kbd>1</kbd> плазмаган <kbd>2</kbd> +3 жизни</span>
+        <span class="only-desktop"><kbd>ESC</kbd> назад</span>
+        <span class="only-touch">Нажми на карточку, чтобы начать</span>
+      </p>
+      <p class="bestline">Рекорд: <b id="loadoutBest">0</b></p>
+    </div>
+  </section>
+
   <section class="screen hidden" id="over">
     <div class="panel">
       <p class="over__label">Сигнал потерян</p>
       <h2 class="over__title">Корабль уничтожен</h2>
       <div class="score-grid">
         <div><span>Очки</span><strong id="overScore">0</strong></div>
-        <div><span>Волна</span><strong id="overWave">1</strong></div>
         <div><span>Рекорд</span><strong id="overBest">0</strong></div>
       </div>
       <p class="newbest" id="newBest">Новый рекорд</p>
@@ -763,9 +1078,7 @@
   const el = {
     hud: document.getElementById("hud"),
     score: document.getElementById("hudScore"),
-    wave: document.getElementById("hudWave"),
     best: document.getElementById("hudBest"),
-    pips: document.getElementById("wavePips"),
     lives: document.getElementById("lives"),
     chips: {
       weapon: document.querySelector('[data-chip="weapon"]'),
@@ -776,13 +1089,21 @@
     },
     menu: document.getElementById("menu"),
     over: document.getElementById("over"),
+    loadout: document.getElementById("loadout"),
+    pickPlasma: document.getElementById("pickPlasma"),
+    pickLives: document.getElementById("pickLives"),
+    loadoutBest: document.getElementById("loadoutBest"),
     startBtn: document.getElementById("startBtn"),
     retryBtn: document.getElementById("retryBtn"),
     menuBest: document.getElementById("menuBest"),
     overScore: document.getElementById("overScore"),
-    overWave: document.getElementById("overWave"),
     overBest: document.getElementById("overBest"),
     newBest: document.getElementById("newBest"),
+    plasma: document.getElementById("plasma"),
+    plasmaFill: document.getElementById("plasmaFill"),
+    plasmaPct: document.getElementById("plasmaPct"),
+    plasmaLabel: document.getElementById("plasmaLabel"),
+    plasmaBtn: document.getElementById("plasmaBtn"),
     pause: document.getElementById("pauseLayer"),
     pauseBtn: document.getElementById("pauseBtn"),
     pauseExit: document.getElementById("pauseExit")
@@ -842,8 +1163,12 @@
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
-  const MAX_LIVES = 5;
+  const MAX_LIVES = 8;
   const DRONE_TIME = 10;
+  const PLASMA_CHARGE_STEP = 12; // % за одну деталь
+  const PLASMA_DURATION = 10;    // секунд работы плазмагана
+  const PLASMA_DROP = 0.1;       // шанс детали при убийстве
+  const SHAKE_SCALE = 0.7;       // общая тряска экрана (было 1 → минус 30%)
 
   const LOW_END =
     IS_TOUCH &&
@@ -1193,6 +1518,8 @@
     galagaSpawned: false,
     galagaTimer: 0,
     waveDelay: 0,
+    bonus: null, // "plasma" | "lives"
+    plasma: { charge: 0, ready: false, active: 0 },
     bulletSpeed: 1,
     combo: 0,
     comboTimer: 0,
@@ -1465,16 +1792,7 @@
 
   function updateHud() {
     el.score.textContent = G.score.toLocaleString("ru-RU");
-    el.wave.textContent = String(G.wave).padStart(2, "0");
     el.best.textContent = G.best.toLocaleString("ru-RU");
-    const progress = clamp(G.waveKills / G.waveTarget, 0, 1);
-    const total = 8;
-    if (el.pips.children.length !== total) {
-      el.pips.innerHTML = "";
-      for (let i = 0; i < total; i++) el.pips.appendChild(document.createElement("i"));
-    }
-    const on = Math.round(progress * total);
-    [...el.pips.children].forEach((p, i) => p.classList.toggle("on", i < on));
     if (el.lives.children.length !== G.ship.lives) {
       el.lives.innerHTML = "";
       for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
@@ -1520,6 +1838,79 @@
   function syncLives() {
     el.lives.innerHTML = "";
     for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
+  }
+
+  /* ---------------- плазмаган ---------------- */
+  let plasmaSig = "";
+
+  function updatePlasmaHud() {
+    const p = G.plasma;
+    const on = G.bonus === "plasma";
+    const active = p.active > 0;
+    const pct = active ? (p.active / PLASMA_DURATION) * 100 : p.charge;
+    const ready = !active && p.charge >= 100;
+    const sig = `${on ? 1 : 0}|${active ? Math.ceil(p.active * 10) : Math.round(pct)}|${ready ? 1 : 0}`;
+    if (sig === plasmaSig) return;
+    plasmaSig = sig;
+
+    el.plasma.classList.toggle("is-on", on);
+    el.plasma.classList.toggle("is-ready", on && ready);
+    el.plasma.classList.toggle("is-active", on && active);
+    el.plasmaFill.style.width = `${pct.toFixed(1)}%`;
+    el.plasmaPct.textContent = active ? `${Math.ceil(p.active)}с` : `${Math.round(pct)}%`;
+    el.plasmaLabel.textContent = active
+      ? "Плазма"
+      : ready
+        ? (IS_TOUCH ? "Заряжено · тап" : "Заряжено · ПКМ")
+        : "Плазма";
+    el.plasma.setAttribute("aria-valuenow", String(Math.round(pct)));
+    if (el.plasmaBtn) el.plasmaBtn.classList.toggle("on", on && ready);
+  }
+
+  function addPlasmaCharge() {
+    const p = G.plasma;
+    if (G.bonus !== "plasma" || p.active > 0) return;
+    p.charge = Math.min(100, p.charge + PLASMA_CHARGE_STEP);
+    if (p.charge >= 100) {
+      p.ready = true;
+      banner("ЗАРЯЖЕНО", IS_TOUCH ? "жми «Плазма» · урон ×5" : "ПКМ — плазмаган · урон ×5");
+      Audio.unique();
+      buzz(55);
+      G.flash = Math.max(G.flash, 0.22);
+    } else {
+      buzz(12);
+    }
+    updatePlasmaHud();
+  }
+
+  function activatePlasma() {
+    const p = G.plasma;
+    if (G.mode !== "play" || G.paused) return false;
+    if (G.bonus !== "plasma" || !p.ready || p.active > 0) return false;
+    p.active = PLASMA_DURATION;
+    p.ready = false;
+    G.flash = Math.max(G.flash, 0.55);
+    G.shake = Math.min(G.shake + 12, 28);
+    banner("ПЛАЗМА", "урон ×5 · насквозь · 10 сек");
+    Audio.unique();
+    buzz(70);
+    updatePlasmaHud();
+    return true;
+  }
+
+  function shootPlasma(s) {
+    s.cool = 0.1;
+    pushBullet({
+      x: s.x, y: s.y - 22,
+      vx: 0, vy: -1450,
+      r: 10, len: 46, life: 1.6, dmg: 5, pierce: 99,
+      color: "#ff3b5c", heavy: true
+    });
+    addParticles(s.x, s.y - 20, 6, {
+      color: "#ff3b5c", speed: 210, size: 2.6, life: 0.32,
+      angle: -Math.PI / 2, spread: 1.1
+    });
+    Audio.shoot();
   }
 
   /* ---------------- spawning ---------------- */
@@ -1856,6 +2247,25 @@
   }
 
   function dropPowerup(x, y) {
+    // деталь плазмагана — только если на старте выбран плазмаган
+    if (
+      G.bonus === "plasma" &&
+      G.plasma.charge < 100 &&
+      G.plasma.active <= 0 &&
+      Math.random() < PLASMA_DROP
+    ) {
+      G.powerups.push({
+        x, y,
+        r: 10,
+        kind: "part",
+        t: 0,
+        vy: rand(58, 92),
+        vx: rand(-16, 16),
+        life: 14
+      });
+      return;
+    }
+
     // редкий дроп: жизнь (0.32%), защитный дрон (1.33%), обычные бонусы (12%)
     const chance = Math.random();
     let kind = null;
@@ -1911,6 +2321,7 @@
   function playerShoot() {
     if (!G.ship.alive) return;
     const s = G.ship;
+    if (G.plasma.active > 0) { shootPlasma(s); return; }
     const w = s.weapon;
     if (w && WEAPONS[w.id]) { shootWeapon(s, WEAPONS[w.id]); return; }
 
@@ -2172,6 +2583,10 @@
     G.ship.alive = false;
     G.mode = "over";
     G.newRecord = G.score > 0 && G.score > (G.bestStart || 0);
+    G.plasma.active = 0;
+    G.plasma.ready = false;
+    G.plasma.charge = 0;
+    updatePlasmaHud();
     explode(G.ship.x, G.ship.y, {
       size: 70, color: COLORS.amber, secondary: COLORS.white, big: true, rings: 3, shake: 30, sound: true
     });
@@ -2188,7 +2603,6 @@
     buzz(70);
     setTimeout(() => {
       el.overScore.textContent = G.score.toLocaleString("ru-RU");
-      el.overWave.textContent = G.wave;
       el.overBest.textContent = G.best.toLocaleString("ru-RU");
       el.newBest.classList.toggle("on", !!G.newRecord);
       el.over.classList.remove("hidden");
@@ -2196,8 +2610,10 @@
     }, 900);
   }
 
-  /* ---------------- waves ---------------- */
-  function nextWave() {
+  /* ---------------- difficulty level ----------------
+     «Волн» как отдельных фаз больше нет: враги идут сплошным потоком,
+     а G.wave — внутренний счётчик сложности, который растёт сам и в HUD не показывается. */
+  function advanceLevel() {
     G.wave++;
     G.waveKills = 0;
     G.bossWave = G.wave % 7 === 0;
@@ -2213,20 +2629,15 @@
     if (G.bossWave) {
       G.bossLevel = Math.floor(G.wave / 7);
       G.waveTarget = 1;
-      banner(`Волна ${String(G.wave).padStart(2, "0")}`, "обнаружен босс · сектор закрыт");
+      banner("БОСС", "сектор закрыт · прорвись");
       buzz(50);
     } else if (G.galagaWave) {
       G.waveTarget = GALAGA_ROWS * GALAGA_COLS;
-      banner(`Волна ${String(G.wave).padStart(2, "0")}`, "аркадный налёт · строй и пике");
+      banner("АРКАДНЫЙ НАЛЁТ", "строй и пике");
       buzz(40);
     } else {
       G.waveTarget = 9 + G.wave * 3;
-      banner(`Волна ${String(G.wave).padStart(2, "0")}`, G.wave % 3 === 0 ? "усиленное сопротивление" : "");
-      Audio.wave();
     }
-
-    syncLives();
-    updateHud();
   }
 
   /* ---------------- input ---------------- */
@@ -2248,6 +2659,10 @@
   }, { passive: true });
 
   canvas.addEventListener("pointerdown", (e) => {
+    if (e.button === 2) {
+      if (activatePlasma()) e.preventDefault();
+      return;
+    }
     if (activePointer !== null) return;
     activePointer = e.pointerId;
     Audio.unlock();
@@ -2285,10 +2700,16 @@
     G.keys[k] = true;
     if (k === "escape" || k === "p") {
       if (G.mode === "play") togglePause();
+      else if (k === "escape" && G.mode === "loadout") closeLoadout();
+    }
+    if (G.mode === "loadout") {
+      if (k === "1") startGame("plasma");
+      else if (k === "2") startGame("lives");
     }
     if (k === "enter") {
-      if (G.mode === "menu") startGame();
-      else if (G.mode === "over" && !el.over.classList.contains("hidden")) startGame();
+      if (G.mode === "menu") openLoadout();
+      else if (G.mode === "loadout") startGame("plasma");
+      else if (G.mode === "over" && !el.over.classList.contains("hidden")) openLoadout();
     }
   });
 
@@ -2321,6 +2742,7 @@
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
     el.menu.classList.remove("hidden");
     el.over.classList.add("hidden");
+    el.loadout.classList.add("hidden");
     el.hud.classList.add("is-hidden");
     el.menuBest.textContent = G.best.toLocaleString("ru-RU");
     Music.setPaused(true);
@@ -2330,6 +2752,10 @@
   /* ---------------- reset / start ---------------- */
   function resetGame() {
     G.score = 0;
+    G.bonus = null;
+    G.plasma.charge = 0;
+    G.plasma.ready = false;
+    G.plasma.active = 0;
     G.wave = 1;
     G.waveKills = 0;
     G.waveTarget = 10;
@@ -2375,25 +2801,72 @@
     syncLives();
     updateHud();
     updateChips();
+    updatePlasmaHud();
   }
 
-  function startGame() {
+  function openLoadout() {
+    Audio.unlock();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    G.mode = "loadout";
+    G.paused = false;
+    G.pointer.down = false;
+    el.pause.classList.remove("on");
+    if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
+    el.menu.classList.add("hidden");
+    el.over.classList.add("hidden");
+    el.hud.classList.add("is-hidden");
+    el.loadout.classList.remove("hidden");
+    el.loadoutBest.textContent = G.best.toLocaleString("ru-RU");
+    Music.setPaused(true);
+  }
+
+  function closeLoadout() {
+    if (G.mode !== "loadout") return;
+    G.mode = "menu";
+    el.loadout.classList.add("hidden");
+    el.menu.classList.remove("hidden");
+    el.menuBest.textContent = G.best.toLocaleString("ru-RU");
+  }
+
+  function startGame(bonus) {
     Audio.unlock();
     Music.start();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     G.bestStart = G.best;
     G.newRecord = false;
     resetGame();
+    G.bonus = bonus === "lives" ? "lives" : bonus === "plasma" ? "plasma" : null;
+    if (G.bonus === "lives") G.ship.lives = Math.min(MAX_LIVES, G.ship.lives + 3);
     G.mode = "play";
     el.menu.classList.add("hidden");
     el.over.classList.add("hidden");
+    el.loadout.classList.add("hidden");
     el.hud.classList.remove("is-hidden");
-    banner("Волна 01", IS_TOUCH ? "веди палец · автоогонь" : "держи курс");
+    syncLives();
+    updateHud();
+    updatePlasmaHud();
+    banner(
+      "ВЗЛЁТ",
+      G.bonus === "plasma"
+        ? "собирай детали плазмагана"
+        : G.bonus === "lives"
+          ? "+3 жизни · держи курс"
+          : IS_TOUCH ? "веди палец · автоогонь" : "держи курс"
+    );
     G.ship.invuln = 1.4;
   }
 
-  el.startBtn.addEventListener("click", startGame);
-  el.retryBtn.addEventListener("click", startGame);
+  el.startBtn.addEventListener("click", openLoadout);
+  el.retryBtn.addEventListener("click", openLoadout);
+  el.pickPlasma.addEventListener("click", () => startGame("plasma"));
+  el.pickLives.addEventListener("click", () => startGame("lives"));
+  if (el.plasmaBtn) {
+    el.plasmaBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      activatePlasma();
+    });
+  }
   el.pause.addEventListener("click", () => { if (G.paused) togglePause(); });
 
   if (el.pauseExit) {
@@ -2445,6 +2918,17 @@
     if (G.mode !== "play" || G.paused) {
       updateParticles(dt);
       return;
+    }
+
+    // плазмаган: 10 секунд работы, затем заряд сгорает
+    if (G.plasma.active > 0) {
+      G.plasma.active = Math.max(0, G.plasma.active - dt);
+      if (G.plasma.active === 0) {
+        G.plasma.charge = 0;
+        G.plasma.ready = false;
+        banner("ПЛАЗМА ОСТЫЛА", "собери детали заново");
+        updatePlasmaHud();
+      }
     }
 
     const s = G.ship;
@@ -2549,18 +3033,19 @@
 
     updateParticles(dt);
 
-    // wave progression
+    // рост сложности: арена больше не «очищается», поток врагов не прерывается
     G.waveDelay = Math.max(0, G.waveDelay - dt);
     const bossAlive = G.enemies.some((e) => e.type === "boss" && !e.dead);
-    if (G.waveDelay <= 0 && !bossAlive && G.waveKills >= G.waveTarget && G.enemies.length === 0) nextWave();
+    if (G.waveDelay <= 0 && !bossAlive && G.waveKills >= G.waveTarget) advanceLevel();
 
     updateChips();
+    updatePlasmaHud();
   }
 
   function updateStars(dt) {
     const speed = G.mode === "play" && !G.paused ? 1 : 0.35;
     for (const st of G.stars) {
-      st.y += (14 + st.depth * 120) * speed * dt;
+      st.y += (30 + st.depth * 300) * speed * dt;
       st.tw += dt * (1 + st.depth * 2);
       if (st.y > G.h + 4) {
         st.y = -4;
@@ -3032,7 +3517,7 @@
         const dx = s.x - p.x;
         const dy = s.y - p.y;
         const d2 = dx * dx + dy * dy;
-        const pull = p.kind === "weapon" ? 210 : 150;
+        const pull = p.kind === "weapon" || p.kind === "part" ? 210 : 150;
         if (d2 < pull * pull && d2 > 1) {
           const d = Math.sqrt(d2);
           const k = 1 - Math.pow(0.001, dt);
@@ -3041,7 +3526,16 @@
         }
         const rr = s.r + p.r + 6;
         if (d2 < rr * rr) {
-          if (p.kind === "weapon") {
+          if (p.kind === "part") {
+            addPlasmaCharge();
+            explode(p.x, p.y, {
+              size: 28, color: "#ff3b5c", secondary: COLORS.white,
+              rings: 1, shake: 4, sound: false, debris: false
+            });
+            addParticles(p.x, p.y, 16, {
+              color: "#ff3b5c", speed: 220, size: 2.2, life: 0.55, kind: "spark"
+            });
+          } else if (p.kind === "weapon") {
             const def = WEAPONS[p.weapon];
             s.weapon = { id: p.weapon, name: def.name, t: 24 };
             banner(def.name, def.desc);
@@ -3124,7 +3618,7 @@
 
     ctx.save();
     if (G.shake > 0.2) {
-      const s = G.shake;
+      const s = G.shake * SHAKE_SCALE;
       ctx.translate(rand(-s, s), rand(-s, s));
     }
 
@@ -3177,6 +3671,13 @@
       else if (st.hue === "violet") color = `rgba(170,150,255,${a})`;
       const s = st.size;
 
+      // след у ближних звёзд — ощущение непрерывного полёта вперёд
+      if (st.depth > 0.55) {
+        const tail = 4 + st.depth * 15;
+        ctx.fillStyle = `rgba(196,210,255,${a * 0.22})`;
+        ctx.fillRect(st.x - 0.5, st.y - tail, 1, tail);
+      }
+
       if (s > 1.9) {
         const arm = s * (IS_TOUCH ? 1.7 : 2.4);
         if (!IS_TOUCH) {
@@ -3208,75 +3709,45 @@
   function drawBullets() {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.lineCap = "round";
     for (const b of G.bullets) {
       const c = b.color || COLORS.cyan;
-      const ang = Math.atan2(b.vy, b.vx);
-      const len = b.len || 20;
+      const rad = (b.thin ? 2.4 : b.heavy ? b.r * 1.3 : b.orb ? b.r * 1.35 : b.r * 1.15) * 0.5;
+      const glow = rad * 2.7;
 
       if (IS_TOUCH) {
-        ctx.strokeStyle = c;
-        ctx.lineWidth = b.thin ? 1.6 : b.heavy ? 5 : 3;
+        // на тач-устройствах — простые кружки без градиентов (дешевле)
+        ctx.fillStyle = rgba(c, 0.85);
         ctx.beginPath();
-        ctx.moveTo(b.x - Math.cos(ang) * len, b.y - Math.sin(ang) * len);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-        if (b.orb) {
-          ctx.fillStyle = c;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, b.r * 2.2, 0, TAU);
-          ctx.fill();
-        }
-        ctx.fillStyle = "rgba(235,250,255,0.95)";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.orb ? b.r * 0.9 : b.thin ? 1.4 : 2.1, 0, TAU);
+        ctx.arc(b.x, b.y, rad * 1.45, 0, TAU);
         ctx.fill();
-        continue;
+      } else {
+        const halo = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, glow);
+        halo.addColorStop(0, rgba(c, 0.9));
+        halo.addColorStop(0.4, rgba(c, 0.34));
+        halo.addColorStop(1, rgba(c, 0));
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, glow, 0, TAU);
+        ctx.fill();
       }
 
-      if (b.orb) {
-        const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.4);
-        g.addColorStop(0, rgba(c, 0.95));
-        g.addColorStop(0.45, rgba(c, 0.4));
-        g.addColorStop(1, rgba(c, 0));
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 3.4, 0, TAU);
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.95)";
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 0.45, 0, TAU);
-        ctx.fill();
-        continue;
-      }
-
-      const tailX = b.x - Math.cos(ang) * len;
-      const tailY = b.y - Math.sin(ang) * len;
-      const grd = ctx.createLinearGradient(tailX, tailY, b.x, b.y);
-      grd.addColorStop(0, rgba(c, 0));
-      grd.addColorStop(0.45, rgba(c, 0.5));
-      grd.addColorStop(1, "rgba(255,255,255,0.95)");
-      ctx.strokeStyle = grd;
-      ctx.lineWidth = b.thin ? 1.7 : b.heavy ? 6 : 3.2;
+      // тело пули — круглый сгусток
+      const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+      body.addColorStop(0, "rgba(255,255,255,0.95)");
+      body.addColorStop(0.5, rgba(c, 0.95));
+      body.addColorStop(1, rgba(c, 0.5));
+      ctx.fillStyle = body;
       ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-
-      if (b.heavy) {
-        const hg = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.6);
-        hg.addColorStop(0, rgba(c, 0.55));
-        hg.addColorStop(1, rgba(c, 0));
-        ctx.fillStyle = hg;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 3.6, 0, TAU);
-        ctx.fill();
-      }
-
-      ctx.fillStyle = "rgba(235,250,255,0.95)";
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.thin ? 1.5 : 2.3, 0, TAU);
+      ctx.arc(b.x, b.y, rad, 0, TAU);
       ctx.fill();
+
+      if (b.heavy || b.orb) {
+        ctx.strokeStyle = rgba(c, 0.75);
+        ctx.lineWidth = b.heavy ? 1.1 : 0.8;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, rad * 1.45, 0, TAU);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -3285,40 +3756,43 @@
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     for (const b of G.ebullets) {
-      if (b.trail) {
-        const sp = Math.hypot(b.vx, b.vy) || 1;
-        const tx = b.x - (b.vx / sp) * 18;
-        const ty = b.y - (b.vy / sp) * 18;
-        const tg = ctx.createLinearGradient(tx, ty, b.x, b.y);
-        tg.addColorStop(0, rgba(b.color, 0));
-        tg.addColorStop(1, rgba(b.color, 0.7));
-        ctx.strokeStyle = tg;
-        ctx.lineWidth = b.r * 1.2;
-        ctx.lineCap = "round";
-        ctx.beginPath();
-        ctx.moveTo(tx, ty);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-      }
+      const rad = b.r * 1.3;
+      const glow = rad * 3;
+
       if (IS_TOUCH) {
         ctx.fillStyle = rgba(b.color, 0.9);
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 1.5, 0, TAU);
+        ctx.arc(b.x, b.y, rad * 1.5, 0, TAU);
         ctx.fill();
       } else {
-        const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3.4);
-        grd.addColorStop(0, rgba(b.color, 0.95));
-        grd.addColorStop(0.35, rgba(b.color, 0.4));
+        const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, glow);
+        grd.addColorStop(0, rgba(b.color, 0.9));
+        grd.addColorStop(0.36, rgba(b.color, 0.36));
         grd.addColorStop(1, rgba(b.color, 0));
         ctx.fillStyle = grd;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 3.4, 0, TAU);
+        ctx.arc(b.x, b.y, glow, 0, TAU);
         ctx.fill();
       }
-      ctx.fillStyle = "#fff";
+
+      // тело — круглый сгусток
+      const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+      body.addColorStop(0, "rgba(255,255,255,0.92)");
+      body.addColorStop(0.55, rgba(b.color, 0.95));
+      body.addColorStop(1, rgba(b.color, 0.55));
+      ctx.fillStyle = body;
       ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r * 0.55, 0, TAU);
+      ctx.arc(b.x, b.y, rad, 0, TAU);
       ctx.fill();
+
+      // тяжёлые/боссовые сгустки — с тонким кольцом
+      if (b.trail) {
+        ctx.strokeStyle = rgba(b.color, 0.7);
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, rad * 1.55, 0, TAU);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -3326,7 +3800,9 @@
   function drawShip() {
     const s = G.ship;
     const blink = s.invuln > 0 && Math.floor(s.invuln * 14) % 2 === 0;
-    const wcol = s.weapon && WEAPONS[s.weapon.id] ? WEAPONS[s.weapon.id].color : COLORS.cyan;
+    const wcol = G.plasma.active > 0
+      ? "#ff3b5c"
+      : s.weapon && WEAPONS[s.weapon.id] ? WEAPONS[s.weapon.id].color : COLORS.cyan;
 
     ctx.save();
     ctx.translate(s.x, s.y);
@@ -3360,6 +3836,22 @@
     ctx.arc(0, 4, 44, 0, TAU);
     ctx.fill();
     ctx.restore();
+
+    // плазменный сердечник — раскалённый нос во время работы супероружия
+    if (G.plasma.active > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const pulse = 0.75 + Math.sin(G.time * 18) * 0.25;
+      const core = ctx.createRadialGradient(0, -9, 0, 0, -9, 19 * pulse);
+      core.addColorStop(0, "rgba(255,238,243,0.95)");
+      core.addColorStop(0.35, "rgba(255,59,92,0.62)");
+      core.addColorStop(1, "rgba(255,59,92,0)");
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(0, -9, 19 * pulse, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
 
     // wings — layered plates tucked under the fuselage
     for (const m of [-1, 1]) {
@@ -5578,14 +6070,16 @@
     for (const p of G.powerups) {
       const isWeapon = p.kind === "weapon";
       const isRare = p.kind === "life" || p.kind === "drone";
+      const isPart = p.kind === "part";
       const def = isWeapon ? WEAPONS[p.weapon] : null;
       const color = isWeapon
         ? def.color
         : p.kind === "shield" ? COLORS.cyan
           : p.kind === "rapid" ? COLORS.amber
-            : p.kind === "life" ? COLORS.pink
-              : p.kind === "drone" ? COLORS.mint
-                : COLORS.violet;
+            : p.kind === "part" ? "#ff3b5c"
+              : p.kind === "life" ? COLORS.pink
+                : p.kind === "drone" ? COLORS.mint
+                  : COLORS.violet;
       const rr = p.r;
 
       ctx.save();
@@ -5594,7 +6088,7 @@
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, rr * 3.4);
-      halo.addColorStop(0, rgba(color, isWeapon ? 0.55 : isRare ? 0.5 : 0.4));
+      halo.addColorStop(0, rgba(color, isWeapon ? 0.55 : isRare || isPart ? 0.5 : 0.4));
       halo.addColorStop(0.55, rgba(color, 0.12));
       halo.addColorStop(1, rgba(color, 0));
       ctx.fillStyle = halo;
@@ -5602,7 +6096,7 @@
       ctx.arc(0, 0, rr * 3.4, 0, TAU);
       ctx.fill();
 
-      if (isWeapon || isRare) {
+      if (isWeapon || isRare || isPart) {
         ctx.strokeStyle = rgba(color, 0.55);
         ctx.lineWidth = 1.2;
         ctx.setLineDash([5, 6]);
@@ -5622,7 +6116,7 @@
       ctx.restore();
 
       // если редкий бонус доживает последние секунды — мигаем
-      if (isRare && p.life != null && p.life < 3 && Math.floor(p.t * 7) % 2 === 0) {
+      if ((isRare || isPart) && p.life != null && p.life < 3 && Math.floor(p.t * 7) % 2 === 0) {
         ctx.globalAlpha *= 0.55;
       }
 
@@ -5646,7 +6140,39 @@
       }
 
       ctx.rotate(-p.t * (isRare ? 0.55 : 1.1));
-      if (p.kind === "life") {
+      if (p.kind === "part") {
+        // деталь плазмагана: шестигранный сердечник с разрядом
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = "rgba(255,228,236,0.95)";
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        for (let i = 0; i < 6; i++) {
+          const a = -Math.PI / 2 + (i / 6) * TAU;
+          const px = Math.cos(a) * rr * 0.58;
+          const py = Math.sin(a) * rr * 0.58;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.fillStyle = "rgba(255,59,92,0.32)";
+        ctx.fill();
+        ctx.fillStyle = "#ffe9ef";
+        ctx.beginPath();
+        ctx.arc(0, 0, 2.5, 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,80,110,0.95)";
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(-rr * 0.3, -rr * 0.1);
+        ctx.lineTo(-rr * 0.04, rr * 0.04);
+        ctx.lineTo(-rr * 0.2, rr * 0.3);
+        ctx.moveTo(rr * 0.3, -rr * 0.3);
+        ctx.lineTo(rr * 0.06, -rr * 0.06);
+        ctx.stroke();
+        ctx.restore();
+      } else if (p.kind === "life") {
         // сердце-«ремкомплект»
         ctx.save();
         ctx.globalCompositeOperation = "lighter";
