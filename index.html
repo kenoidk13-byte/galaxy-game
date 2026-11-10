@@ -1063,7 +1063,7 @@
           <span class="pick__desc">
             Детали врагов заполняют шкалу до 100%. На полном заряде
             <span class="only-desktop-inline">жми <b>ПКМ</b></span><span class="only-touch-inline">жми кнопку <b>«Плазма»</b></span>:
-            10 секунд урона <b>×5</b> насквозь. Запас: <b>3 сердца</b>.
+            10 секунд урона <b>×5</b> насквозь. Запас: <b>3 сердца</b>, максимум.
           </span>
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
@@ -1890,6 +1890,8 @@
   }
 
   function syncLives() {
+    const cap = maxLives();
+    if (G.ship.lives > cap) G.ship.lives = cap;
     el.lives.innerHTML = "";
     for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
   }
@@ -2902,9 +2904,9 @@
     banner(
       "ВЗЛЁТ",
       G.bonus === "plasma"
-        ? "собирай детали плазмагана"
+        ? "3 сердца на весь полёт, выше не поднять"
         : G.bonus === "lives"
-          ? "+3 жизни, держи курс"
+          ? "6 сердец, это потолок запаса"
           : IS_TOUCH ? "веди палец, автоогонь" : "держи курс"
     );
     G.ship.invuln = 1.4;
@@ -3611,7 +3613,7 @@
             updateHud();
             banner(
               full ? "КОРПУС УСИЛЕН" : "РЕМОНТ КОРПУСА",
-              full ? "запас полон, +250 очков" : "+1 жизнь"
+              full ? `запас полон: ${max} / ${max}, +250 очков` : `+1 жизнь, ${s.lives} / ${max}`
             );
             explode(p.x, p.y, {
               size: 40, color: COLORS.pink, secondary: COLORS.white,
