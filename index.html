@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>GALAXY — аркадный шутер</title>
+<title>GALAXY: аркадный шутер</title>
 <meta name="theme-color" content="#04050e" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -36,7 +36,8 @@
   html, body {
     margin: 0;
     height: 100%;
-    overflow: hidden;
+    overflow-y: hidden;
+    overflow-x: clip;
     background: var(--bg);
     color: var(--ink);
     font-family: var(--font-ui);
@@ -100,8 +101,8 @@
   }
   .stat--right { align-items: flex-end; }
   .stat__label {
-    font-size: 10px;
-    letter-spacing: 0.28em;
+    font-size: 10.5px;
+    letter-spacing: 0.24em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -140,7 +141,7 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 10px;
-    font-size: 9.5px;
+    font-size: 10.5px;
     letter-spacing: 0.24em;
     text-transform: uppercase;
     color: var(--muted);
@@ -161,12 +162,14 @@
     transition: border-color 220ms var(--ease);
   }
   .plasma__fill {
-    width: 0%;
+    width: 100%;
     height: 100%;
     border-radius: 999px;
+    transform: scaleX(0);
+    transform-origin: left center;
     background: linear-gradient(90deg, #7d0f2b, #ff3b5c 58%, #ff9db0);
     box-shadow: 0 0 14px rgba(255, 59, 92, 0.8);
-    transition: width 140ms linear;
+    transition: transform 140ms linear;
   }
   .plasma.is-ready .plasma__label,
   .plasma.is-ready .plasma__pct { color: #ffdbe2; }
@@ -174,7 +177,7 @@
   .plasma.is-ready .plasma__fill { animation: plasmaPulse 1.05s var(--ease) infinite; }
   .plasma.is-active .plasma__fill {
     background: linear-gradient(90deg, #ff3b5c, #ffd9e1);
-    transition: width 90ms linear;
+    transition: transform 90ms linear;
   }
   @keyframes plasmaPulse {
     50% { filter: brightness(1.45); box-shadow: 0 0 24px rgba(255, 59, 92, 1); }
@@ -199,7 +202,7 @@
     -webkit-backdrop-filter: blur(10px);
     color: #ffe3e9;
     font-family: var(--font-ui);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 700;
     letter-spacing: 0.18em;
     text-transform: uppercase;
@@ -445,7 +448,7 @@
     display: inline-flex;
     align-items: center;
     gap: 10px;
-    margin: 0 0 26px;
+    margin: 0 0 24px;
     padding: 8px 14px;
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -487,8 +490,8 @@
   }
 
   .lede {
-    /* 19px + line-height leading ≈ 26px visual gap below the logo */
-    margin: 19px 0 0;
+    /* 18px + leading ≈ 25px visual gap below the logo */
+    margin: 18px 0 0;
     max-width: 42ch;
     font-size: clamp(14px, 2.2vw, 16.5px);
     line-height: 1.65;
@@ -498,7 +501,7 @@
 
   .cta {
     position: relative;
-    margin-top: 40px;
+    margin-top: 32px;
     padding: 18px 38px;
     border: none;
     border-radius: 999px;
@@ -529,10 +532,10 @@
 
   .hints {
     display: flex;
-    gap: 28px;
+    gap: 26px;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: 38px;
+    margin-top: 28px;
     color: var(--muted);
     font-size: 11.5px;
     letter-spacing: 0.06em;
@@ -541,6 +544,9 @@
   .only-touch { display: none !important; }
   body.is-touch .only-touch { display: inline-flex !important; }
   body.is-touch .only-desktop { display: none !important; }
+  .only-touch-inline { display: none; }
+  body.is-touch .only-desktop-inline { display: none; }
+  body.is-touch .only-touch-inline { display: inline; }
   body.is-touch .hud { padding: calc(env(safe-area-inset-top, 0px) + 14px) calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 16px); }
   body.is-touch .screen { padding: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-right, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 20px); }
   body.is-touch .cta { padding: 19px 40px; font-size: 13.5px; }
@@ -556,16 +562,21 @@
     border-radius: 7px;
     background: rgba(20, 22, 46, 0.8);
     font-family: var(--font-ui);
-    font-size: 10px;
-    letter-spacing: 0.08em;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
     color: var(--ink);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
   }
+  .kbd-ico {
+    width: 8px;
+    height: 10px;
+    fill: currentColor;
+  }
 
   .bestline {
-    margin-top: 22px;
-    font-size: 11px;
-    letter-spacing: 0.26em;
+    margin: 20px 0 0;
+    font-size: 11.5px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: rgba(139, 143, 179, 0.8);
   }
@@ -594,15 +605,15 @@
     gap: 14px;
     width: 100%;
     max-width: 720px;
-    margin-top: 28px;
+    margin-top: 26px;
   }
   .pick {
     position: relative;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 7px;
-    padding: 19px 20px 17px;
+    gap: 8px;
+    padding: 18px 20px;
     border: 1px solid var(--line);
     border-radius: 20px;
     background: linear-gradient(180deg, rgba(18, 20, 44, 0.82), rgba(9, 11, 26, 0.92));
@@ -613,38 +624,53 @@
     overflow: hidden;
     transition: transform 200ms var(--ease), border-color 200ms var(--ease), box-shadow 200ms var(--ease);
   }
-  .pick::after {
-    content: "";
-    position: absolute;
-    inset: auto -30% -60% -30%;
-    height: 150px;
-    background: radial-gradient(circle at 50% 0%, var(--pick-glow), transparent 66%);
-    opacity: 0.8;
-    pointer-events: none;
-  }
-  .pick:hover,
-  .pick:focus-visible {
+  .pick:hover {
     transform: translateY(-3px);
     border-color: var(--pick-line);
     box-shadow: 0 22px 48px -24px var(--pick-glow);
-    outline: none;
+  }
+  .pick:focus-visible {
+    transform: translateY(-3px);
+    border-color: var(--pick-line);
+    outline: 2px solid var(--cyan);
+    outline-offset: 4px;
   }
   .pick:active { transform: translateY(-1px) scale(0.99); }
   .pick--plasma {
     --pick-line: rgba(255, 90, 120, 0.62);
     --pick-glow: rgba(255, 59, 92, 0.4);
+    --act-line: rgba(255, 90, 120, 0.42);
+    --act-bg: rgba(255, 59, 92, 0.12);
+    --act-bg-hover: rgba(255, 59, 92, 0.22);
+    --act-ink: #ff9db0;
+    --icon-glow: rgba(255, 59, 92, 0.5);
+    --icon-glow-soft: rgba(255, 59, 92, 0.06);
+    --icon-ring: rgba(255, 100, 128, 0.55);
+    --icon-ring-hi: #ffdbe2;
+    --icon-inner: rgba(255, 59, 92, 0.35);
+    --icon-outer: rgba(255, 59, 92, 0.22);
   }
   .pick--lives {
     --pick-line: rgba(255, 138, 178, 0.62);
     --pick-glow: rgba(255, 92, 138, 0.34);
+    --act-line: rgba(255, 138, 178, 0.42);
+    --act-bg: rgba(255, 92, 138, 0.12);
+    --act-bg-hover: rgba(255, 92, 138, 0.22);
+    --act-ink: #ffb9cd;
+    --icon-glow: rgba(255, 92, 138, 0.46);
+    --icon-glow-soft: rgba(255, 92, 138, 0.06);
+    --icon-ring: rgba(255, 138, 178, 0.58);
+    --icon-ring-hi: #ffe3ec;
+    --icon-inner: rgba(255, 92, 138, 0.32);
+    --icon-outer: rgba(255, 92, 138, 0.2);
   }
   .pick__tag,
   .pick__name,
   .pick__desc,
   .pick__action { position: relative; z-index: 1; }
   .pick__tag {
-    font-size: 9px;
-    letter-spacing: 0.3em;
+    font-size: 10px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -659,23 +685,31 @@
   .pick--plasma .pick__name { color: #ff8ea2; }
   .pick--lives .pick__name { color: #ffb3c9; }
   .pick__desc {
-    font-size: 12px;
+    font-size: 12.5px;
     line-height: 1.55;
     color: var(--muted);
   }
   .pick__desc b { color: var(--ink); font-weight: 600; }
   .pick__action {
-    margin-top: 9px;
-    padding-top: 11px;
-    border-top: 1px solid rgba(160, 170, 255, 0.12);
-    font-size: 9.5px;
+    margin: 14px 0 0;
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--act-line);
+    border-radius: 12px;
+    background: var(--act-bg);
+    font-size: 10.5px;
     font-weight: 600;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.16em;
+    text-align: center;
     text-transform: uppercase;
-    color: rgba(200, 205, 255, 0.55);
+    color: var(--act-ink);
+    transition: background 200ms var(--ease), border-color 200ms var(--ease);
   }
-  .pick--plasma .pick__action { color: rgba(255, 142, 162, 0.82); }
-  .pick--lives .pick__action { color: rgba(255, 179, 201, 0.82); }
+  .pick:hover .pick__action,
+  .pick:focus-visible .pick__action {
+    background: var(--act-bg-hover);
+    border-color: var(--pick-line);
+  }
 
   .pick__icon {
     position: absolute;
@@ -688,27 +722,30 @@
     width: 48px;
     height: 48px;
   }
-  .pick__icon--plasma::before {
+  .pick__icon::before {
     content: "";
     position: absolute;
     width: 54px;
     height: 54px;
     border-radius: 50%;
-    background: radial-gradient(circle at 50% 45%, rgba(255, 59, 92, 0.5), rgba(255, 59, 92, 0.06) 62%, transparent 74%);
+    background: radial-gradient(circle at 50% 45%, var(--icon-glow), var(--icon-glow-soft) 62%, transparent 74%);
   }
-  .pick__icon--plasma::after {
+  .pick__icon::after {
     content: "";
     position: absolute;
     width: 38px;
     height: 38px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 100, 128, 0.55);
-    border-top-color: #ffdbe2;
+    border: 1px solid var(--icon-ring);
+    border-top-color: var(--icon-ring-hi);
     transform: rotate(-32deg);
-    box-shadow: inset 0 0 16px rgba(255, 59, 92, 0.35), 0 0 18px rgba(255, 59, 92, 0.22);
+    box-shadow: inset 0 0 16px var(--icon-inner), 0 0 18px var(--icon-outer);
+  }
+  .pick__icon i {
+    position: relative;
+    z-index: 1;
   }
   .pick__icon--plasma i {
-    position: relative;
     width: 30px;
     height: 8px;
     border-radius: 3px 5px 5px 3px;
@@ -727,24 +764,22 @@
     background: linear-gradient(180deg, #ff5c7a, #7d0f2b);
     box-shadow: 0 0 10px rgba(255, 59, 92, 0.7);
   }
-  .pick__icon--lives { gap: 4px; }
   .pick__icon--lives i {
-    width: 17px;
-    height: 16px;
+    width: 28px;
+    height: 26px;
     background: linear-gradient(180deg, #ffe0e9, #ff5c8a 58%, #cf2f57);
     -webkit-mask: var(--heart) center / contain no-repeat;
     mask: var(--heart) center / contain no-repeat;
     filter: drop-shadow(0 0 9px rgba(255, 92, 138, 0.75));
   }
-  .pick__icon--lives i:nth-child(2) { transform: translateY(-3px) scale(1.1); }
 
   .loadout__hint {
     display: flex;
     gap: 22px;
     flex-wrap: wrap;
     justify-content: center;
-    margin-top: 24px;
-    font-size: 11px;
+    margin: 20px 0 0;
+    font-size: 11.5px;
     letter-spacing: 0.04em;
     color: var(--muted);
   }
@@ -752,9 +787,9 @@
 
   /* game over */
   .over__label {
-    margin: 0 0 18px;
-    font-size: 11px;
-    letter-spacing: 0.36em;
+    margin: 0 0 16px;
+    font-size: 11.5px;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
     color: var(--pink);
   }
@@ -772,7 +807,7 @@
     gap: 1px;
     width: 100%;
     max-width: 460px;
-    margin: 36px 0 0;
+    margin: 28px 0 0;
     border: 1px solid var(--line);
     border-radius: 18px;
     overflow: hidden;
@@ -787,8 +822,8 @@
     align-items: center;
   }
   .score-grid span {
-    font-size: 9.5px;
-    letter-spacing: 0.24em;
+    font-size: 10.5px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -799,9 +834,9 @@
     font-variant-numeric: tabular-nums;
   }
   .newbest {
-    margin-top: 18px;
-    font-size: 11px;
-    letter-spacing: 0.26em;
+    margin: 16px 0 0;
+    font-size: 11.5px;
+    letter-spacing: 0.22em;
     text-transform: uppercase;
     color: var(--amber);
     opacity: 0;
@@ -840,13 +875,13 @@
     margin-top: 14px;
     padding-left: 0.24em;
     font-family: var(--font-ui);
-    font-size: 11px;
+    font-size: 11.5px;
     letter-spacing: 0.24em;
     color: var(--muted);
     text-align: center;
   }
   .pause-exit {
-    margin-top: 30px;
+    margin-top: 26px;
     padding: 12px 26px 12px calc(26px + 0.18em);
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -855,9 +890,9 @@
     -webkit-backdrop-filter: blur(10px);
     color: var(--muted);
     font-family: var(--font-ui);
-    font-size: 10.5px;
+    font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     cursor: pointer;
     transition: color 200ms var(--ease), border-color 200ms var(--ease), background 200ms var(--ease), transform 200ms var(--ease);
@@ -876,8 +911,8 @@
     bottom: 18px;
     left: 50%;
     transform: translateX(-50%);
-    font-size: 10px;
-    letter-spacing: 0.3em;
+    font-size: 10.5px;
+    letter-spacing: 0.26em;
     text-transform: uppercase;
     color: rgba(139, 143, 179, 0.42);
     pointer-events: none;
@@ -887,22 +922,33 @@
     .hints { gap: 16px; }
     .stat__value { font-size: 19px; }
     .chips { gap: 6px; }
-    .chip { font-size: 9px; padding: 5px 9px; }
+    .chip { font-size: 9.5px; padding: 5px 9px; }
     .credit { display: none; }
     .plasma { margin-top: 2px; max-width: none; }
-    .plasma__head { font-size: 8.5px; letter-spacing: 0.16em; }
+    .plasma__head { font-size: 10px; letter-spacing: 0.16em; }
     .plasma__track { height: 6px; }
     .loadout__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
     .loadout__lede { font-size: 12.5px; }
     .pick { padding: 16px 18px 15px; }
     .pick__name { padding-right: 48px; font-size: 21px; }
-    .pick__desc { font-size: 11.5px; }
+    .pick__desc { font-size: 12px; }
     .pick__icon { top: 13px; right: 13px; width: 44px; height: 44px; }
-    .pick__icon--plasma::before { width: 48px; height: 48px; }
-    .pick__icon--plasma::after { width: 34px; height: 34px; }
+    .pick__icon::before { width: 48px; height: 48px; }
+    .pick__icon::after { width: 34px; height: 34px; }
     .pick__icon--plasma i { width: 26px; height: 7px; }
-    .pick__icon--lives i { width: 15px; height: 14px; }
-    .loadout__hint { margin-top: 18px; gap: 14px; }
+    .pick__icon--lives i { width: 24px; height: 22px; }
+    .loadout__hint { margin: 18px 0 0; gap: 14px; }
+  }
+
+  @media (max-height: 640px) {
+    .eyebrow { margin-bottom: 16px; padding: 6px 12px; }
+    .loadout__lede { display: none; }
+    .loadout__grid { gap: 10px; margin-top: 14px; }
+    .pick { padding: 14px 16px; gap: 6px; }
+    .pick__desc { font-size: 12px; line-height: 1.5; }
+    .pick__action { margin-top: 10px; padding: 7px 12px; }
+    .loadout__hint { margin: 10px 0 0; }
+    .bestline { margin-top: 14px; }
   }
 
   @media (max-height: 560px) {
@@ -916,7 +962,9 @@
     .credit { display: none; }
     .loadout__lede { display: none; }
     .loadout__grid { margin-top: 18px; }
-    .loadout__hint { margin-top: 14px; }
+    .loadout__hint { margin: 14px 0 0; }
+    .pick { padding: 12px 16px; }
+    .pick__action { margin-top: 9px; padding: 7px 12px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -951,7 +999,7 @@
     <div class="hud__bottom">
       <div class="lives" id="lives" aria-label="Прочность корпуса"></div>
       <div class="chips" id="chips">
-        <span class="chip chip--weapon" data-chip="weapon" id="weaponChip"><span data-wlabel>—</span> <b data-timer>0</b></span>
+        <span class="chip chip--weapon" data-chip="weapon" id="weaponChip"><span data-wlabel>Оружие</span> <b data-timer>0</b></span>
         <span class="chip chip--rapid" data-chip="rapid">Скорострел <b data-timer>0</b></span>
         <span class="chip chip--triple" data-chip="triple">Тройной <b data-timer>0</b></span>
         <span class="chip chip--shield" data-chip="shield">Щит <b data-timer>0</b></span>
@@ -963,7 +1011,7 @@
       <i></i>
     </button>
 
-    <button class="plasma-btn" id="plasmaBtn" type="button">Плазма · активировать</button>
+    <button class="plasma-btn" id="plasmaBtn" type="button">Плазма: пуск</button>
   </div>
 
   <div class="music-vol" id="musicVol">
@@ -978,12 +1026,12 @@
 
   <section class="screen" id="menu">
     <div class="panel">
-      <span class="eyebrow">Аркада · глубокий космос</span>
+      <span class="eyebrow">Аркада в глубоком космосе</span>
       <h1 class="title">
         <img src="assets/galaxy-logo.png" alt="GALAXY" width="541" height="127" fetchpriority="high" />
       </h1>
       <p class="lede">
-        Ты — последний пилот сектора. Держи курс сквозь бесконечный рой,
+        Ты последний пилот сектора. Держи курс сквозь бесконечный рой,
         собирай <b>усиления</b> и не дай тьме добраться до ядра.
       </p>
       <button class="cta" id="startBtn" type="button">Начать полёт</button>
@@ -993,11 +1041,11 @@
         <span class="only-desktop"><kbd>ESC</kbd> пауза</span>
         <span class="only-touch"><kbd>ПАЛЕЦ</kbd> тапни или веди</span>
         <span class="only-touch"><kbd>ОГОНЬ</kbd> включается сам</span>
-        <span class="only-touch"><kbd>⏸</kbd> пауза</span>
+        <span class="only-touch"><kbd><svg class="kbd-ico" viewBox="0 0 10 12" aria-hidden="true"><rect x="1" y="1" width="2.5" height="10" rx="1"/><rect x="6.5" y="1" width="2.5" height="10" rx="1"/></svg></kbd> пауза</span>
       </div>
       <p class="bestline">Рекорд: <b id="menuBest">0</b></p>
     </div>
-    <span class="credit">Galaxy · Canvas Arcade</span>
+    <span class="credit">Galaxy: Canvas Arcade</span>
   </section>
 
   <section class="screen hidden" id="loadout">
@@ -1005,7 +1053,7 @@
       <span class="eyebrow">Предполётная подготовка</span>
       <h2 class="loadout__title">Выбери модуль</h2>
       <p class="loadout__lede">
-        Один бонус на весь полёт. Перед каждым запуском можно выбрать заново.
+        Один модуль на весь полёт. Перед каждым запуском можно выбрать заново.
       </p>
       <div class="loadout__grid">
         <button class="pick pick--plasma" id="pickPlasma" type="button">
@@ -1013,26 +1061,28 @@
           <span class="pick__name">Плазмаган</span>
           <span class="pick__icon pick__icon--plasma" aria-hidden="true"><i></i></span>
           <span class="pick__desc">
-            Детали выпадают из врагов и заполняют шкалу до 100%. Затем
-            <b>ПКМ</b> — 10 секунд урона <b>×5</b> насквозь. Запас — 3 сердца.
+            Детали врагов заполняют шкалу до 100%. На полном заряде
+            <span class="only-desktop-inline">жми <b>ПКМ</b></span><span class="only-touch-inline">жми кнопку <b>«Плазма»</b></span>:
+            10 секунд урона <b>×5</b> насквозь. Запас: <b>3 сердца</b>.
           </span>
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
         <button class="pick pick--lives" id="pickLives" type="button">
           <span class="pick__tag">Запас прочности</span>
           <span class="pick__name">+3 жизни</span>
-          <span class="pick__icon pick__icon--lives" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="pick__icon pick__icon--lives" aria-hidden="true"><i></i></span>
           <span class="pick__desc">
-            Старт с <b>6 сердцами</b> — это максимум запаса. Больше права
-            на ошибку в плотном рое.
+            Старт с <b>6 сердцами</b>: это максимум запаса. Потерянную жизнь
+            вернёт выпавшее сердце, но выше шести запас не поднимется.
           </span>
           <span class="pick__action">Выбрать +3 жизни</span>
         </button>
       </div>
       <p class="loadout__hint">
-        <span class="only-desktop"><kbd>1</kbd> плазмаган <kbd>2</kbd> +3 жизни</span>
+        <span class="only-desktop"><kbd>1</kbd> плазмаган</span>
+        <span class="only-desktop"><kbd>2</kbd> +3 жизни</span>
         <span class="only-desktop"><kbd>ESC</kbd> назад</span>
-        <span class="only-touch">Нажми на карточку, чтобы начать</span>
+        <span class="only-touch">Нажми на кнопку, чтобы начать</span>
       </p>
       <p class="bestline">Рекорд: <b id="loadoutBest">0</b></p>
     </div>
@@ -1050,7 +1100,6 @@
       <button class="cta" id="retryBtn" type="button">Ещё раз</button>
       <div class="hints">
         <span class="only-desktop"><kbd>ENTER</kbd> перезапуск</span>
-        <span class="only-desktop"><kbd>ESC</kbd> пауза</span>
         <span class="only-touch"><kbd>ПАЛЕЦ</kbd> тапни «Ещё раз»</span>
       </div>
     </div>
@@ -1122,7 +1171,7 @@
   const WEAPONS = {
     plasma: {
       id: "plasma",
-      name: "Плазма-шторм",
+      name: "Шторм",
       color: "#ff5c8a",
       cool: 0.075,
       desc: "сдвоенные пробивающие сгустки"
@@ -1861,13 +1910,13 @@
     el.plasma.classList.toggle("is-on", on);
     el.plasma.classList.toggle("is-ready", on && ready);
     el.plasma.classList.toggle("is-active", on && active);
-    el.plasmaFill.style.width = `${pct.toFixed(1)}%`;
+    el.plasmaFill.style.transform = `scaleX(${(pct / 100).toFixed(4)})`;
     el.plasmaPct.textContent = active ? `${Math.ceil(p.active)}с` : `${Math.round(pct)}%`;
     el.plasmaLabel.textContent = active
-      ? "Плазма"
+      ? "Плазмаган"
       : ready
-        ? (IS_TOUCH ? "Заряжено · тап" : "Заряжено · ПКМ")
-        : "Плазма";
+        ? (IS_TOUCH ? "Готово" : "Готово: ПКМ")
+        : "Плазмаган";
     el.plasma.setAttribute("aria-valuenow", String(Math.round(pct)));
     if (el.plasmaBtn) el.plasmaBtn.classList.toggle("on", on && ready);
   }
@@ -1878,7 +1927,7 @@
     p.charge = Math.min(100, p.charge + PLASMA_CHARGE_STEP);
     if (p.charge >= 100) {
       p.ready = true;
-      banner("ЗАРЯЖЕНО", IS_TOUCH ? "жми «Плазма» · урон ×5" : "ПКМ — плазмаган · урон ×5");
+      banner("ЗАРЯЖЕНО", IS_TOUCH ? "жми «Плазма»: урон ×5" : "ПКМ: урон ×5 насквозь");
       Audio.unique();
       buzz(55);
       G.flash = Math.max(G.flash, 0.22);
@@ -1896,7 +1945,7 @@
     p.ready = false;
     G.flash = Math.max(G.flash, 0.55);
     G.shake = Math.min(G.shake + 12, 28);
-    banner("ПЛАЗМА", "урон ×5 · насквозь · 10 сек");
+    banner("ПЛАЗМА", "урон ×5 насквозь, 10 секунд");
     Audio.unique();
     buzz(70);
     updatePlasmaHud();
@@ -1944,7 +1993,7 @@
       ]
     },
     {
-      key: "vortex", name: "ВИХРЬ", tag: "класс 2 · вихрь",
+      key: "vortex", name: "ВИХРЬ", tag: "класс 2, вихрь",
       color: COLORS.violet, style: "vortex", r: 58, hpMul: 1.05,
       move: { amp: 0.34, speed: 0.8, yAmp: 20, ySpeed: 1.6 },
       atk: [
@@ -1953,7 +2002,7 @@
       ]
     },
     {
-      key: "bomber", name: "БОМБАРДИР", tag: "класс 3 · осадный",
+      key: "bomber", name: "БОМБАРДИР", tag: "класс 3, осадный",
       color: COLORS.amber, style: "bomber", r: 70, hpMul: 1.2,
       move: { amp: 0.22, speed: 0.4, yAmp: 10, ySpeed: 0.9 },
       atk: [
@@ -1963,7 +2012,7 @@
       ]
     },
     {
-      key: "marksman", name: "СНАЙПЕР", tag: "класс 4 · прицельный",
+      key: "marksman", name: "СНАЙПЕР", tag: "класс 4, прицельный",
       color: COLORS.ice, style: "marksman", r: 54, hpMul: 0.95,
       move: { amp: 0.4, speed: 0.95, yAmp: 22, ySpeed: 1.9 },
       atk: [
@@ -1973,7 +2022,7 @@
       ]
     },
     {
-      key: "swarm", name: "РОЙ", tag: "класс 5 · улей",
+      key: "swarm", name: "РОЙ", tag: "класс 5, улей",
       color: COLORS.mint, style: "swarm", r: 50, hpMul: 1.1,
       move: { amp: 0.44, speed: 1.05, yAmp: 26, ySpeed: 2.1 },
       atk: [
@@ -2550,7 +2599,7 @@
     dropWeapon(cx, cy);
     G.bulletSpeed *= 1.07;
     G.waveDelay = 2.6;
-    banner(`${e.name} ПОВЕРЖЕН`, `оружие сброшено · снаряды +${Math.round((G.bulletSpeed - 1) * 100)}%`);
+    banner(`${e.name} ПОВЕРЖЕН`, `оружие сброшено, снаряды +${Math.round((G.bulletSpeed - 1) * 100)}%`);
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
@@ -2634,7 +2683,7 @@
     if (G.bossWave) {
       G.bossLevel = Math.floor(G.wave / 7);
       G.waveTarget = 1;
-      banner("БОСС", "сектор закрыт · прорвись");
+      banner("БОСС", "сектор закрыт, прорвись");
       buzz(50);
     } else if (G.galagaWave) {
       G.waveTarget = GALAGA_ROWS * GALAGA_COLS;
@@ -2855,8 +2904,8 @@
       G.bonus === "plasma"
         ? "собирай детали плазмагана"
         : G.bonus === "lives"
-          ? "+3 жизни · держи курс"
-          : IS_TOUCH ? "веди палец · автоогонь" : "держи курс"
+          ? "+3 жизни, держи курс"
+          : IS_TOUCH ? "веди палец, автоогонь" : "держи курс"
     );
     G.ship.invuln = 1.4;
   }
@@ -3562,7 +3611,7 @@
             updateHud();
             banner(
               full ? "КОРПУС УСИЛЕН" : "РЕМОНТ КОРПУСА",
-              full ? `${s.lives} жизни · запас +250` : "+1 жизнь"
+              full ? "запас полон, +250 очков" : "+1 жизнь"
             );
             explode(p.x, p.y, {
               size: 40, color: COLORS.pink, secondary: COLORS.white,
@@ -3590,7 +3639,7 @@
                 seed: rand(0, TAU)
               };
             }
-            banner("ДРОН-ЩИТ", `${DRONE_TIME} сек · прикрывает огнём`);
+            banner("ДРОН-ЩИТ", `${DRONE_TIME} секунд, прикрывает огнём`);
             explode(p.x, p.y, {
               size: 36, color: COLORS.mint, secondary: COLORS.white,
               rings: 2, shake: 8, sound: false
@@ -6354,7 +6403,7 @@
     ctx.textBaseline = "middle";
     ctx.font = "700 11px 'Google Sans Flex', sans-serif";
     ctx.fillStyle = rgba(boss.color, 0.95);
-    ctx.fillText(boss.enraged ? `${boss.name} · ЯРОСТЬ` : boss.name, w / 2, by + 7);
+    ctx.fillText(boss.enraged ? `${boss.name}: ЯРОСТЬ` : boss.name, w / 2, by + 7);
 
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(bx, by + 16, bw, 7);
