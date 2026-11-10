@@ -641,7 +641,7 @@
   }
   .pick:hover {
     transform: translateY(-3px);
-    box-shadow: 0 22px 48px -24px var(--pick-glow);
+    box-shadow: 0 22px 48px -24px rgba(124, 92, 255, 0.55);
   }
   .pick:focus-visible {
     transform: translateY(-3px);
@@ -649,22 +649,6 @@
     outline-offset: 4px;
   }
   .pick:active { transform: translateY(-1px) scale(0.99); }
-  .pick--plasma {
-    --pick-line: rgba(255, 90, 120, 0.62);
-    --pick-glow: rgba(255, 59, 92, 0.4);
-    --act-line: rgba(255, 90, 120, 0.42);
-    --act-bg: rgba(255, 59, 92, 0.12);
-    --act-bg-hover: rgba(255, 59, 92, 0.22);
-    --act-ink: #ff9db0;
-  }
-  .pick--lives {
-    --pick-line: rgba(255, 138, 178, 0.62);
-    --pick-glow: rgba(255, 92, 138, 0.34);
-    --act-line: rgba(255, 138, 178, 0.42);
-    --act-bg: rgba(255, 92, 138, 0.12);
-    --act-bg-hover: rgba(255, 92, 138, 0.22);
-    --act-ink: #ffb9cd;
-  }
   .pick__tag,
   .pick__name,
   .pick__desc,
@@ -681,7 +665,7 @@
     font-weight: 700;
     line-height: 1.05;
     letter-spacing: -0.02em;
-    color: #ff9db0;
+    color: var(--ink);
   }
   .pick__desc {
     margin-bottom: 12px;
@@ -693,22 +677,27 @@
   .pick__action {
     margin: auto 0 0;
     width: 100%;
-    padding: 10px 14px;
-    border: 1px solid var(--act-line);
-    border-radius: 12px;
-    background: var(--act-bg);
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
+    padding: 12px 18px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #7d5cf6, #6a4bf5 55%, #4b2fd6);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
     text-align: center;
     text-transform: uppercase;
-    color: var(--act-ink);
-    transition: background 200ms var(--ease), border-color 200ms var(--ease);
+    box-shadow:
+      0 0 0 1px rgba(180, 165, 255, 0.35) inset,
+      0 10px 26px -10px rgba(124, 92, 255, 0.85);
+    transition: transform 200ms var(--ease), box-shadow 200ms var(--ease), filter 200ms var(--ease);
   }
   .pick:hover .pick__action,
   .pick:focus-visible .pick__action {
-    background: var(--act-bg-hover);
-    border-color: var(--pick-line);
+    transform: translateY(-2px);
+    filter: brightness(1.08);
+    box-shadow:
+      0 0 0 1px rgba(200, 190, 255, 0.5) inset,
+      0 16px 34px -12px rgba(124, 92, 255, 0.95);
   }
 
   .loadout__hint {
@@ -885,7 +874,7 @@
     .loadout__grid { gap: 10px; margin-top: 14px; }
     .pick { padding: 14px 16px; gap: 6px; }
     .pick__desc { font-size: 12px; line-height: 1.5; }
-    .pick__action { padding: 7px 12px; }
+    .pick__action { padding: 9px 12px; }
     .loadout__hint { margin: 10px 0 0; }
     .bestline { margin-top: 14px; }
   }
@@ -903,7 +892,7 @@
     .loadout__grid { margin-top: 18px; }
     .loadout__hint { margin: 14px 0 0; }
     .pick { padding: 12px 16px; }
-    .pick__action { padding: 7px 12px; }
+    .pick__action { padding: 9px 12px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -995,7 +984,7 @@
         Один модуль на полёт. Перед новым запуском можно выбрать другой.
       </p>
       <div class="loadout__grid">
-        <button class="pick pick--plasma" id="pickPlasma" type="button">
+        <button class="pick" id="pickPlasma" type="button">
           <span class="pick__tag">Супероружие</span>
           <span class="pick__name">Плазмаган</span>
           <span class="pick__desc">
@@ -1005,7 +994,7 @@
           </span>
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
-        <button class="pick pick--lives" id="pickLives" type="button">
+        <button class="pick" id="pickLives" type="button">
           <span class="pick__tag">+3 сердца к старту</span>
           <span class="pick__name">Жизнелюбие</span>
           <span class="pick__desc">
