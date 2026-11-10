@@ -1014,7 +1014,7 @@
           <span class="pick__icon pick__icon--plasma" aria-hidden="true"><i></i></span>
           <span class="pick__desc">
             Детали выпадают из врагов и заполняют шкалу до 100%. Затем
-            <b>ПКМ</b> — 10 секунд урона <b>×5</b> насквозь.
+            <b>ПКМ</b> — 10 секунд урона <b>×5</b> насквозь. Запас — 3 сердца.
           </span>
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
@@ -1023,8 +1023,8 @@
           <span class="pick__name">+3 жизни</span>
           <span class="pick__icon pick__icon--lives" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="pick__desc">
-            Три дополнительных сердца на старте. Больше права на ошибку
-            в плотном рое.
+            Старт с <b>6 сердцами</b> — это максимум запаса. Больше права
+            на ошибку в плотном рое.
           </span>
           <span class="pick__action">Выбрать +3 жизни</span>
         </button>
@@ -1163,7 +1163,8 @@
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
-  const MAX_LIVES = 8;
+  const MAX_LIVES_BASE = 3;   // максимум с плазмаганом
+  const MAX_LIVES_BONUS = 6;  // максимум с выбором «+3 жизни»
   const DRONE_TIME = 10;
   const PLASMA_CHARGE_STEP = 12; // % за одну деталь
   const PLASMA_DURATION = 10;    // секунд работы плазмагана
@@ -1833,6 +1834,10 @@
       const timer = dChip.querySelector("[data-timer]");
       if (timer) timer.textContent = on ? Math.ceil(d.t) : "";
     }
+  }
+
+  function maxLives() {
+    return G.bonus === "lives" ? MAX_LIVES_BONUS : MAX_LIVES_BASE;
   }
 
   function syncLives() {
@@ -2623,7 +2628,7 @@
     G.galagaTimer = 1.6;
     G.waveDelay = 0;
     G.spawnTimer = (G.bossWave || G.galagaWave) ? 1.4 : 0.8;
-    G.ship.lives = Math.min(MAX_LIVES, G.ship.lives + (G.wave % 3 === 0 ? 1 : 0));
+    G.ship.lives = Math.min(maxLives(), G.ship.lives + (G.wave % 3 === 0 ? 1 : 0));
     syncLives();
 
     if (G.bossWave) {
@@ -2836,7 +2841,7 @@
     G.newRecord = false;
     resetGame();
     G.bonus = bonus === "lives" ? "lives" : bonus === "plasma" ? "plasma" : null;
-    if (G.bonus === "lives") G.ship.lives = Math.min(MAX_LIVES, G.ship.lives + 3);
+    if (G.bonus === "lives") G.ship.lives = Math.min(maxLives(), G.ship.lives + 3);
     G.mode = "play";
     el.menu.classList.add("hidden");
     el.over.classList.add("hidden");
@@ -3549,8 +3554,9 @@
             Audio.unique();
             buzz(30);
           } else if (p.kind === "life") {
-            const full = s.lives >= MAX_LIVES;
-            s.lives = Math.min(MAX_LIVES, s.lives + 1);
+            const max = maxLives();
+            const full = s.lives >= max;
+            s.lives = Math.min(max, s.lives + 1);
             if (full) G.score += 250;
             syncLives();
             updateHud();
