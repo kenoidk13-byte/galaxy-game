@@ -63,6 +63,18 @@
     cursor: crosshair;
   }
 
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .vignette {
     position: absolute;
     inset: 0;
@@ -422,13 +434,16 @@
     place-items: center;
     padding: 24px;
     text-align: center;
-    transition: opacity 380ms var(--ease), visibility 380ms;
+    transition: opacity 380ms var(--ease), visibility 0s linear 0s;
   }
   .screen.hidden {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
+    transition: opacity 380ms var(--ease), visibility 0s linear 380ms;
   }
+  .screen:focus,
+  .screen:focus-visible { outline: none; }
 
   .panel {
     position: relative;
@@ -614,7 +629,7 @@
     align-items: flex-start;
     gap: 8px;
     padding: 18px 20px;
-    border: 1px solid var(--line);
+    border: 0;
     border-radius: 20px;
     background: linear-gradient(180deg, rgba(18, 20, 44, 0.82), rgba(9, 11, 26, 0.92));
     color: var(--ink);
@@ -622,16 +637,14 @@
     text-align: left;
     cursor: pointer;
     overflow: hidden;
-    transition: transform 200ms var(--ease), border-color 200ms var(--ease), box-shadow 200ms var(--ease);
+    transition: transform 200ms var(--ease), box-shadow 200ms var(--ease);
   }
   .pick:hover {
     transform: translateY(-3px);
-    border-color: var(--pick-line);
     box-shadow: 0 22px 48px -24px var(--pick-glow);
   }
   .pick:focus-visible {
     transform: translateY(-3px);
-    border-color: var(--pick-line);
     outline: 2px solid var(--cyan);
     outline-offset: 4px;
   }
@@ -643,12 +656,6 @@
     --act-bg: rgba(255, 59, 92, 0.12);
     --act-bg-hover: rgba(255, 59, 92, 0.22);
     --act-ink: #ff9db0;
-    --icon-glow: rgba(255, 59, 92, 0.5);
-    --icon-glow-soft: rgba(255, 59, 92, 0.06);
-    --icon-ring: rgba(255, 100, 128, 0.55);
-    --icon-ring-hi: #ffdbe2;
-    --icon-inner: rgba(255, 59, 92, 0.35);
-    --icon-outer: rgba(255, 59, 92, 0.22);
   }
   .pick--lives {
     --pick-line: rgba(255, 138, 178, 0.62);
@@ -657,12 +664,6 @@
     --act-bg: rgba(255, 92, 138, 0.12);
     --act-bg-hover: rgba(255, 92, 138, 0.22);
     --act-ink: #ffb9cd;
-    --icon-glow: rgba(255, 92, 138, 0.46);
-    --icon-glow-soft: rgba(255, 92, 138, 0.06);
-    --icon-ring: rgba(255, 138, 178, 0.58);
-    --icon-ring-hi: #ffe3ec;
-    --icon-inner: rgba(255, 92, 138, 0.32);
-    --icon-outer: rgba(255, 92, 138, 0.2);
   }
   .pick__tag,
   .pick__name,
@@ -675,23 +676,22 @@
     color: var(--muted);
   }
   .pick__name {
-    padding-right: 54px;
     font-family: var(--font-display);
     font-size: clamp(20px, 3vw, 25px);
     font-weight: 700;
     line-height: 1.05;
     letter-spacing: -0.02em;
+    color: #ff9db0;
   }
-  .pick--plasma .pick__name { color: #ff8ea2; }
-  .pick--lives .pick__name { color: #ffb3c9; }
   .pick__desc {
+    margin-bottom: 12px;
     font-size: 12.5px;
     line-height: 1.55;
     color: var(--muted);
   }
   .pick__desc b { color: var(--ink); font-weight: 600; }
   .pick__action {
-    margin: 14px 0 0;
+    margin: auto 0 0;
     width: 100%;
     padding: 10px 14px;
     border: 1px solid var(--act-line);
@@ -709,68 +709,6 @@
   .pick:focus-visible .pick__action {
     background: var(--act-bg-hover);
     border-color: var(--pick-line);
-  }
-
-  .pick__icon {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    z-index: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-  }
-  .pick__icon::before {
-    content: "";
-    position: absolute;
-    width: 54px;
-    height: 54px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 50% 45%, var(--icon-glow), var(--icon-glow-soft) 62%, transparent 74%);
-  }
-  .pick__icon::after {
-    content: "";
-    position: absolute;
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    border: 1px solid var(--icon-ring);
-    border-top-color: var(--icon-ring-hi);
-    transform: rotate(-32deg);
-    box-shadow: inset 0 0 16px var(--icon-inner), 0 0 18px var(--icon-outer);
-  }
-  .pick__icon i {
-    position: relative;
-    z-index: 1;
-  }
-  .pick__icon--plasma i {
-    width: 30px;
-    height: 8px;
-    border-radius: 3px 5px 5px 3px;
-    background: linear-gradient(90deg, #ffe4ea, #ff3b5c 58%, #a80f31);
-    box-shadow: 0 0 18px rgba(255, 59, 92, 0.95);
-    transform: rotate(-26deg);
-  }
-  .pick__icon--plasma i::after {
-    content: "";
-    position: absolute;
-    left: 6px;
-    bottom: -5px;
-    width: 9px;
-    height: 8px;
-    border-radius: 2px;
-    background: linear-gradient(180deg, #ff5c7a, #7d0f2b);
-    box-shadow: 0 0 10px rgba(255, 59, 92, 0.7);
-  }
-  .pick__icon--lives i {
-    width: 28px;
-    height: 26px;
-    background: linear-gradient(180deg, #ffe0e9, #ff5c8a 58%, #cf2f57);
-    -webkit-mask: var(--heart) center / contain no-repeat;
-    mask: var(--heart) center / contain no-repeat;
-    filter: drop-shadow(0 0 9px rgba(255, 92, 138, 0.75));
   }
 
   .loadout__hint {
@@ -854,10 +792,16 @@
     -webkit-backdrop-filter: blur(6px);
     opacity: 0;
     visibility: hidden;
-    transition: opacity 240ms var(--ease), visibility 240ms;
+    transition: opacity 240ms var(--ease), visibility 0s linear 240ms;
     z-index: 5;
   }
-  .pause-layer.on { opacity: 1; visibility: visible; pointer-events: auto; cursor: pointer; }
+  .pause-layer.on {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    cursor: pointer;
+    transition: opacity 240ms var(--ease), visibility 0s linear 0s;
+  }
   .pause-layer > div {
     width: 100%;
     text-align: center;
@@ -930,13 +874,8 @@
     .loadout__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
     .loadout__lede { font-size: 12.5px; }
     .pick { padding: 16px 18px 15px; }
-    .pick__name { padding-right: 48px; font-size: 21px; }
+    .pick__name { font-size: 21px; }
     .pick__desc { font-size: 12px; }
-    .pick__icon { top: 13px; right: 13px; width: 44px; height: 44px; }
-    .pick__icon::before { width: 48px; height: 48px; }
-    .pick__icon::after { width: 34px; height: 34px; }
-    .pick__icon--plasma i { width: 26px; height: 7px; }
-    .pick__icon--lives i { width: 24px; height: 22px; }
     .loadout__hint { margin: 18px 0 0; gap: 14px; }
   }
 
@@ -946,7 +885,7 @@
     .loadout__grid { gap: 10px; margin-top: 14px; }
     .pick { padding: 14px 16px; gap: 6px; }
     .pick__desc { font-size: 12px; line-height: 1.5; }
-    .pick__action { margin-top: 10px; padding: 7px 12px; }
+    .pick__action { padding: 7px 12px; }
     .loadout__hint { margin: 10px 0 0; }
     .bestline { margin-top: 14px; }
   }
@@ -964,7 +903,7 @@
     .loadout__grid { margin-top: 18px; }
     .loadout__hint { margin: 14px 0 0; }
     .pick { padding: 12px 16px; }
-    .pick__action { margin-top: 9px; padding: 7px 12px; }
+    .pick__action { padding: 7px 12px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1001,7 +940,7 @@
       <div class="chips" id="chips">
         <span class="chip chip--weapon" data-chip="weapon" id="weaponChip"><span data-wlabel>Оружие</span> <b data-timer>0</b></span>
         <span class="chip chip--rapid" data-chip="rapid">Скорострел <b data-timer>0</b></span>
-        <span class="chip chip--triple" data-chip="triple">Тройной <b data-timer>0</b></span>
+        <span class="chip chip--triple" data-chip="triple">Тройной залп <b data-timer>0</b></span>
         <span class="chip chip--shield" data-chip="shield">Щит <b data-timer>0</b></span>
         <span class="chip chip--drone" data-chip="drone">Дрон <b data-timer>0</b></span>
       </div>
@@ -1011,7 +950,7 @@
       <i></i>
     </button>
 
-    <button class="plasma-btn" id="plasmaBtn" type="button">Плазма: пуск</button>
+    <button class="plasma-btn" id="plasmaBtn" type="button">Пуск плазмы</button>
   </div>
 
   <div class="music-vol" id="musicVol">
@@ -1032,80 +971,78 @@
       </h1>
       <p class="lede">
         Ты последний пилот сектора. Держи курс сквозь бесконечный рой,
-        собирай <b>усиления</b> и не дай тьме добраться до ядра.
+        собирай <b>усиления</b> и держись как можно дольше.
       </p>
       <button class="cta" id="startBtn" type="button">Начать полёт</button>
       <div class="hints">
         <span class="only-desktop"><kbd>МЫШЬ</kbd> движение</span>
         <span class="only-desktop"><kbd>ЛКМ</kbd> / <kbd>SPACE</kbd> огонь</span>
         <span class="only-desktop"><kbd>ESC</kbd> пауза</span>
-        <span class="only-touch"><kbd>ПАЛЕЦ</kbd> тапни или веди</span>
+        <span class="only-touch"><kbd>ПАЛЕЦ</kbd> коснись или веди</span>
         <span class="only-touch"><kbd>ОГОНЬ</kbd> включается сам</span>
         <span class="only-touch"><kbd><svg class="kbd-ico" viewBox="0 0 10 12" aria-hidden="true"><rect x="1" y="1" width="2.5" height="10" rx="1"/><rect x="6.5" y="1" width="2.5" height="10" rx="1"/></svg></kbd> пауза</span>
       </div>
       <p class="bestline">Рекорд: <b id="menuBest">0</b></p>
     </div>
-    <span class="credit">Galaxy: Canvas Arcade</span>
+    <span class="credit">GALAXY · аркада на Canvas</span>
   </section>
 
-  <section class="screen hidden" id="loadout">
+  <section class="screen hidden" id="loadout" role="dialog" aria-modal="true" aria-label="Выбор модуля" tabindex="-1">
     <div class="panel panel--loadout">
       <span class="eyebrow">Предполётная подготовка</span>
       <h2 class="loadout__title">Выбери модуль</h2>
       <p class="loadout__lede">
-        Один модуль на весь полёт. Перед каждым запуском можно выбрать заново.
+        Один модуль на полёт. Перед новым запуском можно выбрать другой.
       </p>
       <div class="loadout__grid">
         <button class="pick pick--plasma" id="pickPlasma" type="button">
           <span class="pick__tag">Супероружие</span>
           <span class="pick__name">Плазмаган</span>
-          <span class="pick__icon pick__icon--plasma" aria-hidden="true"><i></i></span>
           <span class="pick__desc">
             Детали врагов заполняют шкалу до 100%. На полном заряде
-            <span class="only-desktop-inline">жми <b>ПКМ</b></span><span class="only-touch-inline">жми кнопку <b>«Плазма»</b></span>:
+            <span class="only-desktop-inline">жми <b>ПКМ</b></span><span class="only-touch-inline">жми <b>«Пуск плазмы»</b></span>:
             10 секунд урона <b>×5</b> насквозь. Запас: <b>3 сердца</b>, максимум.
           </span>
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
         <button class="pick pick--lives" id="pickLives" type="button">
-          <span class="pick__tag">Запас прочности</span>
-          <span class="pick__name">+3 жизни</span>
-          <span class="pick__icon pick__icon--lives" aria-hidden="true"><i></i></span>
+          <span class="pick__tag">+3 сердца к старту</span>
+          <span class="pick__name">Жизнелюбие</span>
           <span class="pick__desc">
-            Старт с <b>6 сердцами</b>: это максимум запаса. Потерянную жизнь
-            вернёт выпавшее сердце, но выше шести запас не поднимется.
+            Старт с <b>6 сердцами</b>: это потолок запаса. Потерянную жизнь
+            вернёт выпавшее сердце, но выше шести не поднять.
           </span>
-          <span class="pick__action">Выбрать +3 жизни</span>
+          <span class="pick__action">Выбрать жизнелюбие</span>
         </button>
       </div>
       <p class="loadout__hint">
         <span class="only-desktop"><kbd>1</kbd> плазмаган</span>
-        <span class="only-desktop"><kbd>2</kbd> +3 жизни</span>
+        <span class="only-desktop"><kbd>2</kbd> жизнелюбие</span>
         <span class="only-desktop"><kbd>ESC</kbd> назад</span>
-        <span class="only-touch">Нажми на кнопку, чтобы начать</span>
+        <span class="only-touch">Коснись кнопки, чтобы начать</span>
       </p>
       <p class="bestline">Рекорд: <b id="loadoutBest">0</b></p>
     </div>
   </section>
 
-  <section class="screen hidden" id="over">
+  <section class="screen hidden" id="over" role="dialog" aria-modal="true" aria-label="Полёт окончен" tabindex="-1">
     <div class="panel">
-      <p class="over__label">Сигнал потерян</p>
+      <p class="over__label" id="overModule">Модуль</p>
       <h2 class="over__title">Корабль уничтожен</h2>
       <div class="score-grid">
         <div><span>Очки</span><strong id="overScore">0</strong></div>
         <div><span>Рекорд</span><strong id="overBest">0</strong></div>
       </div>
       <p class="newbest" id="newBest">Новый рекорд</p>
-      <button class="cta" id="retryBtn" type="button">Ещё раз</button>
+      <button class="cta" id="retryBtn" type="button">Новый полёт</button>
       <div class="hints">
-        <span class="only-desktop"><kbd>ENTER</kbd> перезапуск</span>
-        <span class="only-touch"><kbd>ПАЛЕЦ</kbd> тапни «Ещё раз»</span>
+        <span class="only-desktop"><kbd>ENTER</kbd> новый полёт</span>
+        <span class="only-touch"><kbd>ПАЛЕЦ</kbd> коснись «Новый полёт»</span>
       </div>
     </div>
   </section>
 
-  <div class="pause-layer" id="pauseLayer">
+  <div class="pause-layer" id="pauseLayer" role="dialog" aria-modal="true" aria-label="Пауза" tabindex="-1">
     <div>
       <p>Пауза</p>
       <small>
@@ -1115,6 +1052,7 @@
       <button class="pause-exit" id="pauseExit" type="button">Выйти в меню</button>
     </div>
   </div>
+  <p class="sr-only" id="statusLine" role="status" aria-live="polite"></p>
 </div>
 
 <script>
@@ -1155,7 +1093,9 @@
     plasmaBtn: document.getElementById("plasmaBtn"),
     pause: document.getElementById("pauseLayer"),
     pauseBtn: document.getElementById("pauseBtn"),
-    pauseExit: document.getElementById("pauseExit")
+    pauseExit: document.getElementById("pauseExit"),
+    overModule: document.getElementById("overModule"),
+    statusLine: document.getElementById("statusLine")
   };
 
   const COLORS = {
@@ -1213,7 +1153,7 @@
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
   const MAX_LIVES_BASE = 3;   // максимум с плазмаганом
-  const MAX_LIVES_BONUS = 6;  // максимум с выбором «+3 жизни»
+  const MAX_LIVES_BONUS = 6;  // максимум с модулем «Жизнелюбие»
   const DRONE_TIME = 10;
   const PLASMA_CHARGE_STEP = 12; // % за одну деталь
   const PLASMA_DURATION = 10;    // секунд работы плазмагана
@@ -1838,6 +1778,7 @@
 
   function banner(text, sub = "") {
     G.banner = { text, sub, t: 0, dur: 1.9 };
+    if (el.statusLine) el.statusLine.textContent = sub ? `${text}. ${sub}` : text;
   }
 
   function updateHud() {
@@ -1894,6 +1835,7 @@
     if (G.ship.lives > cap) G.ship.lives = cap;
     el.lives.innerHTML = "";
     for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
+    el.lives.setAttribute("aria-label", `Прочность корпуса: ${G.ship.lives} из ${cap}`);
   }
 
   /* ---------------- плазмаган ---------------- */
@@ -1915,11 +1857,12 @@
     el.plasmaFill.style.transform = `scaleX(${(pct / 100).toFixed(4)})`;
     el.plasmaPct.textContent = active ? `${Math.ceil(p.active)}с` : `${Math.round(pct)}%`;
     el.plasmaLabel.textContent = active
-      ? "Плазмаган"
+      ? "Плазмаган ×5"
       : ready
         ? (IS_TOUCH ? "Готово" : "Готово: ПКМ")
         : "Плазмаган";
     el.plasma.setAttribute("aria-valuenow", String(Math.round(pct)));
+    el.plasma.setAttribute("aria-valuetext", active ? `активна, ${Math.ceil(p.active)} секунд` : ready ? "готова к пуску" : `${Math.round(pct)} процентов`);
     if (el.plasmaBtn) el.plasmaBtn.classList.toggle("on", on && ready);
   }
 
@@ -1929,7 +1872,7 @@
     p.charge = Math.min(100, p.charge + PLASMA_CHARGE_STEP);
     if (p.charge >= 100) {
       p.ready = true;
-      banner("ЗАРЯЖЕНО", IS_TOUCH ? "жми «Плазма»: урон ×5" : "ПКМ: урон ×5 насквозь");
+      banner("ПЛАЗМА ГОТОВА", IS_TOUCH ? "жми «Пуск плазмы»: урон ×5" : "ПКМ: урон ×5 насквозь");
       Audio.unique();
       buzz(55);
       G.flash = Math.max(G.flash, 0.22);
@@ -1947,7 +1890,7 @@
     p.ready = false;
     G.flash = Math.max(G.flash, 0.55);
     G.shake = Math.min(G.shake + 12, 28);
-    banner("ПЛАЗМА", "урон ×5 насквозь, 10 секунд");
+    banner("ПЛАЗМА", "10 секунд, урон ×5 насквозь");
     Audio.unique();
     buzz(70);
     updatePlasmaHud();
@@ -1985,7 +1928,7 @@
 
   const BOSS_DEFS = [
     {
-      key: "warden", name: "СТРАЖ", tag: "страж сектора",
+      key: "warden", name: "СТРАЖ", tag: "класс 1, дредноут",
       color: COLORS.pink, style: "eye", r: 62, hpMul: 1,
       move: { amp: 0.3, speed: 0.55, yAmp: 12, ySpeed: 1.15 },
       atk: [
@@ -1995,7 +1938,7 @@
       ]
     },
     {
-      key: "vortex", name: "ВИХРЬ", tag: "класс 2, вихрь",
+      key: "vortex", name: "ВИХРЬ", tag: "класс 2, воронка",
       color: COLORS.violet, style: "vortex", r: 58, hpMul: 1.05,
       move: { amp: 0.34, speed: 0.8, yAmp: 20, ySpeed: 1.6 },
       atk: [
@@ -2601,7 +2544,7 @@
     dropWeapon(cx, cy);
     G.bulletSpeed *= 1.07;
     G.waveDelay = 2.6;
-    banner(`${e.name} ПОВЕРЖЕН`, `оружие сброшено, снаряды +${Math.round((G.bulletSpeed - 1) * 100)}%`);
+    banner(`${e.name} ПОВЕРЖЕН`, `выпало оружие, скорость снарядов +${Math.round((G.bulletSpeed - 1) * 100)}%`);
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
@@ -2658,11 +2601,20 @@
     Audio.gameover();
     buzz(70);
     setTimeout(() => {
+      if (el.overModule) {
+        el.overModule.textContent =
+          G.bonus === "plasma" ? "Модуль: плазмаган"
+            : G.bonus === "lives" ? "Модуль: Жизнелюбие"
+              : "Модуль не выбран";
+      }
       el.overScore.textContent = G.score.toLocaleString("ru-RU");
       el.overBest.textContent = G.best.toLocaleString("ru-RU");
       el.newBest.classList.toggle("on", !!G.newRecord);
       el.over.classList.remove("hidden");
       el.hud.classList.add("is-hidden");
+      el.statusLine.textContent =
+        `Полёт окончен. Очки ${G.score.toLocaleString("ru-RU")}, рекорд ${G.best.toLocaleString("ru-RU")}.`;
+      el.over.focus({ preventScroll: true });
     }, 900);
   }
 
@@ -2685,11 +2637,11 @@
     if (G.bossWave) {
       G.bossLevel = Math.floor(G.wave / 7);
       G.waveTarget = 1;
-      banner("БОСС", "сектор закрыт, прорвись");
+      banner("БОСС", "сектор закрыт, приготовься");
       buzz(50);
     } else if (G.galagaWave) {
       G.waveTarget = GALAGA_ROWS * GALAGA_COLS;
-      banner("АРКАДНЫЙ НАЛЁТ", "строй и пике");
+      banner("АРКАДНЫЙ НАЛЁТ", "враги идут строем и пикируют");
       buzz(40);
     } else {
       G.waveTarget = 9 + G.wave * 3;
@@ -2787,6 +2739,8 @@
     G.paused = !G.paused;
     el.pause.classList.toggle("on", G.paused);
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", String(G.paused));
+    if (G.paused) el.pause.focus({ preventScroll: true });
+    else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
     Music.setPaused(G.paused);
   }
 
@@ -2874,6 +2828,7 @@
     el.loadout.classList.remove("hidden");
     el.loadoutBest.textContent = G.best.toLocaleString("ru-RU");
     Music.setPaused(true);
+    el.loadout.focus({ preventScroll: true });
   }
 
   function closeLoadout() {
@@ -3612,8 +3567,8 @@
             syncLives();
             updateHud();
             banner(
-              full ? "КОРПУС УСИЛЕН" : "РЕМОНТ КОРПУСА",
-              full ? `запас полон: ${max} / ${max}, +250 очков` : `+1 жизнь, ${s.lives} / ${max}`
+              full ? "ЗАПАС ПОЛОН" : "РЕМОНТ КОРПУСА",
+              full ? `${max} / ${max}, +250 очков` : `+1 жизнь, ${s.lives} / ${max}`
             );
             explode(p.x, p.y, {
               size: 40, color: COLORS.pink, secondary: COLORS.white,
@@ -3641,7 +3596,7 @@
                 seed: rand(0, TAU)
               };
             }
-            banner("ДРОН-ЩИТ", `${DRONE_TIME} секунд, прикрывает огнём`);
+            banner("ДРОН", `${DRONE_TIME} секунд, стреляет рядом`);
             explode(p.x, p.y, {
               size: 36, color: COLORS.mint, secondary: COLORS.white,
               rings: 2, shake: 8, sound: false
@@ -3715,7 +3670,7 @@
       ctx.font = "600 13px 'Google Sans Flex', sans-serif";
       ctx.textAlign = "center";
       ctx.fillStyle = COLORS.amber;
-      ctx.fillText(`×${G.combo} комбо`, w / 2, h - 32);
+      ctx.fillText(`комбо ×${G.combo}`, w / 2, h - 32);
       ctx.restore();
     }
   }
