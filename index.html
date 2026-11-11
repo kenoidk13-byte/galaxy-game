@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23060818'/%3E%3Cpath d='M16 5l3 8 8 3-8 3-3 8-3-8-8-3 8-3z' fill='%234de1ff'/%3E%3C/svg%3E" />
+<link rel="preload" as="image" href="assets/ship-player.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@300..800&display=swap" rel="stylesheet" />
@@ -1141,6 +1142,13 @@
   if (IS_TOUCH) document.body.classList.add("is-touch");
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
+
+  // корабль игрока — пререндер 3D-модели (SM_Humans_Fighter02.glb)
+  const SHIP_W = 52;
+  const SHIP_H = 30;
+  const SHIP_SPRITE = new Image();
+  SHIP_SPRITE.decoding = "async";
+  SHIP_SPRITE.src = "assets/ship-player.png";
   const MAX_LIVES_BASE = 3;   // максимум с плазмаганом
   const MAX_LIVES_BONUS = 6;  // максимум с модулем «Жизнелюбие»
   const DRONE_TIME = 10;
@@ -1559,7 +1567,7 @@
       G.ship.x = G.w / 2;
       G.ship.y = G.h * 0.78;
     }
-    G.ship.x = clamp(G.ship.x, 24, G.w - 24);
+    G.ship.x = clamp(G.ship.x, 27, G.w - 27);
     G.ship.y = clamp(G.ship.y, 40, G.h - 40);
 
     if (!G.stars.length) initStars();
@@ -2943,7 +2951,7 @@
       if (G.pointer.active && G.pointer.moved > 0) {
         const offY = G.pointer.touch ? 58 : 0;
         const minY = G.pointer.touch ? 86 : 40;
-        const tx = clamp(G.pointer.x, 20, G.w - 20);
+        const tx = clamp(G.pointer.x, 27, G.w - 27);
         const ty = clamp(G.pointer.y - offY, minY, G.h - 24);
         s.vx += ((tx - s.x) * 320 - s.vx * 36) * dt;
         s.vy += ((ty - s.y) * 320 - s.vy * 36) * dt;
@@ -2957,8 +2965,8 @@
       s.x += s.vx * dt;
       s.y += s.vy * dt;
 
-      if (s.x < 20) { s.x = 20; s.vx = Math.max(0, s.vx); }
-      if (s.x > G.w - 20) { s.x = G.w - 20; s.vx = Math.min(0, s.vx); }
+      if (s.x < 27) { s.x = 27; s.vx = Math.max(0, s.vx); }
+      if (s.x > G.w - 27) { s.x = G.w - 27; s.vx = Math.min(0, s.vx); }
       if (s.y < 44) { s.y = 44; s.vy = Math.max(0, s.vy); }
       if (s.y > G.h - 26) { s.y = G.h - 26; s.vy = Math.min(0, s.vy); }
 
@@ -3815,17 +3823,17 @@
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const flicker = Math.sin(s.engine * 46) * 0.18 + Math.sin(s.engine * 13) * 0.1;
-    for (const side of [-4.6, 4.6]) {
-      const flame = 20 + flicker * 20 + (side < 0 ? 3 : 0);
-      const eg = ctx.createLinearGradient(side, 11, side, 11 + flame);
+    for (const side of [-10.1, 10.1]) {
+      const flame = 16 + flicker * 18 + (side < 0 ? 2 : 0);
+      const eg = ctx.createLinearGradient(side, 12.4, side, 12.4 + flame);
       eg.addColorStop(0, "rgba(220,240,255,0.95)");
       eg.addColorStop(0.35, rgba(wcol, 0.6));
       eg.addColorStop(1, rgba(wcol, 0));
       ctx.fillStyle = eg;
       ctx.beginPath();
-      ctx.moveTo(side - 3.2, 10.6);
-      ctx.lineTo(side, 12 + flame);
-      ctx.lineTo(side + 3.2, 10.6);
+      ctx.moveTo(side - 2.8, 12);
+      ctx.lineTo(side, 13 + flame);
+      ctx.lineTo(side + 2.8, 12);
       ctx.closePath();
       ctx.fill();
     }
@@ -3838,220 +3846,50 @@
     ctx.fill();
     ctx.restore();
 
-    // плазменный сердечник — раскалённый нос во время работы супероружия
-    if (G.plasma.active > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      const pulse = 0.75 + Math.sin(G.time * 18) * 0.25;
-      const core = ctx.createRadialGradient(0, -9, 0, 0, -9, 19 * pulse);
-      core.addColorStop(0, "rgba(255,238,243,0.95)");
-      core.addColorStop(0.35, "rgba(255,59,92,0.62)");
-      core.addColorStop(1, "rgba(255,59,92,0)");
-      ctx.fillStyle = core;
+    // hull — пререндер модели, с фолбэком на случай, пока PNG не загрузился
+    if (SHIP_SPRITE.complete && SHIP_SPRITE.naturalWidth) {
+      ctx.drawImage(SHIP_SPRITE, -SHIP_W / 2, -SHIP_H / 2, SHIP_W, SHIP_H);
+    } else {
+      ctx.fillStyle = "#9fadff";
       ctx.beginPath();
-      ctx.arc(0, -9, 19 * pulse, 0, TAU);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // wings — layered plates tucked under the fuselage
-    for (const m of [-1, 1]) {
-      ctx.save();
-      ctx.scale(m, 1);
-
-      const wing = ctx.createLinearGradient(6, -5, 22, 13);
-      wing.addColorStop(0, "#8b97ff");
-      wing.addColorStop(0.45, "#4f47d6");
-      wing.addColorStop(1, "#231c78");
-      ctx.fillStyle = wing;
-      ctx.beginPath();
-      ctx.moveTo(5.4, -5.5);
-      ctx.lineTo(12.5, -1.2);
-      ctx.lineTo(22, 9.6);
-      ctx.lineTo(18.4, 12.4);
-      ctx.lineTo(8.6, 11);
-      ctx.lineTo(5.4, 7.6);
+      ctx.moveTo(0, -15);
+      ctx.lineTo(9, 13);
+      ctx.lineTo(-9, 13);
       ctx.closePath();
       ctx.fill();
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "rgba(205,218,255,0.5)";
-      ctx.lineWidth = 0.85;
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(235,246,255,0.9)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(6, -4.4);
-      ctx.lineTo(12.4, -0.6);
-      ctx.lineTo(21.6, 9.4);
-      ctx.stroke();
-
-      ctx.strokeStyle = "rgba(18,16,68,0.55)";
-      ctx.lineWidth = 0.65;
-      ctx.beginPath();
-      ctx.moveTo(9.5, 1.2);
-      ctx.lineTo(15.6, 8.4);
-      ctx.stroke();
-      ctx.fillStyle = "rgba(16,14,62,0.65)";
-      for (const [rx, ry] of [[11, 3.2], [13.2, 5.6], [15.4, 7.9]]) {
-        ctx.beginPath();
-        ctx.arc(rx, ry, 0.5, 0, TAU);
-        ctx.fill();
-      }
-
-      const pod = ctx.createLinearGradient(17.5, 7.5, 21.5, 12.5);
-      pod.addColorStop(0, "#9aa8ff");
-      pod.addColorStop(1, "#2c2596");
-      ctx.fillStyle = pod;
-      ctx.beginPath();
-      ctx.ellipse(19.3, 10.1, 3.2, 1.8, 0.5, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(210,222,255,0.45)";
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-
-      ctx.fillStyle = "rgba(120,132,255,0.9)";
-      ctx.beginPath();
-      ctx.moveTo(4.6, -13.5);
-      ctx.lineTo(9.4, -10.6);
-      ctx.lineTo(4.9, -8.4);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = "#3a33b4";
-      ctx.beginPath();
-      ctx.moveTo(3.6, 9.4);
-      ctx.lineTo(7.8, 12.6);
-      ctx.lineTo(6.2, 15.4);
-      ctx.lineTo(3.2, 13.2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "rgba(190,205,255,0.35)";
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-
-      ctx.restore();
-    }
-
-    // fuselage
-    const hull = ctx.createLinearGradient(0, -26, 0, 15);
-    hull.addColorStop(0, "#ffffff");
-    hull.addColorStop(0.22, "#e4efff");
-    hull.addColorStop(0.5, "#9fadff");
-    hull.addColorStop(0.78, "#5b52e0");
-    hull.addColorStop(1, "#2a238c");
-    ctx.fillStyle = hull;
-    ctx.beginPath();
-    ctx.moveTo(0, -26);
-    ctx.lineTo(4.4, -18);
-    ctx.lineTo(6.4, -8);
-    ctx.lineTo(7.6, 3);
-    ctx.lineTo(5.2, 13.5);
-    ctx.lineTo(-5.2, 13.5);
-    ctx.lineTo(-7.6, 3);
-    ctx.lineTo(-6.4, -8);
-    ctx.lineTo(-4.4, -18);
-    ctx.closePath();
-    ctx.fill();
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "rgba(240,248,255,0.85)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // dorsal seams
-    ctx.strokeStyle = "rgba(32,30,104,0.5)";
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(0, -23);
-    ctx.lineTo(0, 11);
-    ctx.moveTo(-6.2, -2.5);
-    ctx.lineTo(6.2, -2.5);
-    ctx.moveTo(-6.8, 5.5);
-    ctx.lineTo(6.8, 5.5);
-    ctx.stroke();
-
-    // nose accent stripes
-    ctx.strokeStyle = rgba(wcol, 0.75);
-    ctx.lineWidth = 0.9;
-    ctx.beginPath();
-    ctx.moveTo(-2.4, -20.5);
-    ctx.lineTo(-3.2, -13.5);
-    ctx.moveTo(2.4, -20.5);
-    ctx.lineTo(3.2, -13.5);
-    ctx.stroke();
-
-    // cockpit canopy
-    const cock = ctx.createLinearGradient(0, -19, 0, 0);
-    cock.addColorStop(0, "#ffffff");
-    cock.addColorStop(0.38, "#cdf1ff");
-    cock.addColorStop(0.74, "#4aa2ff");
-    cock.addColorStop(1, "#1c3e9c");
-    ctx.fillStyle = cock;
-    ctx.beginPath();
-    ctx.moveTo(0, -19.5);
-    ctx.quadraticCurveTo(4.4, -15.5, 3.8, -7);
-    ctx.quadraticCurveTo(3, -1.4, 0, -0.4);
-    ctx.quadraticCurveTo(-3, -1.4, -3.8, -7);
-    ctx.quadraticCurveTo(-4.4, -15.5, 0, -19.5);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = "rgba(186,228,255,0.75)";
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(255,255,255,0.9)";
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(-1.6, -16.4);
-    ctx.quadraticCurveTo(-2.5, -11, -1.3, -6.4);
-    ctx.stroke();
-
-    ctx.strokeStyle = "rgba(38,36,120,0.55)";
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-3.4, -5.2);
-    ctx.lineTo(3.4, -5.2);
-    ctx.stroke();
-
-    // engine nozzles
-    for (const nx of [-4.6, 4.6]) {
-      ctx.fillStyle = "rgba(24,20,80,0.9)";
-      ctx.beginPath();
-      ctx.ellipse(nx, 11.6, 2.1, 1.2, 0, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(180,200,255,0.4)";
-      ctx.lineWidth = 0.55;
-      ctx.stroke();
     }
 
     // wingtip nav lights
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = "rgba(77,225,255,0.95)";
+    ctx.fillStyle = "rgba(77,225,255,0.9)";
     ctx.beginPath();
-    ctx.arc(-20.4, 10.4, 1.5, 0, TAU);
-    ctx.arc(20.4, 10.4, 1.5, 0, TAU);
+    ctx.arc(-25.2, 8.4, 1.4, 0, TAU);
+    ctx.arc(25.2, 8.4, 1.4, 0, TAU);
     ctx.fill();
     ctx.restore();
 
-    // weapon emitter accents
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = rgba(wcol, 0.95);
-    ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(-18.2, 8.6);
-    ctx.lineTo(-7.4, 1.4);
-    ctx.moveTo(18.2, 8.6);
-    ctx.lineTo(7.4, 1.4);
-    ctx.stroke();
-    ctx.restore();
+    // плазменный сердечник — раскалённый нос во время работы супероружия
+    if (G.plasma.active > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const pulse = 0.75 + Math.sin(G.time * 18) * 0.25;
+      const core = ctx.createRadialGradient(0, -10.5, 0, 0, -10.5, 15.5 * pulse);
+      core.addColorStop(0, "rgba(255,238,243,0.95)");
+      core.addColorStop(0.35, "rgba(255,59,92,0.62)");
+      core.addColorStop(1, "rgba(255,59,92,0)");
+      ctx.fillStyle = core;
+      ctx.beginPath();
+      ctx.arc(0, -10.5, 15.5 * pulse, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
 
     // shield
     if (s.shield) {
       const t = G.time;
       const pulse = 1 + Math.sin(t * 5.2) * 0.035 + Math.sin(t * 11.7) * 0.015;
-      const R = 34 * pulse;
+      const R = 37 * pulse;
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
 
