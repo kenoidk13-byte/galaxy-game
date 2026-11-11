@@ -2993,12 +2993,19 @@
           });
         }
       }
-      // engine trail
-      addParticles(s.x + rand(-4, 4), s.y + 16, 1, {
-        color: Math.random() < 0.5 ? COLORS.violet : COLORS.cyan,
-        speed: rand(50, 120), size: rand(1, 2.4), life: 0.4,
-        angle: Math.PI / 2 + rand(-0.35, 0.35), spread: 0.2, drag: 3
-      });
+      // engine trail — из двух сопел, с учётом крена и масштаба
+      const bank = clamp(s.vx / 1600, -0.3, 0.3);
+      const cb = Math.cos(bank), sb = Math.sin(bank);
+      const nozzleY = 14.2 * OBJ_SCALE;
+      for (const side of [-9.9, 9.9]) {
+        if (Math.random() > 0.55) continue;
+        const lx = side * OBJ_SCALE;
+        addParticles(s.x + lx * cb - nozzleY * sb, s.y + lx * sb + nozzleY * cb, 1, {
+          color: Math.random() < 0.5 ? COLORS.violet : COLORS.cyan,
+          speed: rand(50, 120), size: rand(1, 2.4), life: 0.4,
+          angle: Math.PI / 2 + rand(-0.35, 0.35), spread: 0.2, drag: 3
+        });
+      }
     }
 
     updateDrone(dt);
@@ -3823,18 +3830,27 @@
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const flicker = Math.sin(s.engine * 46) * 0.18 + Math.sin(s.engine * 13) * 0.1;
-    for (const side of [-10.1, 10.1]) {
-      const flame = 16 + flicker * 18 + (side < 0 ? 2 : 0);
-      const eg = ctx.createLinearGradient(side, 12.4, side, 12.4 + flame);
-      eg.addColorStop(0, "rgba(220,240,255,0.95)");
-      eg.addColorStop(0.35, rgba(wcol, 0.6));
+    for (const side of [-9.9, 9.9]) {
+      const flame = 15 + flicker * 18 + (side < 0 ? 2 : 0);
+      const eg = ctx.createLinearGradient(side, 13.2, side, 13.2 + flame);
+      eg.addColorStop(0, "rgba(226,244,255,0.95)");
+      eg.addColorStop(0.3, rgba(wcol, 0.62));
       eg.addColorStop(1, rgba(wcol, 0));
       ctx.fillStyle = eg;
       ctx.beginPath();
-      ctx.moveTo(side - 2.8, 12);
-      ctx.lineTo(side, 13 + flame);
-      ctx.lineTo(side + 2.8, 12);
+      ctx.moveTo(side - 3, 13.2);
+      ctx.lineTo(side, 13.2 + flame);
+      ctx.lineTo(side + 3, 13.2);
       ctx.closePath();
+      ctx.fill();
+      // раскалённый срез сопла
+      const mouth = ctx.createRadialGradient(side, 13.6, 0, side, 13.6, 3.4);
+      mouth.addColorStop(0, "rgba(255,255,255,0.95)");
+      mouth.addColorStop(0.45, rgba(wcol, 0.55));
+      mouth.addColorStop(1, rgba(wcol, 0));
+      ctx.fillStyle = mouth;
+      ctx.beginPath();
+      ctx.arc(side, 13.6, 3.4, 0, TAU);
       ctx.fill();
     }
     const halo = ctx.createRadialGradient(0, 4, 0, 0, 4, 44);
