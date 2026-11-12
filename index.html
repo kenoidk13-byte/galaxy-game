@@ -1980,8 +1980,8 @@
     const w = G.wave;
     const pool = [
       { t: "drone", w: Math.max(18, 52 - w * 3) },
-      { t: "runner", w: w >= 2 ? 26 : 0 },
-      { t: "orb", w: w >= 3 ? 20 : 0 },
+      { t: "runner", w: 22 },
+      { t: "orb", w: w >= 2 ? 20 : 10 },
       { t: "weaver", w: w >= 4 ? 18 : 0 },
       { t: "tank", w: w >= 4 ? Math.min(16, 5 + w * 1.2) : 0 },
       { t: "sniper", w: w >= 5 ? 13 : 0 },
@@ -4396,19 +4396,41 @@
     guardian: { sx: 1.06, sy: 1.06, acc: "emitters" }
   };
 
+  // у первого флота у каждой роли свой силуэт, а не общий круглый диск
+  const UFO_GEN1_HULL = {
+    drone: { sides: 6, notch: 0.15, sx: 1, sy: 1, inr: 0.824 },
+    runner: { sides: 2, notch: 0.05, sx: 0.78, sy: 1.34, inr: 0.921 },
+    orb: { sides: 12, notch: 0.02, sx: 1, sy: 1, inr: 0.951 },
+    tank: { sides: 4, notch: 0.03, sx: 1.18, sy: 0.92, inr: 0.941 },
+    weaver: { sides: 5, notch: 0.34, sx: 1.08, sy: 1.02, inr: 0.64 },
+    sniper: { sides: 3, notch: 0.04, sx: 0.72, sy: 1.36, inr: 0.931 },
+    splitter: { sides: 9, notch: 0.3, sx: 1.05, sy: 1.05, inr: 0.679 },
+    bomber: { sides: 3, notch: 0.06, sx: 1.35, sy: 0.78, inr: 0.912 },
+    charger: { sides: 3, notch: 0.3, sx: 0.9, sy: 1.22, inr: 0.679 },
+    guardian: { sides: 8, notch: 0.16, sx: 1.06, sy: 1.06, inr: 0.815 }
+  };
+
   function mixHex(a, b, t) {
     const A = hexToRgb(a), B = hexToRgb(b);
     return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
   }
 
-  function ufoPath(R, sides, notch, phase) {
-    ctx.beginPath();
+  function ufoVerts(R, sides, notch, phase) {
     const n = sides * 2;
+    const pts = [];
     for (let i = 0; i < n; i++) {
       const a = phase + (i / n) * TAU;
       const rr = i % 2 ? R * (1 - notch) : R;
-      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      pts.push([Math.cos(a) * rr, Math.sin(a) * rr]);
+    }
+    return pts;
+  }
+
+  function ufoPath(R, sides, notch, phase) {
+    const pts = ufoVerts(R, sides, notch, phase);
+    ctx.beginPath();
+    for (let i = 0; i < pts.length; i++) {
+      if (i) ctx.lineTo(pts[i][0], pts[i][1]); else ctx.moveTo(pts[i][0], pts[i][1]);
     }
     ctx.closePath();
   }
@@ -4434,8 +4456,15 @@
   function drawUfo(e, fill, hot, r) {
     const F = UFO_GENS[clamp(e.gen, 1, UFO_GENS.length - 1)];
     const role = UFO_ROLE[e.type] || UFO_ROLE.drone;
+    const H = e.gen === 1 ? UFO_GEN1_HULL[e.type] : null;
+    const sides = H ? H.sides : F.sides;
+    const notch = H ? H.notch : F.notch;
+    const k = H ? H.inr : 1;
+    const sx = H ? H.sx : role.sx;
+    const sy = H ? H.sy : role.sy;
     const accent = hot ? "#ffffff" : mixHex(fill, "#dfe8ff", F.cool);
     const R = r * 1.02;
+    const hull = () => ufoPath(R, sides, notch, -Math.PI / 2);
     const spin = ufoSpin(e);
     const charge = e.type === "sniper" ? ufoSniperCharge(e) : 0;
 
@@ -4449,10 +4478,10 @@
 
     ctx.save();
     ctx.rotate(spin);
-    ctx.scale(role.sx, role.sy);
+    ctx.scale(sx, sy);
 
     // корпус: гранёный диск с зубчатой кромкой
-    ufoPath(R, F.sides, F.notch, -Math.PI / 2);
+    hull();
     ctx.fillStyle = hullFill(r, hot, F.body[0], F.body[1], F.body[2]);
     ctx.fill();
     ctx.lineJoin = "round";
@@ -4464,9 +4493,37 @@
     ctx.strokeStyle = hot ? "#ffffff" : rgba(accent, 0.62);
     ctx.stroke();
 
+    // у первого флота подсвечиваем сами рёбра силуэта: на малом размере
+    // именно контур, а не круглый обод, читается как форма корабля
+    if (H) {
+      const pts = ufoVerts(R, sides, notch, -Math.PI / 2);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.lineJoin = "round";
+      ctx.lineCap = "round";
+      ctx.strokeStyle = rgba(accent, hot ? 0.95 : 0.34);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i++) {
+        if (i) ctx.lineTo(pts[i][0], pts[i][1]); else ctx.moveTo(pts[i][0], pts[i][1]);
+      }
+      ctx.closePath();
+      ctx.stroke();
+      for (let i = 0; i < pts.length; i += 2) {
+        const a = pts[i], b = pts[(i + 1) % pts.length];
+        ctx.strokeStyle = rgba(accent, hot ? 1 : 0.72);
+        ctx.lineWidth = 1.9;
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     // объёмный блик по верхней части диска
     ctx.save();
-    ufoPath(R, F.sides, F.notch, -Math.PI / 2);
+    hull();
     ctx.clip();
     const hl = ctx.createRadialGradient(-R * 0.3, -R * 0.45, 0, -R * 0.3, -R * 0.45, R * 1.15);
     hl.addColorStop(0, hot ? "rgba(255,255,255,0.55)" : "rgba(200,220,255,0.17)");
@@ -4477,14 +4534,14 @@
 
     // бронеплиты по ободу
     ctx.save();
-    ufoPath(R * 0.99, F.sides, F.notch, -Math.PI / 2);
+    ufoPath(R * 0.99, sides, notch, -Math.PI / 2);
     ctx.clip();
     for (let i = 0; i < F.sides * 2; i++) {
       const a0 = -Math.PI / 2 + (i / (F.sides * 2)) * TAU;
       const a1 = a0 + TAU / (F.sides * 2);
       ctx.beginPath();
-      ctx.arc(0, 0, R * F.rim, a0, a1);
-      ctx.arc(0, 0, R * F.mid, a1, a0, true);
+      ctx.arc(0, 0, R * F.rim * k, a0, a1);
+      ctx.arc(0, 0, R * F.mid * k, a1, a0, true);
       ctx.closePath();
       ctx.fillStyle = i % 2 ? `rgba(255,255,255,${F.plate})` : "rgba(0,0,0,0.2)";
       ctx.fill();
@@ -4526,7 +4583,7 @@
     if (F.rivets) {
       for (let i = 0; i < F.rivets; i++) {
         const a = -Math.PI / 2 + (i / F.rivets) * TAU;
-        const rr = R * (F.mid + F.rim) * 0.5;
+        const rr = R * (F.mid + F.rim) * 0.5 * k;
         lightDot(
           Math.cos(a) * rr, Math.sin(a) * rr,
           Math.max(0.7, R * 0.035),
@@ -4538,12 +4595,12 @@
 
     // кольцевые канавки
     ctx.beginPath();
-    ctx.arc(0, 0, R * F.mid, 0, TAU);
+    ctx.arc(0, 0, R * F.mid * k, 0, TAU);
     ctx.strokeStyle = hot ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.6)";
     ctx.lineWidth = 1.1;
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(0, 0, R * F.mid * 1.03, 0, TAU);
+    ctx.arc(0, 0, R * F.mid * 1.03 * k, 0, TAU);
     ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.28);
     ctx.lineWidth = 0.8;
     ctx.stroke();
@@ -4553,15 +4610,15 @@
     ctx.globalCompositeOperation = "lighter";
     for (const [a0, a1] of [[-2.45, -1.55], [0.45, 1.25]]) {
       ctx.beginPath();
-      ctx.arc(0, 0, R * F.rim, a0, a1);
-      ctx.strokeStyle = rgba(accent, hot ? 1 : 0.9);
-      ctx.lineWidth = 1.8;
+      ctx.arc(0, 0, R * F.rim * k, a0, a1);
+      ctx.strokeStyle = rgba(accent, hot ? 1 : H ? 0.5 : 0.9);
+      ctx.lineWidth = H ? 1.3 : 1.8;
       ctx.stroke();
     }
     ctx.beginPath();
-    ctx.arc(0, 0, R * F.rim, Math.PI * 0.62, Math.PI * 0.88);
-    ctx.strokeStyle = rgba(mixHex(accent, "#ffffff", 0.5), hot ? 1 : 0.95);
-    ctx.lineWidth = 2.1;
+    ctx.arc(0, 0, R * F.rim * k, Math.PI * 0.62, Math.PI * 0.88);
+    ctx.strokeStyle = rgba(mixHex(accent, "#ffffff", 0.5), hot ? 1 : H ? 0.6 : 0.95);
+    ctx.lineWidth = H ? 1.6 : 2.1;
     ctx.stroke();
     ctx.restore();
 
@@ -4589,8 +4646,8 @@
       ctx.lineCap = "round";
       for (let i = 0; i < F.ribs; i++) {
         const a = -Math.PI / 2 + (i / F.ribs) * TAU + Math.PI / 4;
-        const x0 = Math.cos(a) * R * F.mid, y0 = Math.sin(a) * R * F.mid;
-        const x1 = Math.cos(a) * R * (F.rim - 0.04), y1 = Math.sin(a) * R * (F.rim - 0.04);
+        const x0 = Math.cos(a) * R * F.mid * k, y0 = Math.sin(a) * R * F.mid * k;
+        const x1 = Math.cos(a) * R * (F.rim - 0.04) * k, y1 = Math.sin(a) * R * (F.rim - 0.04) * k;
         ctx.strokeStyle = hot ? "rgba(255,255,255,0.55)" : "rgba(0,0,0,0.5)";
         ctx.lineWidth = Math.max(1, R * 0.07);
         ctx.beginPath();
