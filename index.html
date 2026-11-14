@@ -1108,7 +1108,8 @@
     player: {
       maxLivesBase: 3,       // потолок жизней с плазмаганом
       maxLivesBonus: 6,      // потолок жизней с модулем «Жизнелюбие»
-      droneTime: 10,         // секунд работы защитного дрона
+      droneTime: 10,         // секунд работы одного защитного дрона
+      droneMax: 3,           // одновременно активных дронов
       shakeScale: 0.7        // общая сила тряски экрана
     },
     plasma: {
@@ -1248,6 +1249,33 @@
       scorePerLevel: 250,
       radiusPerLevel: 4,
       radiusMaxLevels: 4
+    },
+
+    // поток врагов: на десктопе поздние волны ограничены,
+    // на мобиле оставлен прежний баланс
+    flow: {
+      desktop: {
+        maxEnemies: 16,        // одновременно живых врагов (кроме босса и налёта)
+        maxEBullets: 34,       // потолок вражеских пуль на экране
+        spawnBase: 1.35,       // стартовый интервал спавна
+        spawnStep: 0.07,       // насколько ускоряется спавн за волну
+        spawnFloor: 0.5,       // минимальный интервал спавна
+        spawnJitterMin: 0.8,
+        spawnJitterMax: 1.25,
+        formationChance: 0.1,  // шанс спавна группой
+        doubleChance: 0.16     // шанс второго врага за тик
+      },
+      mobile: {
+        maxEnemies: Infinity,  // как было: без потолка врагов
+        maxEBullets: Infinity, // как было: без потолка пуль
+        spawnBase: 1.25,
+        spawnStep: 0.075,
+        spawnFloor: 0.32,
+        spawnJitterMin: 0.75,
+        spawnJitterMax: 1.3,
+        formationChance: 0.16,
+        doubleChance: 0.28
+      }
     }
   };
 
@@ -1274,6 +1302,9 @@
     (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
     (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
   if (IS_TOUCH) document.body.classList.add("is-touch");
+
+  // мобильный поток остаётся прежним, десктопный — облегчённым
+  const FLOW = IS_TOUCH ? CONFIG.flow.mobile : CONFIG.flow.desktop;
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
 
@@ -1649,7 +1680,7 @@
     enemies: [],
     particles: [],
     powerups: [],
-    drone: null,
+    drones: [],
     queued: [],
     ship: {
       x: 0, y: 0, r: 15 * OBJ_SCALE,
@@ -1667,6 +1698,12 @@
     pointer: { x: 0, y: 0, active: false, moved: 0, down: false, touch: false },
     keys: Object.create(null)
   };
+
+  // совместимость: G.drone — первый активный дрон
+  Object.defineProperty(G, "drone", {
+    get() { return G.drones[0] || null; },
+    configurable: true
+  });
 
   const bg = { grad: null, nebula: null };
   const DPR_START = LOW_END ? 1.15 : IS_TOUCH ? 1.5 : 2;
@@ -1943,11 +1980,15 @@
     }
     const dChip = el.chips.drone;
     if (dChip) {
-      const d = G.drone;
-      const on = !!d;
+      const ds = G.drones;
+      const on = ds.length > 0;
       dChip.classList.toggle("on", on);
       const timer = dChip.querySelector("[data-timer]");
-      if (timer) timer.textContent = on ? Math.ceil(d.t) : "";
+      if (timer) {
+        if (!on) timer.textContent = "";
+        else if (ds.length === 1) timer.textContent = Math.ceil(ds[0].t);
+        else timer.textContent = `×${ds.length} ${Math.ceil(Math.min(...ds.map((d) => d.t)))}`;
+      }
     }
   }
 
@@ -2874,7 +2915,7 @@
     G.particles = [];
     G.powerups = [];
     G.queued = [];
-    G.drone = null;
+    G.drones.length = 0;
     Object.assign(G.ship, {
       x: G.w / 2,
       y: G.h * 0.8,
@@ -3095,7 +3136,7 @@
       }
     }
 
-    updateDrone(dt);
+    updateDrones(dt);
 
     // spawn
     G.spawnTimer -= dt;
@@ -3104,11 +3145,21 @@
     } else if (G.galagaWave) {
       if (!G.galagaSpawned && G.spawnTimer <= 0) spawnGalagaWave();
     } else if (G.spawnTimer <= 0 && G.waveKills < G.waveTarget) {
-      if (G.wave >= 4 && Math.random() < 0.16) spawnFormation();
-      else spawnEnemy();
-      if (G.wave >= 5 && Math.random() < 0.28) spawnEnemy();
-      const base = clamp(1.25 - G.wave * 0.075, 0.32, 1.25);
-      G.spawnTimer = base * rand(0.75, 1.3);
+      const maxEnemies = FLOW.maxEnemies;
+      const alive = G.enemies.length;
+      if (alive < maxEnemies) {
+        const formation =
+          G.wave >= 4 &&
+          Math.random() < FLOW.formationChance &&
+          alive + 5 <= maxEnemies;
+        if (formation) spawnFormation();
+        else spawnEnemy();
+        if (G.wave >= 5 && G.enemies.length < maxEnemies && Math.random() < FLOW.doubleChance) {
+          spawnEnemy();
+        }
+      }
+      const base = clamp(FLOW.spawnBase - G.wave * FLOW.spawnStep, FLOW.spawnFloor, FLOW.spawnBase);
+      G.spawnTimer = base * rand(FLOW.spawnJitterMin, FLOW.spawnJitterMax);
     }
     if (G.galagaWave && G.galagaSpawned) updateGalagaWave(dt);
 
@@ -3220,6 +3271,8 @@
 
   function updateEBullets(dt) {
     const s = G.ship;
+    const guard = FLOW.maxEBullets;
+    if (G.ebullets.length > guard) G.ebullets.splice(0, G.ebullets.length - guard);
     for (let i = G.ebullets.length - 1; i >= 0; i--) {
       const b = G.ebullets[i];
       b.x += b.vx * dt;
@@ -3241,60 +3294,63 @@
     }
   }
 
-  function updateDrone(dt) {
-    const d = G.drone;
-    if (!d) return;
+  function updateDrones(dt) {
+    const ds = G.drones;
+    if (!ds.length) return;
     const s = G.ship;
 
     if (!s.alive) {
-      G.drone = null;
+      ds.length = 0;
       updateChips();
       return;
     }
 
-    d.t -= dt;
-    d.bossCd = Math.max(0, d.bossCd - dt);
+    for (let i = ds.length - 1; i >= 0; i--) {
+      const d = ds[i];
+      d.t -= dt;
+      d.bossCd = Math.max(0, d.bossCd - dt);
 
-    if (d.t <= 0) {
-      explode(d.x, d.y, {
-        size: 26, color: COLORS.mint, secondary: COLORS.white,
-        rings: 1, smoke: false, debris: false, sound: false
-      });
-      addParticles(d.x, d.y, 16, {
-        color: COLORS.mint, speed: 210, size: 2, life: 0.5, kind: "spark"
-      });
-      G.drone = null;
-      updateChips();
-      return;
-    }
-
-    // дрон держится рядом с кораблём, медленно облетая его
-    d.orbit += dt * 1.7;
-    const tx = s.x + Math.cos(d.orbit) * 42;
-    const ty = s.y + Math.sin(d.orbit) * 18 - 4;
-    const k = Math.min(1, dt * 7);
-    d.x += (tx - d.x) * k;
-    d.y += (ty - d.y) * k;
-
-    d.cool -= dt;
-    if (d.cool <= 0) {
-      const target = nearestEnemy(d.x, d.y, 540);
-      if (target) {
-        const a = Math.atan2(target.y - d.y, target.x - d.x);
-        pushBullet({
-          x: d.x, y: d.y,
-          vx: Math.cos(a) * 660, vy: Math.sin(a) * 660,
-          r: 2.6, len: 16, dmg: 1, life: 1.5,
-          color: COLORS.mint, thin: true
+      if (d.t <= 0) {
+        explode(d.x, d.y, {
+          size: 26, color: COLORS.mint, secondary: COLORS.white,
+          rings: 1, smoke: false, debris: false, sound: false
         });
-        addParticles(d.x, d.y, 2, {
-          color: COLORS.mint, speed: 90, size: 1.4, life: 0.16,
-          angle: a, spread: 0.4
+        addParticles(d.x, d.y, 16, {
+          color: COLORS.mint, speed: 210, size: 2, life: 0.5, kind: "spark"
         });
-        Audio.droneShoot();
-        d.cool = 0.22;
-      } else {
-        d.cool = 0.12;
+        ds.splice(i, 1);
+        updateChips();
+        continue;
+      }
+
+      // каждый дрон держится на своей орбите вокруг корабля
+      d.orbit += dt * 1.7;
+      const tx = s.x + Math.cos(d.orbit) * 42;
+      const ty = s.y + Math.sin(d.orbit) * 18 - 4;
+      const k = Math.min(1, dt * 7);
+      d.x += (tx - d.x) * k;
+      d.y += (ty - d.y) * k;
+
+      d.cool -= dt;
+      if (d.cool <= 0) {
+        const target = nearestEnemy(d.x, d.y, 540);
+        if (target) {
+          const a = Math.atan2(target.y - d.y, target.x - d.x);
+          pushBullet({
+            x: d.x, y: d.y,
+            vx: Math.cos(a) * 660, vy: Math.sin(a) * 660,
+            r: 2.6, len: 16, dmg: 1, life: 1.5,
+            color: COLORS.mint, thin: true
+          });
+          addParticles(d.x, d.y, 2, {
+            color: COLORS.mint, speed: 90, size: 1.4, life: 0.16,
+            angle: a, spread: 0.4
+          });
+          Audio.droneShoot();
+          d.cool = 0.22;
+        } else {
+          d.cool = 0.12;
+        }
       }
     }
   }
@@ -3314,28 +3370,31 @@
 
   // враг, коснувшийся дрона, взрывается
   function droneRam(e) {
-    const d = G.drone;
-    if (!d) return false;
-    const dx = e.x - d.x;
-    const dy = e.y - d.y;
-    const rr = e.r + d.r + 2;
-    if (dx * dx + dy * dy > rr * rr) return false;
-
+    const ds = G.drones;
+    if (!ds.length) return false;
     const boss = e.type === "boss";
-    if (boss && d.bossCd > 0) return false;
-    if (boss) d.bossCd = 0.6;
 
-    explode(d.x, d.y, {
-      size: boss ? 26 : 32, color: COLORS.mint, secondary: e.color,
-      rings: boss ? 1 : 2, smoke: false, debris: false, sound: false
-    });
-    addParticles(d.x, d.y, boss ? 10 : 18, {
-      color: COLORS.mint, speed: 260, size: 2.2, life: 0.4, kind: "spark"
-    });
-    G.shake = Math.min(G.shake + (boss ? 2 : 4), 18);
-    damageEnemy(e, boss ? 12 : 9999);
-    Audio.droneHit();
-    return !!e.dead;
+    for (const d of ds) {
+      const dx = e.x - d.x;
+      const dy = e.y - d.y;
+      const rr = e.r + d.r + 2;
+      if (dx * dx + dy * dy > rr * rr) continue;
+      if (boss && d.bossCd > 0) continue;
+      if (boss) d.bossCd = 0.6;
+
+      explode(d.x, d.y, {
+        size: boss ? 26 : 32, color: COLORS.mint, secondary: e.color,
+        rings: boss ? 1 : 2, smoke: false, debris: false, sound: false
+      });
+      addParticles(d.x, d.y, boss ? 10 : 18, {
+        color: COLORS.mint, speed: 260, size: 2.2, life: 0.4, kind: "spark"
+      });
+      G.shake = Math.min(G.shake + (boss ? 2 : 4), 18);
+      damageEnemy(e, boss ? 12 : 9999);
+      Audio.droneHit();
+      if (e.dead) return true;
+    }
+    return false;
   }
 
   function updateEnemies(dt) {
@@ -3671,23 +3730,31 @@
             Audio.unique();
             buzz(28);
           } else if (p.kind === "drone") {
-            const d = G.drone;
-            if (d) {
-              d.t = DRONE_TIME;
-            } else {
-              G.drone = {
-                x: s.x + 36,
-                y: s.y - 22,
+            const ds = G.drones;
+            if (ds.length < CONFIG.player.droneMax) {
+              const slot = Array.from({ length: CONFIG.player.droneMax }, (_, n) => n)
+                .find((n) => !ds.some((d) => d.slot === n));
+              const orbit = (slot * TAU) / CONFIG.player.droneMax;
+              ds.push({
+                x: s.x + Math.cos(orbit) * 36,
+                y: s.y + Math.sin(orbit) * 18 - 4,
                 t: DRONE_TIME,
                 max: DRONE_TIME,
                 cool: 0.22,
-                orbit: 0,
+                orbit,
+                slot,
                 bossCd: 0,
                 r: 9,
                 seed: rand(0, TAU)
-              };
+              });
+              banner(
+                ds.length === CONFIG.player.droneMax ? "ДРОНЫ ×3" : "ДРОН",
+                `${ds.length} / ${CONFIG.player.droneMax}, ${DRONE_TIME} секунд`
+              );
+            } else {
+              for (const d of ds) { d.t = DRONE_TIME; d.max = DRONE_TIME; }
+              banner("ДРОНЫ ×3", `таймер обновлён, ${DRONE_TIME} секунд`);
             }
-            banner("ДРОН", `${DRONE_TIME} секунд, стреляет рядом`);
             explode(p.x, p.y, {
               size: 36, color: COLORS.mint, secondary: COLORS.white,
               rings: 2, shake: 8, sound: false
@@ -4265,11 +4332,13 @@
 
   /* ---------------- defensive drone ---------------- */
   function drawDrone() {
-    const d = G.drone;
-    if (!d) return;
+    for (const d of G.drones) drawDroneOne(d);
+  }
+
+  function drawDroneOne(d) {
     const s = G.ship;
     const t = G.time;
-    const low = d.t < 3;
+    const low = d.t < d.max * 0.34;
     const blink = low && Math.floor(t * 10) % 2 === 0;
     const pulse = 1 + Math.sin(t * 9) * 0.05;
 
@@ -4534,790 +4603,729 @@
     return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
   }
 
-  let shipFill = "#9fe8ff";
+  /* ---------------- ФЛОТ ВРАГА: пять кораблей из «чертежа флота» ----------------
+     Пять корпусов — Аврора, Шторм, Призрак, Бастион, Серафим — разведены
+     по десяти ролям. Корпус роли пререндерится в offscreen-canvas один раз
+     на связку «корабль + цвет роли + поколение флота», поэтому в кадре
+     остаются только drawImage, анимированные факелы и ролевые телеграфы:
+     полоса прочности танка, дуга щита стража, прицел снайпера, разгон
+     тарана, контур разломника и бомболюк бомбардира. */
 
-  function shipPaint(r, hot, F) {
-    const top = mixHex(mixHex(F.body[0], F.trim, 0.12), shipFill, F.tint || 0);
-    return hullFill(r, hot, top, F.body[1], F.body[2]);
-  }
+  const ROLE_SHIP = {
+    drone: "aurora",
+    charger: "aurora",
+    runner: "phantom",
+    weaver: "phantom",
+    orb: "orb",
+    sniper: "storm",
+    tank: "bastion",
+    bomber: "bastion",
+    splitter: "seraph",
+    guardian: "seraph"
+  };
 
-  function shipEdge(fill, hot, F, a = 0.92) {
-    return hot ? "#ffffff" : rgba(mixHex(fill, F.trim, 0.35), a);
-  }
+  const FleetArt = (() => {
+    const TAU2 = Math.PI * 2;
+    let ctx = null;
 
-  function shipAccent(fill, hot, F) {
-    return hot ? "#ffffff" : mixHex(fill, F.trim, 0.28);
-  }
+    const BASE_R = 64;
+    const PAD = 2.15;
+    const SIZE = Math.ceil(BASE_R * PAD * 2);
+    // размер спрайта на экране: нос корабля ложится примерно на 1.45r
+    const SCALE = 4.15;
 
-  // корпус: тёмная режущая кромка + тонкая подсветка фракции
-  function shipHullStroke(fill, hot, F, wide = 1.5) {
-    ctx.lineJoin = "miter";
-    ctx.lineWidth = wide;
-    ctx.strokeStyle = hot ? "#ffffff" : "rgba(3,5,10,0.95)";
-    ctx.stroke();
-    ctx.lineWidth = Math.max(0.6, wide * 0.55);
-    ctx.strokeStyle = shipEdge(fill, hot, F);
-    ctx.stroke();
-  }
-
-  // панельные швы, клёпки, механизмы и сигнатуры поколений
-  function shipPlating(r, fill, hot, F) {
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.lineJoin = "miter";
-
-    // гоночные полосы первого флота
-    if (F.livery) {
-      ctx.strokeStyle = rgba(accent, hot ? 1 : 0.72);
-      ctx.lineWidth = 0.8;
+    function hexToRgb(hex) {
+      const n = parseInt(hex.slice(1), 16);
+      return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+    }
+    function rgba(hex, a) {
+      const [r, g, b] = hexToRgb(hex);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+    function mix(a, b, t) {
+      const A = hexToRgb(a), B = hexToRgb(b);
+      return "#" + A.map((v, i) => Math.round(v + (B[i] - v) * t).toString(16).padStart(2, "0")).join("");
+    }
+    function roundRectPath(x, y, w, h, rad) {
       ctx.beginPath();
-      ctx.moveTo(-r * 0.075, -r * 0.52);
-      ctx.lineTo(-r * 0.075, r * 0.54);
-      ctx.moveTo(r * 0.075, -r * 0.52);
-      ctx.lineTo(r * 0.075, r * 0.54);
-      ctx.stroke();
+      if (ctx.roundRect) ctx.roundRect(x, y, w, h, rad); else ctx.rect(x, y, w, h);
     }
 
-    // осевой киль и поперечные швы
-    ctx.strokeStyle = hot ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)";
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 0.5);
-    ctx.lineTo(0, r * 0.58);
-    for (const k of [-0.36, 0.04, 0.44]) {
-      ctx.moveTo(-r * 0.3, r * k);
-      ctx.lineTo(r * 0.3, r * k);
-    }
-    ctx.stroke();
-
-    // светлая фаска панелей
-    ctx.strokeStyle = hot ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 0.6;
-    ctx.beginPath();
-    for (const k of [-0.36, 0.04, 0.44]) {
-      ctx.moveTo(-r * 0.3, r * (k - 0.035));
-      ctx.lineTo(r * 0.3, r * (k - 0.035));
-    }
-    ctx.stroke();
-
-    // механические блоки на фюзеляже
-    if (F.greebles) {
-      const blocks = [
-        [-0.16, -0.2, 0.14, 0.1], [0.09, 0.18, 0.13, 0.12],
-        [-0.05, -0.46, 0.2, 0.07], [0.2, -0.34, 0.08, 0.1],
-        [-0.23, 0.32, 0.09, 0.12]
-      ];
-      ctx.fillStyle = hot ? "rgba(255,255,255,0.65)" : "rgba(5,9,18,0.78)";
-      for (let i = 0; i < Math.min(blocks.length, 1 + F.greebles); i++) {
-        const [x, y, w, h] = blocks[i];
-        roundRectPath(r * (x - w / 2), r * (y - h / 2), r * w, r * h, r * 0.035);
-        ctx.fill();
-      }
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.14)";
-      ctx.lineWidth = 0.5;
-      for (let i = 0; i < Math.min(blocks.length, 1 + F.greebles); i++) {
-        const [x, y, w, h] = blocks[i];
-        roundRectPath(r * (x - w / 2), r * (y - h / 2), r * w, r * h, r * 0.035);
-        ctx.stroke();
-      }
-    }
-
-    // клёпки «Молота»
-    if (F.rivets) {
-      const rivets = [
-        [-0.34, 0.28], [0.34, 0.28], [-0.3, -0.28], [0.3, -0.28],
-        [0, -0.52], [0, 0.5], [-0.12, -0.06], [0.12, -0.06]
-      ];
-      for (let i = 0; i < Math.min(F.rivets, rivets.length); i++) {
-        lightDot(r * rivets[i][0], r * rivets[i][1], Math.max(0.5, r * 0.028), F.trim, hot ? 0.85 : 0.42);
-      }
-    }
-
-    // прожилки «Роя»
-    if (F.veins) {
-      ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.34);
-      ctx.lineWidth = 0.8;
-      for (const side of [-1, 1]) {
-        ctx.beginPath();
-        ctx.moveTo(side * r * 0.12, r * 0.34);
-        ctx.quadraticCurveTo(side * r * 0.42, r * 0.16, side * r * 0.62, -r * 0.24);
-        ctx.moveTo(side * r * 0.16, -r * 0.08);
-        ctx.quadraticCurveTo(side * r * 0.36, -r * 0.24, side * r * 0.5, -r * 0.54);
-        ctx.stroke();
-      }
-    }
-
-    ctx.restore();
-  }
-
-  // фракционные лезвия на законцовках крыльев
-  function wingBlades(r, fill, hot, F, x, y) {
-    if (!F.spikes) return;
-    const n = Math.min(2, Math.ceil(F.spikes / 2));
-    const len = r * (0.11 + F.spikes * 0.022);
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < n; i++) {
-        const by = y + (i - (n - 1) / 2) * r * 0.16;
-        ctx.beginPath();
-        ctx.moveTo(side * x, by - r * 0.055);
-        ctx.lineTo(side * (x + len), by);
-        ctx.lineTo(side * x, by + r * 0.055);
-        ctx.closePath();
-        ctx.fillStyle = shipPaint(r * 0.5, hot, F);
-        ctx.fill();
-        ctx.lineJoin = "miter";
-        ctx.strokeStyle = hot ? "#ffffff" : "rgba(0,0,0,0.9)";
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-        ctx.strokeStyle = rgba(shipAccent(fill, hot, F), hot ? 0.95 : 0.55);
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(side * (x + len * 0.2), by);
-        ctx.lineTo(side * (x + len * 0.8), by - r * 0.012);
-        ctx.stroke();
-      }
-    }
-  }
-
-  function shipCannon(x, y, len, w, hot, F, accent, muzzle = true) {
-    ctx.fillStyle = hot ? "#ffffff" : "#080b14";
-    roundRectPath(x - w / 2, y, w, len, w * 0.32);
-    ctx.fill();
-    ctx.strokeStyle = hot ? "#ffffff" : rgba(F.trim, 0.38);
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-    if (muzzle) lightDot(x, y + len - w * 0.3, w * 0.36, accent, 0.95);
-  }
-
-  function hazardBars(x, y, w, h, accent, hot) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(x, y, w, h);
-    ctx.clip();
-    ctx.strokeStyle = hot ? "#ffffff" : rgba(accent, 0.55);
-    ctx.lineWidth = Math.max(0.7, h * 0.45);
-    for (let i = -1; i < 5; i++) {
+    const LIGHT = [-0.55, 0.83];
+    const M = (p, s) => p.map((q) => [q[0] * s, q[1]]);
+    function shape(r, pts) {
       ctx.beginPath();
-      ctx.moveTo(x + i * h, y + h);
-      ctx.lineTo(x + i * h + h, y);
-      ctx.stroke();
+      pts.forEach((p, i) => (i ? ctx.lineTo(p[0] * r, p[1] * r) : ctx.moveTo(p[0] * r, p[1] * r)));
+      ctx.closePath();
     }
-    ctx.restore();
-  }
-
-  /* ================= НОВЫЙ ФЛОТ: 10 РАЗНЫХ СИЛУЭТОВ =================
-     Каждая роль — самостоятельный класс корабля, а не вариант одного
-     истребителя: перехватчик, тризубец, гиро-разведчик, катамаран,
-     асимметричная коса, рельсовая платформа, клешня, летающее крыло,
-     таран и фрегат. Поведение и телеграфы ролей сохранены. */
-
-  const HEX6 = (() => {
-    const p = [];
-    for (let i = 0; i < 6; i++) {
-      const a = -Math.PI / 2 + (i / 6) * TAU;
-      p.push([Math.cos(a), Math.sin(a)]);
-    }
-    return p;
-  })();
-
-  // силуэт из точек в единицах радиуса
-  function shipShape(r, pts) {
-    ctx.beginPath();
-    ctx.moveTo(pts[0][0] * r, pts[0][1] * r);
-    for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0] * r, pts[i][1] * r);
-    ctx.closePath();
-  }
-
-  function shipBody(r, pts, hot, F, scale = 1, strokeW = 1.2) {
-    shipShape(r, pts);
-    ctx.fillStyle = shipPaint(r * scale, hot, F);
-    ctx.fill();
-    shipHullStroke(shipFill, hot, F, strokeW);
-  }
-
-  function shipPlate(r, pts, hot, a = 0.06) {
-    shipShape(r, pts);
-    ctx.fillStyle = hot ? `rgba(255,255,255,${Math.min(0.9, a * 4)})` : `rgba(255,255,255,${a})`;
-    ctx.fill();
-  }
-
-  function shipSeams(r, hot, segs, a = 0.6, w = 0.055) {
-    ctx.strokeStyle = hot ? "rgba(255,255,255,0.7)" : `rgba(0,0,0,${a})`;
-    ctx.lineWidth = Math.max(0.5, r * w);
-    ctx.beginPath();
-    for (const s of segs) {
-      ctx.moveTo(s[0] * r, s[1] * r);
-      ctx.lineTo(s[2] * r, s[3] * r);
-    }
-    ctx.stroke();
-  }
-
-  function shipHi(r, segs, a = 0.14, w = 0.045) {
-    ctx.strokeStyle = `rgba(255,255,255,${a})`;
-    ctx.lineWidth = Math.max(0.4, r * w);
-    ctx.beginPath();
-    for (const s of segs) {
-      ctx.moveTo(s[0] * r, s[1] * r);
-      ctx.lineTo(s[2] * r, s[3] * r);
-    }
-    ctx.stroke();
-  }
-
-  function boltSet(r, hot, F, pts, alpha = 0.5) {
-    if (!F.rivets) return;
-    for (let i = 0; i < Math.min(pts.length, F.rivets); i++) {
-      lightDot(pts[i][0] * r, pts[i][1] * r, Math.max(0.55, r * 0.03), F.trim, hot ? 0.85 : alpha);
-    }
-  }
-
-  // полосы первого флота вдоль фюзеляжа
-  function liveryStripes(r, hot, F, x, y0, y1, gap = 0.06) {
-    if (!F.livery) return;
-    const accent = shipAccent(shipFill, hot, F);
-    ctx.strokeStyle = rgba(accent, hot ? 1 : 0.7);
-    ctx.lineWidth = Math.max(0.7, r * 0.07);
-    ctx.beginPath();
-    ctx.moveTo((x - gap) * r, y0 * r);
-    ctx.lineTo((x - gap) * r, y1 * r);
-    ctx.moveTo((x + gap) * r, y0 * r);
-    ctx.lineTo((x + gap) * r, y1 * r);
-    ctx.stroke();
-  }
-
-  function sensorEye(r, x, y, rad, accent, hot, pulse = 1) {
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(4,8,16,0.95)";
-    ctx.beginPath();
-    ctx.arc(x * r, y * r, rad * r, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, hot ? 1 : 0.8);
-    ctx.lineWidth = Math.max(0.5, r * 0.055);
-    ctx.stroke();
-    lightDot(x * r, y * r, rad * r * 0.55 * pulse, accent, 0.95);
-  }
-
-  function ventBlock(r, x, y, w, h, hot, F, accent, n = 3) {
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,8,16,0.9)";
-    roundRectPath(x * r - (w * r) / 2, y * r, w * r, h * r, r * 0.03);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.4);
-    ctx.lineWidth = Math.max(0.4, r * 0.045);
-    ctx.stroke();
-    ctx.strokeStyle = hot ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.18)";
-    ctx.beginPath();
-    for (let i = 1; i <= n; i++) {
-      const yy = y * r + (h * r * i) / (n + 1);
-      ctx.moveTo(x * r - w * r * 0.32, yy);
-      ctx.lineTo(x * r + w * r * 0.32, yy);
-    }
-    ctx.stroke();
-  }
-
-  function boltLine(r, hot, F, x, y0, y1, n) {
-    if (!F.rivets) return;
-    for (let i = 0; i < n; i++) {
-      const y = y0 + ((y1 - y0) * (i + 0.5)) / n;
-      lightDot(x * r, y * r, Math.max(0.5, r * 0.026), F.trim, hot ? 0.8 : 0.4);
-    }
-  }
-
-  /* ---------- 1. перехватчик «Скат»: широкие крылья, рельсовые пушки ---------- */
-  function drawDroneShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 2 + e.seed) * 0.12);
-
-    // выхлопы
-    for (const side of [-1, 1]) {
-      thruster(side * r * 0.19, -r * 0.9, r * 0.13, r * 1.0, accent, hot, e.t * 19 + e.seed + side);
-    }
-
-    // крылья обратной стреловидности
-    for (const side of [-1, 1]) {
-      shipBody(r, [
-        [side * 0.12, 0.6], [side * 0.38, 0.74], [side * 1.02, 0.48],
-        [side * 1.24, 0.16], [side * 1.14, -0.18], [side * 0.78, -0.4],
-        [side * 0.4, -0.66], [side * 0.18, -0.34]
-      ], hot, F, 1, 1.25);
-
-      // светлая панель обшивки
-      shipPlate(r, [
-        [side * 0.3, 0.6], [side * 0.94, 0.42], [side * 1.08, 0.2],
-        [side * 0.84, -0.26], [side * 0.44, -0.5], [side * 0.26, -0.24]
-      ], hot, 0.06);
-
-      // воздухозаборник с ламелями
-      shipShape(r, [
-        [side * 0.3, 0.5], [side * 0.7, 0.4], [side * 0.66, 0.06], [side * 0.32, 0.2]
-      ]);
-      ctx.fillStyle = hot ? "rgba(255,255,255,0.9)" : "rgba(3,6,13,0.88)";
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, hot ? 0.95 : 0.45);
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.18)";
-      ctx.lineWidth = 0.5;
+    function lines(r, segs, color, w) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = Math.max(0.5, r * w);
       ctx.beginPath();
-      for (let i = 1; i <= 3; i++) {
-        const k = i / 4;
-        ctx.moveTo(side * r * (0.3 + 0.36 * k), r * (0.46 - 0.06 * k));
-        ctx.lineTo(side * r * (0.34 + 0.3 * k), r * (0.12 - 0.02 * k));
+      for (const s of segs) {
+        ctx.moveTo(s[0] * r, s[1] * r);
+        ctx.lineTo(s[2] * r, s[3] * r);
       }
       ctx.stroke();
-
-      // рельсовая пушка по передней кромке
-      shipShape(r, [
-        [side * 0.5, 0.66], [side * 1.16, 0.34], [side * 1.18, 0.2], [side * 0.52, 0.52]
-      ]);
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(4,8,16,0.96)";
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, hot ? 1 : 0.6);
-      ctx.lineWidth = 0.6;
-      ctx.stroke();
-      lightDot(side * r * 1.18, r * 0.27, r * 0.045, accent, 0.95);
-
-      // законцовка и навигационный огонь
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(5,9,18,0.95)";
-      roundRectPath(side * r * 1.15 - r * 0.045, -r * 0.24, r * 0.09, r * 0.28, r * 0.03);
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.45);
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      lightDot(side * r * 1.15, r * 0.02, r * 0.035, accent, 0.65 + Math.sin(e.t * 6 + e.seed + side) * 0.25);
-
-      // швы и клёпки
-      shipSeams(r, hot, [
-        [side * 0.44, 0.36, side * 0.92, 0.18],
-        [side * 0.5, -0.12, side * 0.96, -0.26]
-      ], 0.4, 0.045);
-      boltLine(r, hot, F, side * 0.82, -0.16, 0.28, 3);
     }
-
-    // фюзеляж
-    shipBody(r, [
-      [0, 1.28], [0.13, 0.92], [0.2, 0.3], [0.16, -0.36], [0.24, -0.72],
-      [0.08, -0.94], [-0.08, -0.94], [-0.24, -0.72], [-0.16, -0.36],
-      [-0.2, 0.3], [-0.13, 0.92]
-    ], hot, F, 1, 1.45);
-
-    liveryStripes(r, hot, F, 0, -0.55, 1.02, 0.05);
-    shipSeams(r, hot, [
-      [-0.12, 0.9, 0.12, 0.9], [-0.17, 0.4, 0.17, 0.4],
-      [-0.16, -0.24, 0.16, -0.24], [-0.1, -0.66, 0.1, -0.66]
-    ], 0.55);
-    shipHi(r, [[-0.12, 0.86, 0.12, 0.86]]);
-
-    // носовой сенсор
-    shipShape(r, [[0, 1.28], [0.05, 1.12], [-0.05, 1.12]]);
-    ctx.fillStyle = rgba(accent, hot ? 1 : 0.8);
-    ctx.fill();
-    lightDot(0, r * 1.2, r * 0.035, accent, 0.9);
-
-    // кабина
-    ctx.fillStyle = glassFill(0, r * 0.54, r * 0.105, r * 0.27);
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.54, r * 0.105, r * 0.27, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-    ctx.strokeStyle = "rgba(4,8,16,0.55)";
-    ctx.lineWidth = 0.5;
-    ctx.beginPath();
-    ctx.moveTo(0, r * 0.3);
-    ctx.lineTo(0, r * 0.78);
-    ctx.stroke();
-
-    // спинной гребень
-    shipShape(r, [[0, 0.24], [0.05, 0.08], [0.04, -0.5], [-0.04, -0.5], [-0.05, 0.08]]);
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,9,18,0.9)";
-    ctx.fill();
-    for (const yy of [0.02, -0.2, -0.42]) lightDot(0, r * yy, r * 0.022, accent, 0.75);
-
-    // кили
-    for (const side of [-1, 1]) {
-      shipBody(r, [[side * 0.11, -0.62], [side * 0.38, -1.06], [side * 0.3, -0.58]], hot, F, 0.75, 0.9);
-      lightDot(side * r * 0.38, -r * 1.06, r * 0.025, accent, 0.8);
-    }
-
-    // сопла
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,9,18,0.96)";
-    roundRectPath(-r * 0.28, -r * 0.9, r * 0.56, r * 0.2, r * 0.05);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.55);
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-    for (const side of [-1, 1]) lightDot(side * r * 0.17, -r * 0.82, r * 0.05, accent, 0.9);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 2. клинок «Игла»: длинный дротик, серповидные крылья ---------- */
-  function drawRunnerShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    const pulse = 0.6 + Math.sin(e.t * 5 + e.seed) * 0.25;
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 3 + e.seed) * 0.05);
-
-    // выхлопы
-    for (const x of [-0.24, 0, 0.24]) {
-      thruster(x * r, -r * 0.92, r * 0.1, r * 1.55, accent, hot, e.t * 28 + e.seed + x * 9);
-    }
-
-    // серповидные крылья с вырезом
-    for (const side of [-1, 1]) {
-      shipBody(r, [
-        [side * 0.12, 0.62], [side * 0.5, 0.8], [side * 0.94, 0.54],
-        [side * 1.02, 0.14], [side * 0.74, -0.26], [side * 0.42, -0.5],
-        [side * 0.18, -0.18]
-      ], hot, F, 0.9, 1.1);
-
-      // тёмный вырез
-      shipShape(r, [
-        [side * 0.34, 0.5], [side * 0.78, 0.36], [side * 0.8, 0.12], [side * 0.46, 0.18]
-      ]);
-      ctx.fillStyle = hot ? "rgba(255,255,255,0.85)" : "rgba(3,6,12,0.9)";
-      ctx.fill();
-
-      // энергетическая кромка
+    function dot(r, x, y, rad, color, alpha = 0.9) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = rgba(accent, 0.35 + pulse * 0.45);
-      ctx.lineWidth = Math.max(1, r * 0.075);
+      const g = ctx.createRadialGradient(x * r, y * r, 0, x * r, y * r, rad * r * 3.2);
+      g.addColorStop(0, rgba(color, alpha * 0.6));
+      g.addColorStop(1, rgba(color, 0));
+      ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.moveTo(side * r * 0.16, r * 0.6);
-      ctx.lineTo(side * r * 0.94, r * 0.5);
-      ctx.stroke();
-      ctx.restore();
-
-      // законцовка
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(5,9,18,0.95)";
-      roundRectPath(side * r * 0.94 - r * 0.04, -r * 0.3, r * 0.08, r * 0.42, r * 0.03);
+      ctx.arc(x * r, y * r, rad * r * 3.2, 0, TAU2);
       ctx.fill();
-      ctx.strokeStyle = rgba(accent, 0.5);
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      lightDot(side * r * 0.94, -r * 0.3, r * 0.03, accent, pulse);
-
-      shipSeams(r, hot, [[side * 0.34, 0.3, side * 0.74, 0.2]], 0.4, 0.045);
-    }
-
-    // центральная игла
-    shipBody(r, [
-      [0, 1.92], [0.075, 1.36], [0.12, 0.72], [0.15, 0.12],
-      [0.1, -0.44], [0.2, -0.78], [0.07, -1.0], [-0.07, -1.0],
-      [-0.2, -0.78], [-0.1, -0.44], [-0.15, 0.12], [-0.12, 0.72], [-0.075, 1.36]
-    ], hot, F, 1, 1.4);
-
-    liveryStripes(r, hot, F, 0, -0.72, 1.5, 0.04);
-    shipSeams(r, hot, [
-      [-0.08, 1.2, 0.08, 1.2], [-0.11, 0.72, 0.11, 0.72],
-      [-0.14, 0.1, 0.14, 0.1], [-0.12, -0.52, 0.12, -0.52]
-    ], 0.5);
-    shipHi(r, [[-0.07, 1.16, 0.07, 1.16], [-0.1, 0.68, 0.1, 0.68]]);
-
-    // светящаяся кромка иглы
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = rgba(accent, 0.25 + pulse * 0.35);
-    ctx.lineWidth = Math.max(0.8, r * 0.05);
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.84);
-    ctx.lineTo(0, r * 0.6);
-    ctx.stroke();
-    ctx.restore();
-    lightDot(0, r * 1.82, r * 0.03, accent, 0.95);
-
-    // кабина-щель
-    ctx.fillStyle = glassFill(0, r * 0.7, r * 0.06, r * 0.3, "#ffd2e8");
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.7, r * 0.06, r * 0.3, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.45)";
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // канарды
-    for (const side of [-1, 1]) {
-      shipBody(r, [[side * 0.1, 0.98], [side * 0.26, 0.86], [side * 0.24, 0.64], [side * 0.1, 0.72]], hot, F, 0.7, 0.8);
-      lightDot(side * r * 0.25, r * 0.76, r * 0.022, accent, 0.8);
-    }
-
-    // воздухозаборники
-    for (const side of [-1, 1]) {
-      shipBody(r, [[side * 0.12, 0.3], [side * 0.3, 0.16], [side * 0.26, -0.22], [side * 0.13, -0.12]], hot, F, 0.75, 0.8);
-      ventBlock(r, side * 0.2, -0.08, 0.08, 0.2, hot, F, accent, 2);
-    }
-
-    // хвостовые плавники
-    for (const side of [-1, 1]) {
-      shipBody(r, [[0, -0.86], [side * 0.3, -1.18], [side * 0.24, -0.7]], hot, F, 0.7, 0.8);
-    }
-
-    // двигательный блок
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,8,16,0.95)";
-    roundRectPath(-r * 0.3, -r * 1.0, r * 0.6, r * 0.22, r * 0.05);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.55);
-    ctx.lineWidth = 0.6;
-    ctx.stroke();
-    for (const x of [-0.18, 0, 0.18]) lightDot(x * r, -r * 0.9, r * 0.045, accent, 0.95);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 3. гиро-разведчик «Око»: сегментное кольцо, бронепластины, линза ---------- */
-  function drawOrbShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    const pulse = 0.85 + Math.sin(e.t * 4.2 + e.seed) * 0.15;
-    ctx.save();
-    ctx.rotate(e.angle);
-
-    // мягкое свечение кольца
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const halo = ctx.createRadialGradient(0, 0, r * 0.5, 0, 0, r * 1.26);
-    halo.addColorStop(0, rgba(accent, 0));
-    halo.addColorStop(0.7, rgba(accent, 0.1 * pulse));
-    halo.addColorStop(1, rgba(accent, 0));
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.26, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    // пилоны и гребни
-    for (let i = 0; i < 4; i++) {
-      const a = Math.PI / 4 + (i * Math.PI) / 2;
-      ctx.save();
-      ctx.rotate(a);
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.9)" : "rgba(4,7,14,0.92)";
-      ctx.lineWidth = Math.max(0.8, r * 0.1);
+      ctx.fillStyle = rgba("#ffffff", alpha * 0.6);
       ctx.beginPath();
-      ctx.moveTo(r * 0.52, 0);
-      ctx.lineTo(r * 0.98, 0);
-      ctx.stroke();
-      ctx.strokeStyle = rgba(accent, hot ? 0.8 : 0.4);
-      ctx.lineWidth = Math.max(0.4, r * 0.04);
+      ctx.arc(x * r, y * r, rad * r * 1.2, 0, TAU2);
+      ctx.fill();
+      ctx.fillStyle = rgba(color, alpha);
       ctx.beginPath();
-      ctx.moveTo(r * 0.54, 0);
-      ctx.lineTo(r * 0.96, 0);
-      ctx.stroke();
-      shipBody(r, [[0.94, -0.08], [1.12, -0.05], [1.16, 0], [1.12, 0.05], [0.94, 0.08], [0.9, 0]], hot, F, 0.7, 0.8);
-      lightDot(r * 1.14, 0, r * 0.04, accent, pulse);
+      ctx.arc(x * r, y * r, rad * r, 0, TAU2);
+      ctx.fill();
       ctx.restore();
     }
-
-    // сегментное бронекольцо
-    const ring = (rad, lw, color, gap = 0.1) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = lw;
+    function bevel(r, pts, P, w) {
+      const n = pts.length;
+      let A = 0;
+      for (let i = 0; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n];
+        A += a[0] * b[1] - b[0] * a[1];
+      }
+      const sg = A > 0 ? 1 : -1;
+      ctx.save();
+      shape(r, pts);
+      ctx.clip();
+      ctx.lineWidth = w * 2;
       ctx.lineCap = "butt";
-      for (let i = 0; i < 8; i++) {
-        const a0 = -Math.PI / 2 + (i * TAU) / 8 + gap;
-        const a1 = -Math.PI / 2 + ((i + 1) * TAU) / 8 - gap;
+      for (let i = 0; i < n; i++) {
+        const a = pts[i], b = pts[(i + 1) % n];
+        const tx = b[0] - a[0], ty = b[1] - a[1], l = Math.hypot(tx, ty) || 1;
+        const d = (sg * (ty * LIGHT[0] - tx * LIGHT[1])) / l;
+        ctx.strokeStyle = d > 0 ? rgba(P.trim, 0.1 + 0.5 * d) : `rgba(0,0,6,${0.2 - 0.5 * d})`;
         ctx.beginPath();
-        ctx.arc(0, 0, rad, a0, a1);
+        ctx.moveTo(a[0] * r, a[1] * r);
+        ctx.lineTo(b[0] * r, b[1] * r);
         ctx.stroke();
       }
-    };
-    ring(r * 1.03, r * 0.24, hot ? "#ffffff" : "rgba(4,7,14,0.95)");
-    ring(r * 1.03, r * 0.08, rgba(accent, hot ? 0.95 : 0.55));
-    ring(r * 1.03, Math.max(0.5, r * 0.03), hot ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.18)");
-
-    // внутренний гироскоп (противовращение)
-    ctx.save();
-    ctx.rotate(-e.t * 0.9 + e.seed);
-    ctx.strokeStyle = hot ? "#ffffff" : "rgba(4,7,14,0.9)";
-    ctx.lineWidth = Math.max(0.7, r * 0.08);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.84, 0, TAU);
-    ctx.stroke();
-    ctx.strokeStyle = rgba(accent, 0.55);
-    ctx.lineWidth = Math.max(0.8, r * 0.05);
-    ctx.setLineDash([r * 0.24, r * 0.16]);
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.84, 0, TAU);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    for (let i = 0; i < 3; i++) {
-      ctx.save();
-      ctx.rotate((i / 3) * TAU);
-      shipBody(r, [[-0.06, -0.92], [0.06, -0.92], [0.09, -0.78], [-0.09, -0.78]], hot, F, 0.6, 0.7);
-      lightDot(0, r * 0.86, r * 0.03, accent, 0.9);
       ctx.restore();
     }
-    ctx.restore();
+    function solid(r, pts, P, o = {}) {
+      const c = P.body, d = (o.d ?? 0.06) * r;
+      let cx = 0, cy = 0;
+      for (const p of pts) {
+        cx += p[0];
+        cy += p[1];
+      }
+      cx /= pts.length;
+      cy /= pts.length;
+      let rho = 0.001;
+      for (const p of pts) rho = Math.max(rho, Math.abs((p[0] - cx) * LIGHT[0] + (p[1] - cy) * LIGHT[1]));
+      for (let k = 4; k >= 1; k--) {
+        ctx.save();
+        if (k === 4) {
+          ctx.shadowColor = "rgba(0,0,8,0.65)";
+          ctx.shadowBlur = r * 0.12;
+          ctx.shadowOffsetX = d * 0.9;
+          ctx.shadowOffsetY = d * 1.4;
+        }
+        ctx.translate((d * 0.6 * k) / 4, (-d * k) / 4);
+        shape(r, pts);
+        ctx.fillStyle = mix(c[2], "#000000", 0.25 + 0.12 * k);
+        ctx.fill();
+        ctx.restore();
+      }
+      const g = ctx.createLinearGradient(
+        (cx - LIGHT[0] * rho) * r, (cy - LIGHT[1] * rho) * r,
+        (cx + LIGHT[0] * rho) * r, (cy + LIGHT[1] * rho) * r
+      );
+      g.addColorStop(0, c[2]);
+      g.addColorStop(0.45, c[1]);
+      g.addColorStop(0.8, c[0]);
+      g.addColorStop(1, mix(c[0], P.trim, 0.4));
+      shape(r, pts);
+      ctx.fillStyle = g;
+      ctx.fill();
+      if (o.ridge) {
+        ctx.save();
+        shape(r, pts);
+        ctx.clip();
+        ctx.fillStyle = "rgba(0,0,8,0.3)";
+        ctx.fillRect(0, -3 * r, 3 * r, 6 * r);
+        lines(r, [[-0.012, -3, -0.012, 3]], "rgba(255,255,255,0.28)", 0.03);
+        ctx.restore();
+      }
+      bevel(r, pts, P, r * (o.b ?? 0.05));
+      shape(r, pts);
+      ctx.lineJoin = "miter";
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = "rgba(2,3,8,0.95)";
+      ctx.stroke();
+      ctx.lineWidth = 0.6;
+      ctx.strokeStyle = rgba(P.rim, 0.5);
+      ctx.stroke();
+    }
+    function seam(r, segs, a = 0.6) {
+      ctx.save();
+      ctx.translate(r * 0.012, -r * 0.012);
+      lines(r, segs, "rgba(255,255,255,0.13)", 0.03);
+      ctx.restore();
+      lines(r, segs, `rgba(0,0,6,${a})`, 0.035);
+    }
+    function strip(r, segs, P, a = 0.8) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      lines(r, segs, rgba(P.accent, a * 0.25), 0.1);
+      lines(r, segs, rgba(P.accent, a), 0.035);
+      lines(r, segs, "rgba(255,255,255,0.7)", 0.012);
+      ctx.restore();
+    }
+    function cyl(r, x, y0, y1, w, P, glow = true) {
+      const x0 = (x - w / 2) * r, ww = w * r;
+      const g = ctx.createLinearGradient(x0, 0, x0 + ww, 0);
+      g.addColorStop(0, "#05070f");
+      g.addColorStop(0.28, mix(P.body[0], P.trim, 0.45));
+      g.addColorStop(0.5, P.body[1]);
+      g.addColorStop(1, "#04060c");
+      ctx.save();
+      ctx.shadowColor = "rgba(0,0,8,0.6)";
+      ctx.shadowBlur = r * 0.08;
+      ctx.shadowOffsetX = r * 0.04;
+      ctx.shadowOffsetY = r * 0.06;
+      roundRectPath(x0, y0 * r, ww, (y1 - y0) * r, ww * 0.35);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.restore();
+      ctx.strokeStyle = "rgba(2,3,8,0.9)";
+      ctx.lineWidth = 0.9;
+      ctx.stroke();
+      lines(r, [[x - w * 0.22, y0 + 0.03, x - w * 0.22, y1 - 0.03]], "rgba(255,255,255,0.4)", 0.012);
+      if (glow) dot(r, x, y1 - 0.02, w * 0.4, P.accent, 0.95);
+    }
+    const barrel = (r, x, y0, y1, w, P) => cyl(r, x, y0, y1, w, P, true);
+    function nozzle(r, x, y, w, h, P) {
+      cyl(r, x, y, y + h, w, P, false);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(x * r, y * r, 0, x * r, y * r, w * r * 0.6);
+      g.addColorStop(0, "rgba(255,255,255,0.9)");
+      g.addColorStop(0.4, rgba(P.accent, 0.8));
+      g.addColorStop(1, rgba(P.accent, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x * r, y * r, w * r * 0.5, h * r * 0.45, 0, 0, TAU2);
+      ctx.fill();
+      ctx.restore();
+    }
+    function vent(r, x, y, w, h, P, n = 3) {
+      ctx.fillStyle = "rgba(2,4,10,0.95)";
+      roundRectPath(x * r - (w * r) / 2, y * r, w * r, h * r, r * 0.03);
+      ctx.fill();
+      ctx.strokeStyle = rgba(P.accent, 0.5);
+      ctx.lineWidth = 0.6;
+      ctx.stroke();
+      for (let i = 1; i <= n; i++) {
+        lines(r, [[x - w * 0.34, y + (h * i) / (n + 1), x + w * 0.34, y + (h * i) / (n + 1)]], rgba(P.accent, 0.5), 0.015);
+      }
+    }
+    const bolts = (r, pts, P, a = 0.5) => {
+      for (const p of pts) dot(r, p[0], p[1], 0.013, P.trim, a);
+    };
+    function canopy(r, x, y, rx, ry, tint) {
+      ctx.fillStyle = "#03050c";
+      ctx.beginPath();
+      ctx.ellipse(x * r, y * r, (rx + 0.022) * r, (ry + 0.022) * r, 0, 0, TAU2);
+      ctx.fill();
+      const g = ctx.createLinearGradient((x - rx) * r, (y + ry) * r, (x + rx) * r, (y - ry) * r);
+      g.addColorStop(0, "#050a18");
+      g.addColorStop(0.5, rgba(tint, 0.9));
+      g.addColorStop(1, "#0a1428");
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.ellipse(x * r, y * r, rx * r, ry * r, 0, 0, TAU2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.75)";
+      ctx.beginPath();
+      ctx.ellipse((x - rx * 0.35) * r, (y + ry * 0.35) * r, rx * r * 0.22, ry * r * 0.5, 0.35, 0, TAU2);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.5)";
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.ellipse(x * r, y * r, rx * r, ry * r, 0, 0, TAU2);
+      ctx.stroke();
+    }
+    const HEX = [];
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i / 6) * TAU2;
+      HEX.push([Math.cos(a), Math.sin(a)]);
+    }
 
-    // гранёное ядро
-    shipBody(r, [
-      [0, 0.66], [0.3, 0.44], [0.46, 0.08], [0.4, -0.3], [0.18, -0.6],
-      [-0.18, -0.6], [-0.4, -0.3], [-0.46, 0.08], [-0.3, 0.44]
-    ], hot, F, 1, 1.45);
-    shipSeams(r, hot, [
-      [0, 0.64, 0, -0.58], [-0.42, 0.1, 0.42, 0.1],
-      [-0.34, 0.4, 0.34, 0.4], [-0.26, -0.4, 0.26, -0.4]
-    ], 0.55, 0.055);
-    shipHi(r, [[-0.28, 0.38, 0.28, 0.38]]);
-    boltSet(r, hot, F, [[-0.4, 0.06], [0.4, 0.06], [-0.16, -0.52], [0.16, -0.52]], 0.45);
+    /* ---------- 1. АВРОРА: перехватчик ---------- */
+    function aurora(r, P, t) {
+      const A = P.accent;
+      if (!P.still) for (const s of [-1, 1]) thruster(s * 0.17 * r, -1.0 * r, 0.14 * r, 1.0 * r, A, t * 19 + s);
+      for (const s of [-1, 1]) {
+        solid(r, M([[.2, -.62], [.46, -1.14], [.36, -.58]], s), P, { d: .04 });
+        cyl(r, s * .7, .1, .84, .15, P);
+        solid(r, M([[.14, .5], [.52, .3], [1.2, -.5], [1.26, -.8], [.92, -.72], [.52, -.58], [.2, -.62]], s), P, { d: .07 });
+        solid(r, M([[.34, .3], [1.04, -.4], [.88, -.5], [.3, -.38]], s), P, { d: .03, b: .02 });
+        seam(r, [[s * .4, .1, s * .9, -.2], [s * .34, -.3, s * .9, -.55]], .5);
+        strip(r, [[s * .2, .46, s * 1.2, -.48]], P);
+        dot(r, s * 1.24, -.8, .028, A, .6 + .3 * Math.sin(t * 6 + s));
+        bolts(r, [[s * .82, -.36], [s * .66, -.1]], P);
+      }
+      solid(r, [[0, 1.5], [.1, 1.1], [.2, .4], [.22, -.3], [.3, -.8], [.14, -1.02], [-.14, -1.02], [-.3, -.8], [-.22, -.3], [-.2, .4], [-.1, 1.1]], P, { d: .1, ridge: true });
+      seam(r, [[-.15, .9, .15, .9], [-.2, .2, .2, .2], [-.2, -.3, .2, -.3], [-.14, -.7, .14, -.7]]);
+      for (const s of [-1, 1]) vent(r, s * .21, -.28, .08, .34, P, 3);
+      canopy(r, 0, .58, .105, .28, "#9fe8ff");
+      dot(r, 0, 1.36, .03, A, .9);
+      nozzle(r, 0, -1.0, .5, .2, P);
+    }
 
-    // линза-око
-    const lens = Math.max(2, r * 0.32);
+    /* ---------- 2. ШТОРМ: тяжёлый катамаран ---------- */
+    function storm(r, P, t) {
+      const A = P.accent;
+      if (!P.still) {
+        for (const s of [-1, 1]) for (const x of [.42, .58]) thruster(s * x * r, -1.12 * r, .12 * r, .95 * r, A, t * 17 + s * x * 9);
+        thruster(0, -.96 * r, .16 * r, 1.0 * r, A, t * 21);
+      }
+      for (const s of [-1, 1]) {
+        solid(r, M([[.6, .3], [1.3, -.2], [1.36, -.62], [.62, -.58]], s), P, { d: .06 });
+        solid(r, M([[.7, .14], [1.2, -.2], [1.2, -.34], [.7, -.3]], s), P, { d: .03, b: .02 });
+        dot(r, s * 1.34, -.6, .03, A, .65 + .3 * Math.sin(t * 5 + s));
+      }
+      solid(r, [[-.6, .04], [.6, .04], [.6, -.44], [-.6, -.44]], P, { d: .07 });
+      strip(r, [[-.5, -.2, .5, -.2]], P, .6);
+      for (const s of [-1, 1]) {
+        barrel(r, s * .5, 1.3, 1.78, .08, P);
+        solid(r, M([[.5, 1.34], [.66, .9], [.7, -.7], [.54, -1.14], [.34, -1.14], [.3, -.7], [.34, .9]], s), P, { d: .1 });
+        solid(r, M([[.42, .8], [.6, .8], [.62, .1], [.4, .1]], s), P, { d: .03, b: .015 });
+        seam(r, [[s * .32, .5, s * .68, .5], [s * .32, -.1, s * .7, -.1], [s * .32, -.62, s * .68, -.62]], .5);
+        strip(r, [[s * .5, .05, s * .5, -.95]], P, .6);
+        bolts(r, [[s * .62, .7], [s * .62, .2], [s * .62, -.4]], P);
+        nozzle(r, s * .5, -1.14, .3, .16, P);
+      }
+      solid(r, [[0, 1.2], [.22, .7], [.26, -.4], [.2, -.95], [-.2, -.95], [-.26, -.4], [-.22, .7]], P, { d: .11, ridge: true });
+      seam(r, [[-.22, .5, .22, .5], [-.25, -.1, .25, -.1]]);
+      canopy(r, 0, .6, .1, .26, "#c8b6ff");
+      vent(r, 0, -.62, .22, .26, P, 3);
+      dot(r, 0, 1.1, .03, A, .9);
+    }
+
+    /* ---------- 3. ПРИЗРАК: стелс-крыло ---------- */
+    function phantom(r, P, t) {
+      const A = P.accent;
+      if (!P.still) for (const x of [-.34, .34]) thruster(x * r, -.92 * r, .16 * r, 1.1 * r, A, t * 20 + x * 7);
+      for (const s of [-1, 1]) {
+        solid(r, M([[0, 1.45], [.3, .7], [1.3, -.7], [1.0, -.95], [.55, -.72], [.22, -1.0], [0, -.8]], s), P, { d: .08, b: .06 });
+        solid(r, M([[0, 1.2], [.5, .2], [.34, -.5], [0, -.55]], s), P, { d: .04, b: .035 });
+        solid(r, M([[.62, -.1], [1.1, -.66], [.64, -.66]], s), P, { d: .025, b: .02 });
+        seam(r, [[s * .3, .6, s * .62, -.7], [s * .5, .3, s * 1.0, -.74]], .5);
+        strip(r, [[s * .02, 1.4, s * 1.28, -.68]], P, .8);
+        strip(r, [[s * 1.0, -.92, s * .56, -.7]], P, .5);
+        dot(r, s * 1.3, -.7, .03, A, .6 + .3 * Math.sin(t * 5 + s));
+      }
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const pulse = .85 + Math.sin(t * 3) * .15;
+      const g = ctx.createRadialGradient(0, -.08 * r, 0, 0, -.08 * r, .5 * r * pulse);
+      g.addColorStop(0, "rgba(255,255,255,0.95)");
+      g.addColorStop(.3, rgba(A, .8));
+      g.addColorStop(1, rgba(A, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(0, -.08 * r, .5 * r * pulse, 0, TAU2);
+      ctx.fill();
+      ctx.restore();
+      solid(r, HEX.map(([x, y]) => [x * .2, y * .2 - .4]), P, { d: .03, b: .03 });
+      dot(r, 0, -.4, .06, A, 1);
+      canopy(r, 0, .76, .06, .2, "#ffd2e8");
+      for (const x of [-.34, .34]) nozzle(r, x, -.96, .3, .12, P);
+    }
+
+    /* ---------- 4. БАСТИОН: бронированный ганшип ---------- */
+    function bastion(r, P, t) {
+      const A = P.accent;
+      if (!P.still) for (const x of [-.42, 0, .42]) thruster(x * r, -1.08 * r, .16 * r, 1.0 * r, A, t * 16 + x * 10);
+      for (const s of [-1, 1]) {
+        barrel(r, s * .86, .5, 1.28, .08, P);
+        barrel(r, s * 1.0, .4, 1.12, .08, P);
+        solid(r, M([[.7, .5], [1.1, .42], [1.18, -.5], [.74, -.66]], s), P, { d: .09 });
+        solid(r, M([[.8, .34], [1.06, .3], [1.1, -.4], [.8, -.5]], s), P, { d: .03, b: .02 });
+        seam(r, [[s * .76, .1, s * 1.14, .04], [s * .76, -.24, s * 1.14, -.3]], .5);
+        bolts(r, [[s * .84, .4], [s * 1.06, .36], [s * 1.1, -.4], [s * .8, -.56]], P);
+        dot(r, s * 1.12, -.46, .03, A, .6 + .3 * Math.sin(t * 5 + s));
+      }
+      const hull = [[0, 1.2], [.4, .9], [.52, .3], [.72, -.1], [.64, -.9], [.3, -1.06], [-.3, -1.06], [-.64, -.9], [-.72, -.1], [-.52, .3], [-.4, .9]];
+      solid(r, hull, P, { d: .12, ridge: true, b: .06 });
+      ctx.save();
+      shape(r, [[0, 1.2], [.4, .9], [.3, .66], [-.3, .66], [-.4, .9]]);
+      ctx.clip();
+      ctx.strokeStyle = rgba(A, .6);
+      ctx.lineWidth = r * .07;
+      for (let i = -6; i < 6; i++) {
+        ctx.beginPath();
+        ctx.moveTo(i * .12 * r, .62 * r);
+        ctx.lineTo((i * .12 + .2) * r, 1.2 * r);
+        ctx.stroke();
+      }
+      ctx.restore();
+      solid(r, [[-.4, .3], [.4, .3], [.46, -.7], [-.46, -.7]], P, { d: .05, b: .03 });
+      seam(r, [[-.5, .3, .5, .3], [-.66, -.1, .66, -.1], [-.5, -.5, .5, -.5], [0, .3, 0, -.7]], .55);
+      bolts(r, [[-.6, .1], [.6, .1], [-.56, -.7], [.56, -.7], [-.3, .78], [.3, .78], [-.34, -.3], [.34, -.3]], P, .55);
+      solid(r, [[-.2, .5], [.2, .5], [.14, .34], [-.14, .34]], { ...P, body: ["#0b1222", "#060a16", "#02040a"] }, { d: .02, b: .015 });
+      dot(r, 0, .42, .04, A, .8);
+      vent(r, 0, -.62, .5, .26, P, 3);
+      nozzle(r, 0, -1.06, .9, .18, P);
+    }
+
+    /* ---------- 5. СЕРАФИМ: крылатый штурмовик ---------- */
+    function seraph(r, P, t) {
+      const A = P.accent;
+      if (!P.still) {
+        thruster(0, -.96 * r, .2 * r, 1.25 * r, A, t * 22);
+        for (const s of [-1, 1]) thruster(s * .34 * r, -.74 * r, .1 * r, .7 * r, A, t * 18 + s);
+      }
+      for (const s of [-1, 1]) {
+        solid(r, M([[.3, -.45], [.95, -.98], [.72, -.4]], s), P, { d: .04 });
+        solid(r, M([[.5, -.3], [1.26, -.62], [.96, -.1]], s), P, { d: .05 });
+        strip(r, [[s * .5, -.3, s * 1.22, -.6]], P, .5);
+      }
+      for (const s of [-1, 1]) {
+        solid(r, M([[.15, .2], [.7, .55], [1.32, 1.0], [1.2, .4], [.86, -.4], [.18, -.6]], s), P, { d: .08 });
+        solid(r, M([[.24, .18], [.72, .46], [1.08, .7], [.9, .1], [.3, -.3]], s), P, { d: .035, b: .025 });
+        seam(r, [[s * .28, .1, s * .9, .4], [s * .3, -.2, s * .9, 0], [s * .24, -.5, s * .7, -.3]], .5);
+        strip(r, [[s * .16, .22, s * 1.3, .98]], P, .8);
+        dot(r, s * 1.3, 1.0, .032, A, .7 + .25 * Math.sin(t * 5 + s));
+        bolts(r, [[s * .5, .1], [s * .7, -.1]], P);
+      }
+      solid(r, [[0, 1.7], [.08, 1.2], [.16, .5], [.18, -.4], [.12, -.9], [-.12, -.9], [-.18, -.4], [-.16, .5], [-.08, 1.2]], P, { d: .12, ridge: true, b: .04 });
+      seam(r, [[-.16, .7, .16, .7], [-.18, .1, .18, .1], [-.16, -.4, .16, -.4]]);
+      canopy(r, 0, .74, .08, .26, "#bff8e6");
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = rgba(A, .65);
+      ctx.lineWidth = Math.max(1, r * .035);
+      ctx.beginPath();
+      ctx.arc(0, -.92 * r, .24 * r, 0, TAU2);
+      ctx.stroke();
+      ctx.strokeStyle = rgba(A, .3);
+      ctx.lineWidth = Math.max(.6, r * .02);
+      ctx.beginPath();
+      ctx.arc(0, -.92 * r, .32 * r, t * .8, t * .8 + 4.2);
+      ctx.stroke();
+      ctx.restore();
+      nozzle(r, 0, -.96, .3, .14, P);
+      dot(r, 0, 1.6, .025, A, .95);
+    }
+
+    /* ---------- 6. ОРБ: круглый гиро-разведчик ---------- */
+    function orbHull(r, P, t) {
+      const A = P.accent;
+
+      // тёмная база кольца
+      const base = ctx.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.16);
+      base.addColorStop(0, P.body[1]);
+      base.addColorStop(0.72, P.body[2]);
+      base.addColorStop(1, mix(P.body[2], "#000000", 0.4));
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.14, 0, TAU2);
+      ctx.fillStyle = base;
+      ctx.fill();
+      ctx.lineWidth = 1.4;
+      ctx.strokeStyle = "rgba(2,3,8,0.95)";
+      ctx.stroke();
+      ctx.lineWidth = 0.7;
+      ctx.strokeStyle = rgba(P.rim, 0.55);
+      ctx.stroke();
+
+      // восемь бронеплит кольца
+      for (let i = 0; i < 8; i++) {
+        const a0 = (i / 8) * TAU2 + 0.05, a1 = ((i + 1) / 8) * TAU2 - 0.05;
+        solid(r, [
+          [Math.cos(a0) * 1.12, Math.sin(a0) * 1.12],
+          [Math.cos(a1) * 1.12, Math.sin(a1) * 1.12],
+          [Math.cos(a1) * 0.8, Math.sin(a1) * 0.8],
+          [Math.cos(a0) * 0.8, Math.sin(a0) * 0.8]
+        ], P, { d: .05, b: .035 });
+        lines(r, [[Math.cos(a0) * 1.08, Math.sin(a0) * 1.08, Math.cos(a1) * 1.08, Math.sin(a1) * 1.08]], rgba(A, .75), .035);
+        const am = (a0 + a1) / 2;
+        dot(r, Math.cos(am) * 0.96, Math.sin(am) * 0.96, .014, P.trim, .55);
+      }
+
+      // внутреннее кольцо
+      ctx.strokeStyle = rgba(A, .45);
+      ctx.lineWidth = Math.max(.8, r * .05);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.78, 0, TAU2);
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(0,0,6,0.8)";
+      ctx.lineWidth = Math.max(.6, r * .03);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.82, 0, TAU2);
+      ctx.stroke();
+
+      // радиальные пилоны
+      for (let i = 0; i < 4; i++) {
+        const a = Math.PI / 4 + i * Math.PI / 2;
+        ctx.save();
+        ctx.rotate(a);
+        solid(r, [[.58, -.06], [.86, -.05], [.86, .05], [.58, .06]], P, { d: .03, b: .02 });
+        dot(r, .9, 0, .024, A, .7);
+        ctx.restore();
+      }
+
+      // гранёное ядро
+      const core = [];
+      for (let i = 0; i < 8; i++) {
+        const a = -Math.PI / 2 + (i / 8) * TAU2;
+        core.push([Math.cos(a) * .58, Math.sin(a) * .58]);
+      }
+      solid(r, core, P, { d: .08, ridge: true, b: .04 });
+      seam(r, [[-.42, .12, .42, .12], [-.3, .34, .3, .34], [-.3, -.34, .3, -.34]], .5);
+
+      // линза-око
+      const lens = r * 0.3;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const lg = ctx.createRadialGradient(0, 0, 0, 0, 0, lens * 1.9);
+      lg.addColorStop(0, "rgba(255,255,255,0.95)");
+      lg.addColorStop(.35, rgba(A, .8));
+      lg.addColorStop(1, rgba(A, 0));
+      ctx.fillStyle = lg;
+      ctx.beginPath();
+      ctx.arc(0, 0, lens * 1.9, 0, TAU2);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = "rgba(4,8,16,0.96)";
+      ctx.beginPath();
+      ctx.arc(0, 0, lens, 0, TAU2);
+      ctx.fill();
+      ctx.strokeStyle = rgba(A, .9);
+      ctx.lineWidth = Math.max(.6, r * .05);
+      ctx.stroke();
+      for (let i = 1; i <= 3; i++) {
+        ctx.strokeStyle = rgba(A, .22 + i * .14);
+        ctx.lineWidth = Math.max(.4, r * .025);
+        ctx.beginPath();
+        ctx.arc(0, 0, lens * (1 - i * .2), 0, TAU2);
+        ctx.stroke();
+      }
+      dot(r, 0, 0, .1, A, .95);
+
+      // маневровые огни
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU2;
+        dot(r, Math.cos(a) * .72, Math.sin(a) * .72, .026, A, .65 + .25 * Math.sin(t * 5 + i));
+      }
+    }
+
+    const SHIPS = {
+      aurora: {
+        id: "aurora", fn: aurora, nose: 1.5,
+        engines: [[-0.17, -1.0], [0.17, -1.0]],
+        pal: { body: ["#3b4878", "#1a2342", "#070a15"], accent: "#4de1ff", trim: "#bfe9ff", rim: "#8fd6ff" }
+      },
+      storm: {
+        id: "storm", fn: storm, nose: 1.2,
+        engines: [[-0.58, -1.12], [-0.42, -1.12], [0.42, -1.12], [0.58, -1.12], [0, -0.96]],
+        pal: { body: ["#443a7a", "#1f1a44", "#0a0818"], accent: "#7c5cff", trim: "#d2c6ff", rim: "#a28aff" }
+      },
+      phantom: {
+        id: "phantom", fn: phantom, nose: 1.45,
+        engines: [[-0.34, -0.92], [0.34, -0.92]],
+        pal: { body: ["#3d3354", "#1b1630", "#08060f"], accent: "#ff5c8a", trim: "#ffc4d6", rim: "#ff8fb0" }
+      },
+      bastion: {
+        id: "bastion", fn: bastion, nose: 1.2,
+        engines: [[-0.42, -1.08], [0, -1.08], [0.42, -1.08]],
+        pal: { body: ["#574a38", "#271f2b", "#0b0810"], accent: "#ffc46b", trim: "#ffe3b0", rim: "#ffd694" }
+      },
+      seraph: {
+        id: "seraph", fn: seraph, nose: 1.7,
+        engines: [[0, -0.96], [-0.34, -0.74], [0.34, -0.74]],
+        pal: { body: ["#35544a", "#172c2b", "#07110f"], accent: "#63ffc4", trim: "#d8fff1", rim: "#9ffbd8" }
+      },
+      orb: {
+        id: "orb", fn: orbHull, nose: 1.14,
+        engines: [],
+        pal: { body: ["#4a3d6e", "#221a3c", "#0a0714"], accent: "#b48bff", trim: "#e0ccff", rim: "#c8a6ff" }
+      }
+    };
+
+    // палитра врага: корпус корабля + краска поколения флота + цвет роли
+    function palette(def, color, gen, hot) {
+      if (hot) {
+        return { body: ["#ffffff", "#f4f8ff", "#d6e0f2"], accent: "#ffffff", trim: "#ffffff", rim: "#ffffff" };
+      }
+      const F = FLEET_GENS[clamp(gen, 1, FLEET_GENS.length - 1)] || FLEET_GENS[1];
+      const p = def.pal;
+      return {
+        body: [
+          mixHex(mixHex(p.body[0], F.body[0], 0.42), color, 0.16),
+          mixHex(mixHex(p.body[1], F.body[1], 0.4), color, 0.08),
+          mixHex(p.body[2], F.body[2], 0.55)
+        ],
+        accent: color,
+        trim: mixHex(F.trim, color, 0.3),
+        rim: mixHex(color, F.trim, 0.45)
+      };
+    }
+
+    const cache = new Map();
+    const MAX_SPRITES = 40;
+
+    function makeSprite(def, color, gen, hot) {
+      const c = document.createElement("canvas");
+      c.width = c.height = SIZE;
+      const g = c.getContext("2d");
+      g.translate(SIZE / 2, SIZE / 2);
+      ctx = g;
+      def.fn(BASE_R, { ...palette(def, color, gen, hot), still: true }, 0);
+      ctx = null;
+      return c;
+    }
+
+    function spriteFor(def, color, gen, hot) {
+      const key = hot ? `${def.id}|hot` : `${def.id}|${color}|${clamp(gen, 1, FLEET_GENS.length - 1)}`;
+      let s = cache.get(key);
+      if (s) return s;
+      if (cache.size >= MAX_SPRITES) {
+        const oldest = cache.keys().next().value;
+        if (oldest) cache.delete(oldest);
+      }
+      s = makeSprite(def, color, gen, hot);
+      cache.set(key, s);
+      return s;
+    }
+
+    // факелы в локальных координатах врага: нос смотрит в +y, сопла — в -y
+    function drawFlames(g, def, t, color, size, boost) {
+      const U = size / (PAD * 2);
+      for (const [ex, ey] of def.engines) {
+        const x = ex * U;
+        const y = ey * U;
+        const ph = t * 18 + ex * 9 + (ey + 1) * 5;
+        const flicker = Math.sin(ph) * 0.25 + Math.sin(ph * 2.7) * 0.12;
+        const len = U * (1.15 + flicker * 0.5) * boost;
+        const w = U * 0.24;
+        const gd = g.createLinearGradient(x, y, x, y - len);
+        gd.addColorStop(0, "rgba(255,255,255,0.95)");
+        gd.addColorStop(0.28, rgba(color, 0.7));
+        gd.addColorStop(1, rgba(color, 0));
+        g.fillStyle = gd;
+        g.beginPath();
+        g.moveTo(x - w, y);
+        g.lineTo(x, y - len);
+        g.lineTo(x + w, y);
+        g.closePath();
+        g.fill();
+        const mouth = g.createRadialGradient(x, y, 0, x, y, U * 0.28);
+        mouth.addColorStop(0, "rgba(255,255,255,0.95)");
+        mouth.addColorStop(0.45, rgba(color, 0.6));
+        mouth.addColorStop(1, rgba(color, 0));
+        g.fillStyle = mouth;
+        g.beginPath();
+        g.arc(x, y, U * 0.28, 0, TAU2);
+        g.fill();
+      }
+    }
+
+    function draw(g, e, fill, hot, shipId, boost) {
+      const def = SHIPS[shipId] || SHIPS.aurora;
+      const size = e.r * SCALE;
+      const sprite = spriteFor(def, hot ? "#ffffff" : fill, e.gen, hot);
+      g.save();
+      g.globalCompositeOperation = "lighter";
+      drawFlames(g, def, e.t, hot ? "#ffffff" : fill, size, boost || 1);
+      g.restore();
+      if (hot) {
+        g.save();
+        g.globalCompositeOperation = "lighter";
+        g.drawImage(sprite, -size / 2, -size / 2, size, size);
+        g.restore();
+      } else {
+        g.drawImage(sprite, -size / 2, -size / 2, size, size);
+      }
+    }
+
+    return { draw, scale: SCALE };
+  })();
+
+  /* ---------- ролевые телеграфы ---------- */
+
+  function sniperTelegraph(e, r, fill) {
+    const charge = e.fire < 0.7 && e.fire > 0 ? clamp(1 - e.fire / 0.7, 0, 1) : 0;
+    if (charge <= 0) return;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    const lg = ctx.createRadialGradient(0, r * 0.04, 0, 0, r * 0.04, lens * 1.6);
-    lg.addColorStop(0, `rgba(255,255,255,${0.95 * pulse})`);
-    lg.addColorStop(0.35, rgba(accent, 0.8));
-    lg.addColorStop(1, rgba(accent, 0));
-    ctx.fillStyle = lg;
+    const beam = ctx.createLinearGradient(0, r * 1.5, 0, 320);
+    beam.addColorStop(0, `rgba(159,232,255,${0.35 * charge})`);
+    beam.addColorStop(1, "rgba(159,232,255,0)");
+    ctx.strokeStyle = beam;
+    ctx.lineWidth = 1.1 + charge * 1.7;
     ctx.beginPath();
-    ctx.arc(0, r * 0.04, lens * 1.6, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.fillStyle = "rgba(4,8,16,0.95)";
-    ctx.beginPath();
-    ctx.arc(0, r * 0.04, lens, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.9);
-    ctx.lineWidth = Math.max(0.6, r * 0.05);
+    ctx.moveTo(0, r * 1.5);
+    ctx.lineTo(0, 320);
     ctx.stroke();
-    for (let i = 1; i <= 3; i++) {
-      ctx.strokeStyle = rgba(accent, 0.28 + i * 0.14);
-      ctx.lineWidth = Math.max(0.4, r * 0.028);
+    ctx.restore();
+    lightDot(0, r * 1.55, r * 0.14 + Math.sin(e.t * 16) * r * 0.03, "#9fe8ff", 0.35 + charge * 0.4);
+  }
+
+  function chargerTelegraph(e, r, fill) {
+    if (e.chargeState === 1) {
+      const warn = 0.32 + Math.sin(e.t * 22) * 0.26;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = `rgba(255,170,110,${warn})`;
+      ctx.lineWidth = 1.3;
+      ctx.setLineDash([6, 7]);
       ctx.beginPath();
-      ctx.arc(0, r * 0.04, lens * (1 - i * 0.2), 0, TAU);
+      ctx.moveTo(0, r * 1.5);
+      ctx.lineTo(0, Math.min(G.h, 560));
       ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      lightDot(0, r * 1.55, r * 0.14 + Math.sin(e.t * 16) * r * 0.03, "#ffaa6e", 0.35);
     }
-    ctx.fillStyle = `rgba(255,255,255,${0.9 * pulse})`;
-    ctx.beginPath();
-    ctx.arc(0, r * 0.04, lens * 0.34, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.beginPath();
-    ctx.ellipse(-lens * 0.34, r * 0.04 - lens * 0.42, lens * 0.16, lens * 0.1, -0.6, 0, TAU);
-    ctx.fill();
-
-    // маневровые дюзы
-    for (let i = 0; i < 4; i++) {
-      const a = Math.PI / 4 + (i * Math.PI) / 2;
-      lightDot(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72, r * 0.028, accent, 0.7);
+    if (e.chargeState === 2) {
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const trail = ctx.createLinearGradient(0, -r * 1.3, 0, -r * 4.8);
+      trail.addColorStop(0, rgba(fill, 0.5));
+      trail.addColorStop(1, rgba(fill, 0));
+      ctx.fillStyle = trail;
+      ctx.beginPath();
+      ctx.moveTo(-r * 0.38, -r * 1.25);
+      ctx.lineTo(r * 0.38, -r * 1.25);
+      ctx.lineTo(0, -r * 4.8);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
+  }
 
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
+  function splitterTelegraph(e, r, fill) {
+    ctx.save();
+    ctx.strokeStyle = rgba(fill, 0.42);
+    ctx.lineWidth = 1.1;
+    ctx.setLineDash([4, 5]);
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + (i / 6) * TAU;
+      const px = Math.cos(a) * r * 1.35, py = Math.sin(a) * r * 1.35;
+      if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
-  /* ---------- 4. катамаран «Молот»: два бронекорпуса, башня, таран ---------- */
-  function drawTankShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 0.8 + e.seed) * 0.045);
-
-    // двигатели за кормой
-    for (const side of [-1, 1]) {
-      for (const x of [0.56, 0.92]) {
-        thruster(side * x * r, -r * 0.96, r * 0.13, r * 0.72, accent, hot, e.t * 14 + side * x * 12);
-      }
-    }
-
-    // бортовые кассеты
-    for (const side of [-1, 1]) {
-      shipBody(r, [
-        [side * 0.44, 0.86], [side * 1.0, 0.66], [side * 1.12, 0.08],
-        [side * 1.0, -0.62], [side * 0.72, -0.96], [side * 0.42, -0.9],
-        [side * 0.36, -0.3], [side * 0.38, 0.42]
-      ], hot, F, 0.95, 1.4);
-      shipSeams(r, hot, [
-        [side * 0.42, 0.56, side * 1.08, 0.42],
-        [side * 0.4, 0.16, side * 1.12, 0.06],
-        [side * 0.42, -0.28, side * 1.08, -0.4],
-        [side * 0.5, -0.7, side * 0.98, -0.78]
-      ], 0.55, 0.06);
-      shipHi(r, [[side * 0.44, 0.5, side * 1.04, 0.36]]);
-      boltLine(r, hot, F, side * 0.94, -0.5, 0.5, 4);
-
-      // гусеничные сегменты
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.7)" : "rgba(3,6,12,0.9)";
-      ctx.lineWidth = Math.max(0.6, r * 0.06);
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const yy = 0.6 - i * 0.26;
-        ctx.moveTo(side * r * 1.01, r * yy);
-        ctx.lineTo(side * r * 1.12, r * (yy - 0.08));
-      }
-      ctx.stroke();
-
-      // орудийная стойка
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(5,8,16,0.9)";
-      roundRectPath(side * r * 0.7 - r * 0.08, -r * 0.06, r * 0.16, r * 0.5, r * 0.03);
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, 0.5);
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      lightDot(side * r * 0.7, r * 0.42, r * 0.035, accent, 0.9);
-    }
-
-    // центральный корпус
-    shipBody(r, [
-      [0, 1.34], [0.3, 0.92], [0.36, 0.34], [0.28, -0.36], [0.34, -0.86],
-      [0.12, -1.02], [-0.12, -1.02], [-0.34, -0.86], [-0.28, -0.36],
-      [-0.36, 0.34], [-0.3, 0.92]
-    ], hot, F, 1, 1.6);
-
-    // таранная плита
-    shipBody(r, [[0, 1.52], [0.92, 0.62], [0.6, 0.44], [-0.6, 0.44], [-0.92, 0.62]], hot, F, 1.05, 1.4);
-    if (F.hazard) hazardBars(-r * 0.42, r * 0.62, r * 0.84, r * 0.16, accent, hot);
-    shipSeams(r, hot, [[-0.58, 0.56, 0.58, 0.56]], 0.5, 0.06);
-
-    // башня
-    ctx.save();
-    ctx.translate(0, r * 0.16);
-    shipBody(r, [[0, 0.36], [0.24, 0.2], [0.26, -0.12], [0.12, -0.3], [-0.12, -0.3], [-0.26, -0.12], [-0.24, 0.2]], hot, F, 0.9, 1.1);
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(6,9,18,0.95)";
-      roundRectPath(side * r * 0.11 - r * 0.045, r * 0.1, r * 0.09, r * 0.64, r * 0.025);
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, 0.5);
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      lightDot(side * r * 0.11, r * 0.72, r * 0.035, accent, 0.9);
-    }
-    ctx.fillStyle = "rgba(6,10,22,0.96)";
-    roundRectPath(-r * 0.16, -r * 0.2, r * 0.32, r * 0.1, r * 0.03);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.7);
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-    ctx.restore();
-
-    // кормовой блок
-    ventBlock(r, 0, -0.94, 0.46, 0.2, hot, F, accent, 3);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-
-    // полоса прочности
-    const hpw = r * 2;
-    ctx.fillStyle = "rgba(255,255,255,0.16)";
-    ctx.fillRect(-hpw / 2, -r - 10, hpw, 3);
-    ctx.fillStyle = fill;
-    ctx.fillRect(-hpw / 2, -r - 10, hpw * clamp(e.hp / e.maxHp, 0, 1), 3);
-  }
-
-  /* ---------- 5. асимметричная «Коса»: одна огромная лопасть ---------- */
-  function drawWeaverShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 3.2 + e.seed) * 0.17);
-
-    // энергетический след с кромки
+  function weaverTelegraph(e, r, fill) {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     const trail = ctx.createLinearGradient(0, r * 0.3, r * 1.8, r * 0.4);
@@ -5331,804 +5339,129 @@
     ctx.quadraticCurveTo(r * 1.1, r * 0.72, r * 1.75, r * 0.36);
     ctx.stroke();
     ctx.restore();
+    lightDot(r * 1.75, r * 0.36, r * 0.04, fill, 0.8);
+  }
 
-    // малая контр-лопасть слева
-    shipBody(r, [[-0.12, 0.34], [-0.8, 0.52], [-0.66, 0.04], [-0.14, -0.2]], hot, F, 0.9, 1.1);
-    ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.5);
-    ctx.lineWidth = 0.7;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.16, r * 0.3);
-    ctx.lineTo(-r * 0.74, r * 0.44);
-    ctx.stroke();
-
-    // большая коса
-    ctx.beginPath();
-    ctx.moveTo(r * 0.06, r * 0.62);
-    ctx.quadraticCurveTo(r * 1.0, r * 1.0, r * 1.88, r * 0.44);
-    ctx.quadraticCurveTo(r * 1.24, r * 0.28, r * 0.5, r * -0.46);
-    ctx.quadraticCurveTo(r * 0.18, r * -0.16, r * 0.06, r * 0.62);
-    ctx.closePath();
-    ctx.fillStyle = shipPaint(r, hot, F);
-    ctx.fill();
-    shipHullStroke(fill, hot, F, 1.3);
-
-    // энергетическая кромка
+  function orbTelegraph(e, r, fill) {
+    const pulse = 0.85 + Math.sin(e.t * 4.2 + e.seed) * 0.15;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = rgba(accent, hot ? 0.95 : 0.65);
-    ctx.lineWidth = Math.max(0.8, r * 0.08);
+    ctx.strokeStyle = rgba(fill, 0.16 + 0.08 * pulse);
+    ctx.lineWidth = Math.max(1, r * 0.05);
     ctx.beginPath();
-    ctx.moveTo(r * 0.08, r * 0.6);
-    ctx.quadraticCurveTo(r * 1.0, r * 0.96, r * 1.84, r * 0.44);
+    ctx.arc(0, 0, r * 1.45, 0, TAU);
     ctx.stroke();
-    ctx.restore();
-
-    // рёбра и панели
-    shipSeams(r, hot, [
-      [0.18, 0.48, 1.35, 0.4], [0.14, 0.16, 0.98, 0.1], [0.3, 0.5, 0.26, 0.02]
-    ], 0.45, 0.05);
-    shipHi(r, [[0.2, 0.44, 1.2, 0.36]]);
-    boltLine(r, hot, F, 1.5, 0.16, 0.36, 2);
-
-    // центральный фюзеляж
-    shipBody(r, [
-      [0, 1.16], [0.16, 0.6], [0.19, -0.1], [0.1, -0.72], [0.2, -1.0],
-      [0, -1.16], [-0.2, -1.0], [-0.1, -0.72], [-0.19, -0.1], [-0.16, 0.6]
-    ], hot, F, 1, 1.35);
-    liveryStripes(r, hot, F, 0, -0.9, 0.95, 0.05);
-    shipSeams(r, hot, [
-      [-0.13, 0.5, 0.13, 0.5], [-0.15, -0.1, 0.15, -0.1], [-0.12, -0.7, 0.12, -0.7]
-    ], 0.5);
-
-    // кабина
-    ctx.fillStyle = glassFill(r * 0.12, r * 0.2, r * 0.11, r * 0.2, "#c8a6ff");
-    ctx.beginPath();
-    ctx.ellipse(r * 0.12, r * 0.2, r * 0.11, r * 0.2, -0.25, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // хвостовой двигатель
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,8,16,0.95)";
-    roundRectPath(-r * 0.13, -r * 1.12, r * 0.26, r * 0.2, r * 0.05);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.5);
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-    thruster(0, -r * 1.12, r * 0.14, r * 1.15, accent, hot, e.t * 21 + e.seed);
-
-    lightDot(r * 1.8, r * 0.44, r * 0.045, accent, 0.95);
-    lightDot(-r * 0.76, r * 0.48, r * 0.03, accent, 0.8);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
+    ctx.strokeStyle = rgba(fill, 0.34);
+    ctx.lineWidth = Math.max(1, r * 0.07);
+    for (let i = 0; i < 8; i++) {
+      const a0 = -Math.PI / 2 + (i * TAU) / 8 + 0.12;
+      const a1 = -Math.PI / 2 + ((i + 1) * TAU) / 8 - 0.12;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 1.45, a0, a1);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
-  /* ---------- 6. рельсовая платформа «Ось»: скелет, рельсы, станины ---------- */
-  function drawSniperShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    const aim = Math.atan2(G.ship.y - e.y, G.ship.x - e.x);
+  function bombBay(e, r, fill, hot) {
+    const accent = hot ? "#ffffff" : fill;
     ctx.save();
-    ctx.rotate(aim - Math.PI / 2);
-    const charge = e.fire < 0.7 && e.fire > 0 ? clamp(1 - e.fire / 0.7, 0, 1) : 0;
-
-    // луч прицеливания
-    if (charge > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      const beam = ctx.createLinearGradient(0, r * 2.4, 0, 320);
-      beam.addColorStop(0, `rgba(159,232,255,${0.35 * charge})`);
-      beam.addColorStop(1, "rgba(159,232,255,0)");
-      ctx.strokeStyle = beam;
-      ctx.lineWidth = 1.1 + charge * 1.7;
-      ctx.beginPath();
-      ctx.moveTo(0, r * 2.35);
-      ctx.lineTo(0, 320);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // станины-ноги
-    for (const side of [-1, 1]) {
-      shipBody(r, [
-        [side * 0.14, -0.1], [side * 0.94, -0.74], [side * 1.06, -0.9], [side * 0.72, -0.64]
-      ], hot, F, 0.8, 1);
-      ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.5);
-      ctx.lineWidth = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(side * r * 0.2, -r * 0.16);
-      ctx.lineTo(side * r * 0.9, -r * 0.76);
-      ctx.stroke();
-      lightDot(side * r * 1.02, -r * 0.88, r * 0.035, accent, 0.9);
-    }
-
-    // рама
-    shipBody(r, [
-      [0, 0.96], [0.34, 0.58], [0.3, -0.02], [0.4, -0.36], [0.16, -0.62],
-      [-0.16, -0.62], [-0.4, -0.36], [-0.3, -0.02], [-0.34, 0.58]
-    ], hot, F, 1, 1.2);
-
-    // рельсы
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(10,15,28,0.95)";
-      roundRectPath(side * r * 0.13 - r * 0.045, r * 0.5, r * 0.09, r * 1.9, r * 0.02);
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, hot ? 0.8 : 0.35);
-      ctx.lineWidth = 0.5;
-      ctx.stroke();
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.8)" : "rgba(255,255,255,0.14)";
-      ctx.lineWidth = 0.5;
-      ctx.beginPath();
-      for (let i = 0; i < 7; i++) {
-        const yy = 0.72 + i * 0.24;
-        ctx.moveTo(side * r * 0.13 - r * 0.05, r * yy);
-        ctx.lineTo(side * r * 0.13 + r * 0.05, r * yy);
-      }
-      ctx.stroke();
-    }
-
-    // перемычки
-    ctx.strokeStyle = hot ? "rgba(255,255,255,0.8)" : "rgba(5,9,18,0.9)";
-    ctx.lineWidth = Math.max(0.6, r * 0.06);
-    ctx.beginPath();
-    for (const yy of [1.0, 1.5, 2.0]) {
-      ctx.moveTo(-r * 0.12, r * yy);
-      ctx.lineTo(r * 0.12, r * (yy + 0.12));
-    }
-    ctx.stroke();
-
-    // энергия между рельсами
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const eg = ctx.createLinearGradient(0, r * 0.9, 0, r * 2.45);
-    eg.addColorStop(0, rgba(fill, 0.12 + charge * 0.5));
-    eg.addColorStop(1, rgba(fill, 0.06 + charge * 0.7));
-    ctx.fillStyle = eg;
-    ctx.fillRect(-r * 0.05, r * 0.9, r * 0.1, r * 1.55);
-    ctx.restore();
-
-    // дульный тормоз
-    shipBody(r, [[-0.17, 2.34], [0.17, 2.34], [0.11, 2.52], [-0.11, 2.52]], hot, F, 0.9, 1);
-    lightDot(0, r * 2.45, r * 0.06 + charge * r * 0.05, accent, 0.9);
-
-    // кабина
-    ctx.fillStyle = glassFill(0, r * 0.46, r * 0.12, r * 0.24);
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.46, r * 0.12, r * 0.24, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // сенсор
-    sensorEye(r, 0, -0.16, 0.14, accent, hot, 1);
-
-    // выхлопы
-    for (const x of [-0.26, 0.26]) {
-      thruster(x * r, -r * 0.6, r * 0.1, r * 0.75, accent, hot, e.t * 22 + x * 8);
-    }
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 7. клешня «Улей»: три сегментных захвата и клетка-ядро ---------- */
-  function drawSplitterShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(e.angle);
-
-    // контур сдерживания (телеграф)
-    ctx.save();
-    ctx.strokeStyle = rgba(fill, 0.42);
-    ctx.lineWidth = 1.1;
-    ctx.setLineDash([4, 5]);
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = -Math.PI / 2 + (i / 6) * TAU;
-      const px = Math.cos(a) * r * 1.2, py = Math.sin(a) * r * 1.2;
-      if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
-    }
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.restore();
-
-    // энергетические связи
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const pulse = 0.55 + Math.sin(e.t * 5.5 + e.seed) * 0.3;
-    ctx.strokeStyle = rgba(accent, 0.35 * pulse);
-    ctx.lineWidth = r * 0.1;
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * TAU + Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(Math.cos(a + Math.PI / 2) * r * 0.9, Math.sin(a + Math.PI / 2) * r * 0.9);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    // три клешни
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * TAU + Math.PI / 2;
-      ctx.save();
-      ctx.rotate(a);
-
-      // плечо
-      shipBody(r, [[-0.09, 0.22], [0.09, 0.22], [0.12, 0.62], [-0.12, 0.62]], hot, F, 0.8, 0.9);
-      ctx.strokeStyle = rgba(accent, hot ? 0.85 : 0.45);
-      ctx.lineWidth = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(0, r * 0.26);
-      ctx.lineTo(0, r * 0.58);
-      ctx.stroke();
-
-      // локтевой сустав
-      shipBody(r, [[-0.13, 0.62], [0.13, 0.62], [0.16, 0.78], [-0.16, 0.78]], hot, F, 0.7, 0.8);
-      lightDot(0, r * 0.7, r * 0.05, accent, 0.95);
-
-      // клешня-лопасть
-      shipBody(r, [
-        [0, 1.22], [0.28, 0.96], [0.22, 0.72], [0, 0.82], [-0.22, 0.72], [-0.28, 0.96]
-      ], hot, F, 0.8, 1);
-      ctx.strokeStyle = rgba(accent, hot ? 0.9 : 0.55);
-      ctx.lineWidth = 0.65;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.24, r * 0.92);
-      ctx.lineTo(0, r * 1.16);
-      ctx.lineTo(r * 0.24, r * 0.92);
-      ctx.stroke();
-      ctx.fillStyle = glassFill(0, r * 0.92, r * 0.055, r * 0.08);
-      ctx.beginPath();
-      ctx.ellipse(0, r * 0.92, r * 0.055, r * 0.08, 0, 0, TAU);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // ядро-клетка
-    shipBody(r, HEX6.map(([x, y]) => [x * 0.42, y * 0.42]), hot, F, 0.8, 1.2);
-    for (let i = 0; i < 6; i++) {
-      const [x, y] = HEX6[i];
-      lightDot(x * r * 0.42, y * r * 0.42, r * 0.025, accent, 0.9);
-    }
-
-    const ng = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.34);
-    ng.addColorStop(0, `rgba(255,255,255,${0.9 * pulse})`);
-    ng.addColorStop(0.45, rgba(accent, 0.75));
-    ng.addColorStop(1, rgba(accent, 0));
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = ng;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.34, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 8. летающее крыло «Серп»: зубчатая кромка, гондолы, бомболюк ---------- */
-  function drawBomberShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 1.3 + e.seed) * 0.06);
-
-    // выхлопы мотогондол
-    for (const side of [-1, 1]) {
-      for (const k of [0.66, 1.2]) {
-        thruster(side * k * r, -r * 0.44, r * 0.12, r * (k > 1 ? 0.9 : 0.74), accent, hot, e.t * 16 + side * k * 10);
-      }
-    }
-
-    // крыло с зубчатой задней кромкой
-    shipBody(r, [
-      [0, 1.3], [0.42, 1.02], [1.38, 0.52], [1.62, 0.08],
-      [1.42, -0.2], [1.1, -0.18], [1.02, -0.55], [0.66, -0.48],
-      [0.52, -0.92], [0, -0.78],
-      [-0.52, -0.92], [-0.66, -0.48], [-1.02, -0.55], [-1.1, -0.18],
-      [-1.42, -0.2], [-1.62, 0.08], [-1.38, 0.52], [-0.42, 1.02]
-    ], hot, F, 1, 1.4);
-    wingBlades(r, fill, hot, F, r * 1.58, r * 0.02);
-
-    // мотогондолы
-    for (const side of [-1, 1]) {
-      for (const k of [0.66, 1.2]) {
-        shipBody(r, [
-          [side * k - 0.1, 0.16], [side * k + 0.1, 0.16],
-          [side * k + 0.12, -0.34], [side * k - 0.12, -0.34]
-        ], hot, F, 0.7, 0.9);
-        lightDot(side * k * r, -r * 0.3, r * 0.04, accent, 0.9);
-      }
-    }
-
-    // панели
-    shipSeams(r, hot, [
-      [-0.6, 0.7, 0.6, 0.7], [-1.0, 0.3, 1.0, 0.3], [-0.86, 0.02, 0.86, 0.02],
-      [0.5, 0.78, 1.32, 0.44], [-0.5, 0.78, -1.32, 0.44],
-      [0.6, 0.36, 1.42, 0.06], [-0.6, 0.36, -1.42, 0.06]
-    ], 0.45, 0.05);
-    shipHi(r, [[-0.58, 0.66, 0.58, 0.66], [-0.98, 0.26, 0.98, 0.26]]);
-    boltSet(r, hot, F, [[-1.2, 0.24], [1.2, 0.24], [-0.78, 0.46], [0.78, 0.46]], 0.4);
-
-    // фюзеляж
-    shipBody(r, [
-      [0, 1.44], [0.24, 1.02], [0.3, 0.2], [0.26, -0.7], [0.14, -0.98],
-      [-0.14, -0.98], [-0.26, -0.7], [-0.3, 0.2], [-0.24, 1.02]
-    ], hot, F, 1, 1.3);
-    liveryStripes(r, hot, F, 0, -0.8, 1.15, 0.06);
-
-    // бомболюк
-    ctx.fillStyle = "rgba(6,10,22,0.96)";
-    roundRectPath(-r * 0.16, -r * 0.06, r * 0.32, r * 0.56, r * 0.05);
+    ctx.fillStyle = hot ? "#ffffff" : "rgba(4,7,14,0.88)";
+    roundRectPath(-r * 0.18, r * 0.02, r * 0.36, r * 0.5, r * 0.05);
     ctx.fill();
     ctx.strokeStyle = rgba(accent, 0.55);
     ctx.lineWidth = 0.7;
     ctx.stroke();
     const blink = 0.45 + Math.sin(e.t * 8 + e.seed) * 0.35;
-    for (let i = 0; i < 3; i++) lightDot(0, i * r * 0.16, r * 0.045, accent, blink);
-
-    // кабина
-    ctx.fillStyle = glassFill(0, r * 0.62, r * 0.13, r * 0.26);
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.62, r * 0.13, r * 0.26, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // турели
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 0.34, r * 0.28);
-      shipBody(r, [[0, 0.16], [0.1, 0.02], [0.08, -0.14], [-0.08, -0.14], [-0.1, 0.02]], hot, F, 0.7, 0.8);
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(6,9,18,0.95)";
-      roundRectPath(-r * 0.025, 0, r * 0.05, r * 0.28, r * 0.02);
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // кили
-    for (const side of [-1, 1]) {
-      shipBody(r, [[side * 0.16, -0.72], [side * 0.4, -1.14], [side * 0.34, -0.68]], hot, F, 0.7, 0.9);
-    }
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 9. таран «Молот»: тупая бронеплита, два форштевня ---------- */
-  function drawChargerShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    const aiming = e.chargeState === 1;
-    const dashing = e.chargeState === 2;
-    ctx.save();
-    ctx.rotate(e.angle - Math.PI);
-
-    // предупреждающая линия к цели
-    if (aiming) {
-      const warn = 0.32 + Math.sin(e.t * 22) * 0.26;
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = `rgba(255,170,110,${warn})`;
-      ctx.lineWidth = 1.3;
-      ctx.setLineDash([6, 7]);
-      ctx.beginPath();
-      ctx.moveTo(0, r * 1.6);
-      ctx.lineTo(0, Math.min(G.h, 560));
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-      lightDot(0, r * 1.55, r * 0.14 + Math.sin(e.t * 16) * r * 0.03, "#ffaa6e", 0.35);
-    }
-
-    // реактивный след рывка
-    if (dashing) {
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      const trail = ctx.createLinearGradient(0, -r * 0.3, 0, -r * 3.8);
-      trail.addColorStop(0, rgba(fill, 0.5));
-      trail.addColorStop(1, rgba(fill, 0));
-      ctx.fillStyle = trail;
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.38, -r * 0.32);
-      ctx.lineTo(r * 0.38, -r * 0.32);
-      ctx.lineTo(0, -r * 3.8);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
-
-    // выхлопы
-    for (const x of [-0.42, 0, 0.42]) {
-      thruster(x * r, -r * 1.02, r * 0.16, dashing ? r * 1.9 : r * 1.0, accent, hot, e.t * 22 + x * 11);
-    }
-
-    // боковые силовые блоки
-    for (const side of [-1, 1]) {
-      shipBody(r, [
-        [side * 0.5, 0.5], [side * 1.16, 0.72], [side * 1.2, 0.18], [side * 0.82, -0.34]
-      ], hot, F, 0.85, 1.1);
-      lightDot(side * r * 1.12, r * 0.62, r * 0.04, accent, 0.9);
-    }
-
-    // таранная плита
-    shipBody(r, [[-0.72, 0.9], [0.72, 0.9], [0.5, 1.36], [0, 1.58], [-0.5, 1.36]], hot, F, 1.05, 1.4);
-    if (F.hazard) hazardBars(-r * 0.5, r * 0.98, r * 1.0, r * 0.14, accent, hot);
-    ctx.strokeStyle = rgba(accent, hot ? 0.95 : 0.6);
-    ctx.lineWidth = 0.75;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.5, r * 1.3);
-    ctx.lineTo(0, r * 1.52);
-    ctx.lineTo(r * 0.5, r * 1.3);
-    ctx.stroke();
-
-    // корпус
-    shipBody(r, [
-      [0.72, 0.9], [0.92, 0.34], [0.82, -0.5], [0.52, -0.98], [0, -1.14],
-      [-0.52, -0.98], [-0.82, -0.5], [-0.92, 0.34], [-0.72, 0.9]
-    ], hot, F, 1, 1.5);
-    shipSeams(r, hot, [
-      [-0.62, 0.56, 0.62, 0.56], [-0.7, 0.1, 0.7, 0.1],
-      [-0.58, -0.42, 0.58, -0.42], [-0.4, -0.86, 0.4, -0.86]
-    ], 0.55, 0.06);
-    shipHi(r, [[-0.6, 0.52, 0.6, 0.52], [-0.66, 0.06, 0.66, 0.06]]);
-    boltLine(r, hot, F, -0.78, -0.6, 0.5, 4);
-    boltLine(r, hot, F, 0.78, -0.6, 0.5, 4);
-
-    // кабина
-    ctx.fillStyle = glassFill(0, r * 0.5, r * 0.14, r * 0.22, "#ffb08a");
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.5, r * 0.14, r * 0.22, 0, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = "rgba(255,255,255,0.4)";
-    ctx.lineWidth = 0.5;
-    ctx.stroke();
-
-    // двигательный блок
-    ctx.fillStyle = hot ? "#ffffff" : "rgba(5,8,16,0.95)";
-    roundRectPath(-r * 0.5, -r * 1.04, r * 1.0, r * 0.24, r * 0.05);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.55);
-    ctx.lineWidth = 0.65;
-    ctx.stroke();
-    for (const x of [-0.24, 0, 0.24]) lightDot(x * r, -r * 0.92, r * 0.04, accent, 0.9);
-
-    // копейный наконечник
-    ctx.fillStyle = hot ? "#ffffff" : "#dfe7ff";
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.74);
-    ctx.lineTo(r * 0.09, r * 1.5);
-    ctx.lineTo(0, r * 1.38);
-    ctx.lineTo(-r * 0.09, r * 1.5);
-    ctx.closePath();
-    ctx.fill();
-    lightDot(0, r * 1.56, r * 0.06, accent, 0.95);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-  }
-
-  /* ---------- 10. фрегат «Щит»: аутригеры-эмиттеры, киль, турели ---------- */
-  function drawGuardianShip(e, fill, hot, r) {
-    const F = fleetGen(e);
-    const accent = shipAccent(fill, hot, F);
-    ctx.save();
-    ctx.rotate(Math.sin(e.t * 0.7 + e.seed) * 0.035);
-
-    // дюзы
-    for (const x of [-0.52, 0, 0.52]) {
-      thruster(x * r, -r * 0.88, r * 0.13, r * 0.78, accent, hot, e.t * 15 + x * 10);
-    }
-
-    // аутригеры щита
-    for (const side of [-1, 1]) {
-      ctx.strokeStyle = hot ? "rgba(255,255,255,0.9)" : "rgba(4,7,14,0.92)";
-      ctx.lineWidth = Math.max(0.8, r * 0.11);
-      ctx.beginPath();
-      ctx.moveTo(side * r * 0.42, r * 0.3);
-      ctx.lineTo(side * r * 0.78, r * 0.02);
-      ctx.stroke();
-      ctx.strokeStyle = rgba(accent, hot ? 0.8 : 0.35);
-      ctx.lineWidth = Math.max(0.4, r * 0.045);
-      ctx.stroke();
-
-      shipBody(r, [
-        [side * 0.72, 0.78], [side * 1.02, 0.5], [side * 1.06, -0.26],
-        [side * 0.86, -0.58], [side * 0.7, -0.28], [side * 0.66, 0.42]
-      ], hot, F, 0.85, 1.1);
-
-      ctx.fillStyle = hot ? "#ffffff" : "rgba(5,9,18,0.94)";
-      ctx.beginPath();
-      ctx.arc(side * r * 0.9, r * 0.52, r * 0.13, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = rgba(accent, hot ? 1 : 0.75);
-      ctx.lineWidth = 0.7;
-      ctx.stroke();
-      lightDot(side * r * 0.9, r * 0.52, r * 0.07, accent, 0.85);
-      shipSeams(r, hot, [[side * 0.74, 0.3, side * 1.0, 0.14], [side * 0.72, -0.1, side * 0.98, -0.24]], 0.45, 0.05);
-    }
-
-    // корпус
-    shipBody(r, [
-      [0, 1.5], [0.4, 1.08], [0.52, 0.4], [0.42, -0.34], [0.28, -0.16],
-      [0.2, -0.8], [0, -0.98], [-0.2, -0.8], [-0.28, -0.16], [-0.42, -0.34],
-      [-0.52, 0.4], [-0.4, 1.08]
-    ], hot, F, 1, 1.6);
-    wingBlades(r, fill, hot, F, r * 0.5, r * 0.1);
-
-    // центральная плита
-    shipPlate(r, [[0, 1.3], [0.22, 0.9], [0.17, -0.3], [0, -0.86], [-0.17, -0.3], [-0.22, 0.9]], hot, 0.05);
-    shipSeams(r, hot, [
-      [-0.4, 0.72, 0.4, 0.72], [-0.44, 0.2, 0.44, 0.2],
-      [-0.34, -0.42, 0.34, -0.42], [-0.16, -0.76, 0.16, -0.76]
-    ], 0.5, 0.06);
-    shipHi(r, [[-0.38, 0.68, 0.38, 0.68], [-0.42, 0.16, 0.42, 0.16]]);
-    liveryStripes(r, hot, F, 0, -0.7, 1.25, 0.06);
-    boltLine(r, hot, F, -0.34, 0.5, 0.9, 2);
-
-    // кабина-щель
-    ctx.fillStyle = "rgba(6,10,22,0.96)";
-    roundRectPath(-r * 0.18, r * 0.5, r * 0.36, r * 0.14, r * 0.04);
-    ctx.fill();
-    ctx.strokeStyle = rgba(accent, 0.7);
-    ctx.lineWidth = 0.65;
-    ctx.stroke();
-    lightDot(0, r * 0.57, r * 0.04, accent, 0.6);
-
-    // турели
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 0.3, r * 0.02);
-      shipBody(r, [[0, 0.18], [0.1, 0.02], [0.08, -0.14], [-0.08, -0.14], [-0.1, 0.02]], hot, F, 0.7, 0.8);
-      ctx.restore();
-    }
-
-    // хвостовой плавник
-    shipBody(r, [[0, -0.84], [0.1, -1.18], [0.04, -0.84]], hot, F, 0.7, 0.8);
-    lightDot(0, -r * 1.18, r * 0.035, accent, 0.9);
-
-    if (e.gen === 1) firstGenKit(e, r, fill, hot, F);
-    ctx.restore();
-
-    // дуга щита
-    if (e.shieldHp > 0) {
-      const a = e.arc;
-      const span = 0.82;
-      const k = e.shieldHp / e.shieldMax;
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.strokeStyle = rgba(fill, 0.14);
-      ctx.lineWidth = 12;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 6, a - span, a + span);
-      ctx.stroke();
-      ctx.strokeStyle = rgba(fill, 0.55 + k * 0.35);
-      ctx.lineWidth = 3.4;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 7, a - span, a + span);
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(255,255,255,${0.25 + k * 0.4})`;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 9.5, a - span * 0.92, a + span * 0.92);
-      ctx.stroke();
-      for (let i = 0; i < e.shieldMax; i++) {
-        const pa = a - span + (span * 2) * ((i + 0.5) / e.shieldMax);
-        ctx.fillStyle = i < e.shieldHp ? fill : "rgba(255,255,255,0.18)";
-        ctx.beginPath();
-        ctx.arc(Math.cos(pa) * (e.r + 7), Math.sin(pa) * (e.r + 7), 1.4, 0, TAU);
-        ctx.fill();
-      }
-      ctx.restore();
-    } else {
-      ctx.save();
-      ctx.strokeStyle = rgba(fill, 0.28);
-      ctx.lineWidth = 1;
-      ctx.setLineDash([2, 6]);
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r + 7, 0, TAU);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
-  }
-
-  /* ---------- оснастка первого поколения «МОЛОТ» ---------- */
-  function firstGenKit(e, r, fill, hot, F) {
-    if (e.gen !== 1) return;
-    const accent = shipAccent(fill, hot, F);
-    const dark = hot ? "#ffffff" : "rgba(4,7,14,0.95)";
-    ctx.save();
-    ctx.lineJoin = "miter";
-
-    if (e.type === "drone") {
-      const mark = F.mark || accent;
-      for (const side of [-1, 1]) {
-        // предупредительные шевроны на крыле
-        ctx.strokeStyle = rgba(mark, hot ? 1 : 0.8);
-        ctx.lineWidth = Math.max(0.7, r * 0.05);
-        ctx.beginPath();
-        for (let i = 0; i < 2; i++) {
-          const x = side * r * (0.6 + i * 0.14);
-          ctx.moveTo(x, r * 0.03);
-          ctx.lineTo(x + side * r * 0.07, r * 0.16);
-          ctx.lineTo(x, r * 0.29);
-        }
-        ctx.stroke();
-        // подвесной блок
-        ctx.fillStyle = dark;
-        roundRectPath(side * r * 0.5 - r * 0.05, -r * 0.34, r * 0.1, r * 0.2, r * 0.03);
-        ctx.fill();
-        ctx.strokeStyle = rgba(accent, 0.6);
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-        lightDot(side * r * 0.5, -r * 0.16, r * 0.026, accent, 0.85);
-        // стойка шасси на киле
-        shipBody(r, [[side * 0.16, -0.88], [side * 0.28, -1.12], [side * 0.22, -0.86]], hot, F, 0.55, 0.7);
-      }
-    } else if (e.type === "runner") {
-      const mark = F.mark || accent;
-      // дорсальная антенна
-      ctx.strokeStyle = rgba(accent, 0.8);
-      ctx.lineWidth = 0.7;
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 1.0);
-      ctx.lineTo(0, -r * 1.38);
-      ctx.stroke();
-      lightDot(0, -r * 1.38, r * 0.035, accent, 0.95);
-      for (const side of [-1, 1]) {
-        // дополнительные лезвия
-        shipBody(r, [[side * 0.22, 0.4], [side * 0.48, 0.12], [side * 0.34, 0.06], [side * 0.16, 0.24]], hot, F, 0.65, 0.7);
-        // маркировка
-        ctx.strokeStyle = rgba(mark, hot ? 1 : 0.75);
-        ctx.lineWidth = Math.max(0.6, r * 0.045);
-        ctx.beginPath();
-        ctx.moveTo(side * r * 0.33, -r * 0.14);
-        ctx.lineTo(side * r * 0.4, -r * 0.04);
-        ctx.lineTo(side * r * 0.33, r * 0.06);
-        ctx.stroke();
-      }
-    } else if (e.type === "orb") {
-      const mark = F.mark || accent;
-      for (let i = 0; i < 4; i++) {
-        const a = Math.PI / 4 + (i * Math.PI) / 2;
-        ctx.save();
-        ctx.rotate(a);
-        // бронепластина на кольце
-        shipBody(r, [[-0.16, 1.12], [0.16, 1.12], [0.19, 0.94], [-0.19, 0.94]], hot, F, 0.6, 0.7);
-        ctx.strokeStyle = rgba(mark, hot ? 1 : 0.7);
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.1, r * 1.03);
-        ctx.lineTo(r * 0.1, r * 1.03);
-        ctx.stroke();
-        ctx.restore();
-      }
-      // антенны
-      for (const side of [-1, 1]) {
-        ctx.strokeStyle = rgba(accent, 0.7);
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(side * r * 0.52, -r * 0.62);
-        ctx.lineTo(side * r * 0.82, -r * 1.04);
-        ctx.stroke();
-        lightDot(side * r * 0.82, -r * 1.04, r * 0.028, accent, 0.9);
-      }
-    } else if (e.type === "tank") {
-      for (const side of [-1, 1]) {
-        shipBody(r, [[side * 0.98, 0.4], [side * 1.3, 0.18], [side * 1.18, -0.4], [side * 1.0, -0.3]], hot, F, 0.8, 0.9);
-        ctx.fillStyle = dark;
-        roundRectPath(side * r * 1.02 - r * 0.05, -r * 0.92, r * 0.1, r * 0.34, r * 0.02);
-        ctx.fill();
-        lightDot(side * r * 1.02, -r * 0.62, r * 0.03, accent, 0.9);
-      }
-    } else if (e.type === "weaver") {
-      shipBody(r, [[0.12, 0.5], [0.9, 0.78], [0.78, 0.44], [0.16, 0.2]], hot, F, 0.7, 0.8);
-      ctx.strokeStyle = rgba(accent, 0.75);
-      ctx.lineWidth = 0.6;
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 1.14);
-      ctx.lineTo(0, -r * 1.46);
-      ctx.stroke();
-      lightDot(0, -r * 1.46, r * 0.035, accent, 0.9);
-    } else if (e.type === "sniper") {
-      for (const side of [-1, 1]) {
-        ctx.fillStyle = dark;
-        roundRectPath(side * r * 0.13 - r * 0.11, r * 1.15, r * 0.22, r * 0.18, r * 0.03);
-        ctx.fill();
-        ctx.strokeStyle = rgba(accent, 0.7);
-        ctx.lineWidth = 0.5;
-        ctx.stroke();
-        roundRectPath(side * r * 0.13 - r * 0.11, r * 1.75, r * 0.22, r * 0.18, r * 0.03);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.strokeStyle = hot ? "#ffffff" : rgba(F.trim, 0.55);
-      ctx.lineWidth = 0.6;
-      for (const yy of [2.08, 2.2]) {
-        ctx.beginPath();
-        ctx.moveTo(-r * 0.12, r * yy);
-        ctx.lineTo(r * 0.12, r * yy);
-        ctx.stroke();
-      }
-    } else if (e.type === "splitter") {
-      for (let i = 0; i < 6; i++) {
-        ctx.save();
-        ctx.rotate((i / 6) * TAU);
-        ctx.strokeStyle = rgba(accent, 0.7);
-        ctx.lineWidth = 0.5;
-        ctx.beginPath();
-        ctx.moveTo(0, r * 0.42);
-        ctx.lineTo(0, r * 0.6);
-        ctx.stroke();
-        lightDot(0, r * 0.6, r * 0.025, accent, 0.9);
-        ctx.restore();
-      }
-    } else if (e.type === "bomber") {
-      for (const side of [-1, 1]) {
-        for (let i = 0; i < 3; i++) {
-          const x = side * r * (0.72 + i * 0.2);
-          ctx.fillStyle = dark;
-          roundRectPath(x - r * 0.045, r * 0.08, r * 0.09, r * 0.34, r * 0.03);
-          ctx.fill();
-          ctx.strokeStyle = rgba(accent, 0.5);
-          ctx.lineWidth = 0.45;
-          ctx.stroke();
-          lightDot(x, r * 0.42, r * 0.025, accent, 0.8);
-        }
-        shipBody(r, [[side * 1.5, -0.16], [side * 1.74, -0.46], [side * 1.56, -0.08]], hot, F, 0.6, 0.7);
-      }
-    } else if (e.type === "charger") {
-      for (const side of [-1, 1]) {
-        shipBody(r, [[side * 0.86, 0.62], [side * 1.3, 0.88], [side * 1.22, 0.4]], hot, F, 0.7, 0.8);
-        ctx.strokeStyle = rgba(accent, 0.8);
-        ctx.lineWidth = 0.6;
-        ctx.beginPath();
-        ctx.moveTo(side * r * 0.92, r * 0.62);
-        ctx.lineTo(side * r * 1.22, r * 0.82);
-        ctx.stroke();
-      }
-    } else if (e.type === "guardian") {
-      for (const side of [-1, 1]) {
-        ctx.strokeStyle = rgba(accent, 0.8);
-        ctx.lineWidth = 0.65;
-        ctx.beginPath();
-        ctx.moveTo(side * r * 1.0, -r * 0.36);
-        ctx.lineTo(side * r * 1.18, -r * 0.8);
-        ctx.stroke();
-        lightDot(side * r * 1.18, -r * 0.8, r * 0.03, accent, 0.9);
-      }
-      shipBody(r, [[0, 1.5], [0.12, 1.28], [0, 1.2], [-0.12, 1.28]], hot, F, 0.7, 0.8);
-      lightDot(0, r * 1.34, r * 0.03, accent, 0.9);
-    }
+    for (let i = 0; i < 3; i++) lightDot(0, r * (0.12 + i * 0.15), r * 0.045, accent, blink);
     ctx.restore();
   }
 
   function drawEnemyShip(e, fill, hot) {
-    shipFill = fill;
     const r = e.r;
-    switch (e.type) {
-      case "drone": drawDroneShip(e, fill, hot, r); break;
-      case "runner": drawRunnerShip(e, fill, hot, r); break;
-      case "orb": drawOrbShip(e, fill, hot, r); break;
-      case "tank": drawTankShip(e, fill, hot, r); break;
-      case "weaver": drawWeaverShip(e, fill, hot, r); break;
-      case "sniper": drawSniperShip(e, fill, hot, r); break;
-      case "splitter": drawSplitterShip(e, fill, hot, r); break;
-      case "bomber": drawBomberShip(e, fill, hot, r); break;
-      case "charger": drawChargerShip(e, fill, hot, r); break;
-      case "guardian": drawGuardianShip(e, fill, hot, r); break;
-      default: drawDroneShip(e, fill, hot, r);
+    const role = e.type;
+    const shipId = ROLE_SHIP[role] || "aurora";
+    const accent = hot ? "#ffffff" : fill;
+
+    ctx.save();
+    switch (role) {
+      case "drone": ctx.rotate(Math.sin(e.t * 2 + e.seed) * 0.12); break;
+      case "runner": ctx.rotate(Math.sin(e.t * 3 + e.seed) * 0.05); break;
+      case "orb": ctx.rotate(e.angle); break;
+      case "tank": ctx.rotate(Math.sin(e.t * 0.8 + e.seed) * 0.045); break;
+      case "weaver": ctx.rotate(Math.sin(e.t * 3.2 + e.seed) * 0.17); break;
+      case "sniper": ctx.rotate(Math.atan2(G.ship.y - e.y, G.ship.x - e.x) - Math.PI / 2); break;
+      case "splitter": ctx.rotate(e.angle); break;
+      case "bomber": ctx.rotate(Math.sin(e.t * 1.3 + e.seed) * 0.06); break;
+      case "charger": ctx.rotate(e.angle - Math.PI); break;
+      case "guardian": ctx.rotate(Math.sin(e.t * 0.7 + e.seed) * 0.035); break;
+    }
+
+    // телеграфы под корпусом
+    if (role === "sniper") sniperTelegraph(e, r, fill);
+    if (role === "charger") chargerTelegraph(e, r, fill);
+    if (role === "splitter") splitterTelegraph(e, r, fill);
+    if (role === "weaver") weaverTelegraph(e, r, fill);
+    if (role === "orb") orbTelegraph(e, r, fill);
+
+    const boost = role === "charger" && e.chargeState === 2 ? 1.9 : role === "sniper" ? 1.15 : 1;
+    FleetArt.draw(ctx, e, fill, hot, shipId, boost);
+
+    // телеграфы поверх корпуса
+    if (role === "bomber") bombBay(e, r, fill, hot);
+    if (role === "tank") {
+      const hpw = r * 2;
+      ctx.fillStyle = "rgba(255,255,255,0.16)";
+      ctx.fillRect(-hpw / 2, -r - 10, hpw, 3);
+      ctx.fillStyle = hot ? "#ffffff" : fill;
+      ctx.fillRect(-hpw / 2, -r - 10, hpw * clamp(e.hp / e.maxHp, 0, 1), 3);
+    }
+    ctx.restore();
+
+    // дуга щита стража — не вращается вместе с корпусом
+    if (role === "guardian") {
+      if (e.shieldHp > 0) {
+        const a = e.arc;
+        const span = 0.82;
+        const k = e.shieldHp / e.shieldMax;
+        ctx.save();
+        ctx.globalCompositeOperation = "lighter";
+        ctx.strokeStyle = rgba(accent, 0.14);
+        ctx.lineWidth = 12;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r + 6, a - span, a + span);
+        ctx.stroke();
+        ctx.strokeStyle = rgba(accent, 0.55 + k * 0.35);
+        ctx.lineWidth = 3.4;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r + 7, a - span, a + span);
+        ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${0.25 + k * 0.4})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r + 9.5, a - span * 0.92, a + span * 0.92);
+        ctx.stroke();
+        for (let i = 0; i < e.shieldMax; i++) {
+          const pa = a - span + (span * 2) * ((i + 0.5) / e.shieldMax);
+          ctx.fillStyle = i < e.shieldHp ? accent : "rgba(255,255,255,0.18)";
+          ctx.beginPath();
+          ctx.arc(Math.cos(pa) * (e.r + 7), Math.sin(pa) * (e.r + 7), 1.4, 0, TAU);
+          ctx.fill();
+        }
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.strokeStyle = rgba(accent, 0.28);
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 6]);
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r + 7, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
     }
   }
-
 
   function drawEnemies() {
     for (const e of G.enemies) {
