@@ -1317,8 +1317,8 @@
 
   const LOW_END =
     IS_TOUCH &&
-    ((navigator.deviceMemory && navigator.deviceMemory <= 3) ||
-      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 4));
+    ((navigator.deviceMemory && navigator.deviceMemory <= 2) ||
+      (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2));
 
   function buzz(ms) {
     if (IS_TOUCH && navigator.vibrate) {
@@ -1706,7 +1706,11 @@
   });
 
   const bg = { grad: null, nebula: null };
-  const DPR_START = LOW_END ? 1.15 : IS_TOUCH ? 1.5 : 2;
+  // на телефонах canvas раньше рендерился в 1.15–1.5x и растягивался на
+  // экран 3x — отсюда мутные и рваные корабли. Держим 2x и не опускаемся
+  // ниже 1.6x, чтобы детали флота оставались читаемыми.
+  const DPR_START = LOW_END ? 1.5 : 2;
+  const DPR_MIN = LOW_END ? 1.25 : 1.6;
   let dprCap = DPR_START;
   const perf = { acc: 0, n: 0, drops: 0 };
 
@@ -1720,6 +1724,10 @@
     canvas.style.width = G.w + "px";
     canvas.style.height = G.h + "px";
     ctx.setTransform(G.dpr, 0, 0, G.dpr, 0, 0);
+    // canvas.width выше сбрасывает состояние 2d-контекста, поэтому
+    // качественное сглаживание включаем здесь, после каждого resize
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
 
     const g = ctx.createLinearGradient(0, 0, 0, G.h);
     g.addColorStop(0, "#070818");
@@ -2937,6 +2945,15 @@
     updateHud();
     updateChips();
     updatePlasmaHud();
+    // новый заход начинается с полного разрешения: если прошлый бой
+    // просадил dpr, не тащим мутную картинку через все следующие попытки
+    if (IS_TOUCH && (dprCap !== DPR_START || perf.drops)) {
+      dprCap = DPR_START;
+      perf.drops = 0;
+      perf.acc = 0;
+      perf.n = 0;
+      resize();
+    }
   }
 
   function openLoadout() {
@@ -6507,8 +6524,8 @@
         const fps = perf.n / perf.acc;
         perf.acc = 0;
         perf.n = 0;
-        if (fps < 48 && dprCap > 1.01 && perf.drops < 3) {
-          dprCap = Math.max(1, dprCap - 0.2);
+        if (fps < 48 && dprCap > DPR_MIN + 0.001 && perf.drops < 2) {
+          dprCap = Math.max(DPR_MIN, dprCap - 0.2);
           perf.drops++;
           resize();
         }
