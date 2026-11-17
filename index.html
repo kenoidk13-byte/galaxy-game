@@ -2,7 +2,8 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
 <title>GALAXY: аркадный шутер</title>
 <meta name="theme-color" content="#04050e" />
 <meta name="mobile-web-app-capable" content="yes" />
@@ -49,8 +50,19 @@
 
   body {
     touch-action: manipulation; /* pinch-zoom остаётся доступным в меню и на экранах */
+  }
+
+  /* Текст-контент (описание модулей, подсказки, рекорд) должен выделяться:
+     user-select: none только на том, что ведёт себя как элемент управления */
+  button,
+  [role="button"],
+  .chip,
+  .kbd,
+  .music-vol,
+  canvas#game {
     user-select: none;
     -webkit-user-select: none;
+    -webkit-touch-callout: none;
   }
 
   #app { position: fixed; inset: 0; }
@@ -115,8 +127,8 @@
   }
   .stat--right { align-items: flex-end; }
   .stat__label {
-    font-size: 10.5px;
-    letter-spacing: 0.24em;
+    font-size: 11px;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -155,11 +167,34 @@
     align-items: baseline;
     justify-content: space-between;
     gap: 10px;
-    font-size: 10.5px;
-    letter-spacing: 0.24em;
+    font-size: 11px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     color: var(--muted);
   }
+  .plasma__meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    white-space: nowrap;
+  }
+  .plasma__key {
+    display: none;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+  }
+  .plasma__key kbd {
+    min-width: 0;
+    height: auto;
+    padding: 2px 6px;
+    font-size: 11px;
+  }
+  body:not(.is-touch) .plasma__key { display: inline-flex; }
+  .plasma.is-on .plasma__key { color: var(--ink); }
+  .plasma.is-ready .plasma__key { color: #ffdbe2; }
   .plasma__label { white-space: nowrap; }
   .plasma__pct {
     font-variant-numeric: tabular-nums;
@@ -245,18 +280,16 @@
     gap: 16px;
   }
 
+  /* пауза доступна мышью, а не только по Esc; на тач — выше, под большим пальцем */
   .pause-btn {
-    display: none;
-  }
-  body.is-touch .pause-btn {
     position: absolute;
-    top: calc(env(safe-area-inset-top, 0px) + 88px);
-    right: calc(env(safe-area-inset-right, 0px) + 16px);
+    top: calc(clamp(16px, 3vw, 34px) + 48px);
+    right: clamp(16px, 3vw, 34px);
     z-index: 4;
     display: grid;
     place-items: center;
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border-radius: 50%;
     border: 1px solid rgba(160, 170, 255, 0.35);
@@ -270,10 +303,32 @@
     -webkit-tap-highlight-color: transparent;
     transition: transform 140ms var(--ease), background 200ms var(--ease), border-color 200ms var(--ease);
   }
-  body.is-touch .pause-btn:active {
+  @media (hover: hover) and (pointer: fine) {
+    .pause-btn:hover {
+      border-color: rgba(77, 225, 255, 0.55);
+      background: rgba(20, 24, 52, 0.72);
+    }
+    .pause-btn::after {
+      content: "ESC";
+      position: absolute;
+      right: calc(100% + 9px);
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+    }
+  }
+  .pause-btn:active {
     transform: scale(0.92);
     background: rgba(30, 34, 70, 0.7);
     border-color: rgba(77, 225, 255, 0.6);
+  }
+  body.is-touch .pause-btn {
+    top: calc(env(safe-area-inset-top, 0px) + 88px);
+    right: calc(env(safe-area-inset-right, 0px) + 16px);
+    width: 46px;
+    height: 46px;
   }
   .pause-btn i {
     display: block;
@@ -305,14 +360,18 @@
     pointer-events: auto;
     transition: border-color 200ms var(--ease), opacity 300ms var(--ease);
   }
-  .music-vol:hover,
   .music-vol:focus-within { border-color: rgba(77, 225, 255, 0.4); }
+  /* hover только там, где он реально есть: иначе после тапа состояние
+     «приподнято» залипает до следующего касания в другом месте */
+  @media (hover: hover) and (pointer: fine) {
+    .music-vol:hover { border-color: rgba(77, 225, 255, 0.4); }
+  }
   .music-vol svg { width: 15px; height: 15px; flex: none; opacity: 0.85; }
   .music-vol input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    width: 108px;
-    height: 4px;
+    width: 120px;
+    height: 6px;
     border-radius: 3px;
     background: linear-gradient(90deg,
       var(--cyan) 0 var(--pct, 10%),
@@ -323,8 +382,8 @@
   .music-vol input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     border: none;
     background: #fff;
@@ -332,8 +391,8 @@
     cursor: pointer;
   }
   .music-vol input[type="range"]::-moz-range-thumb {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     border-radius: 50%;
     border: none;
     background: #fff;
@@ -393,8 +452,8 @@
     background: var(--glass);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    font-size: 10px;
-    letter-spacing: 0.16em;
+    font-size: 11px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink);
     opacity: 0;
@@ -460,36 +519,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  .eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    margin: 0 0 24px;
-    padding: 8px 14px;
-    border: 1px solid var(--line);
-    border-radius: 999px;
-    background: var(--glass);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    font-size: 10px;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .eyebrow::before {
-    content: "";
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--cyan);
-    box-shadow: 0 0 10px var(--cyan);
-    animation: pulse 2.4s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.35; transform: scale(0.7); }
-  }
-
   .title {
     position: relative;
     margin: 0;
@@ -521,13 +550,15 @@
     padding: 18px 38px;
     border: none;
     border-radius: 999px;
-    background: linear-gradient(135deg, #8f72ff, #6a4bf5 55%, #4b2fd6);
+    /* светлый стоп затемнён: белый текст на градиенте даёт >= 5:1 (AA) */
+    background: linear-gradient(135deg, #6a4bf5, #5a3bee 55%, #4326cd);
     color: #fff;
     font-family: var(--font-ui);
-    font-size: 13px;
+    font-size: 15px;
     font-weight: 700;
-    letter-spacing: 0.22em;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(4, 5, 14, 0.45);
     cursor: pointer;
     box-shadow:
       0 0 0 1px rgba(180, 165, 255, 0.35) inset,
@@ -535,13 +566,15 @@
       0 0 60px -10px rgba(124, 92, 255, 0.6);
     transition: transform 200ms var(--ease), box-shadow 200ms var(--ease), filter 200ms var(--ease);
   }
-  .cta:hover {
-    transform: translateY(-2px);
-    filter: brightness(1.08);
-    box-shadow:
-      0 0 0 1px rgba(200, 190, 255, 0.5) inset,
-      0 24px 54px -12px rgba(124, 92, 255, 0.95),
-      0 0 80px -8px rgba(124, 92, 255, 0.7);
+  @media (hover: hover) and (pointer: fine) {
+    .cta:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+      box-shadow:
+        0 0 0 1px rgba(200, 190, 255, 0.5) inset,
+        0 24px 54px -12px rgba(124, 92, 255, 0.95),
+        0 0 80px -8px rgba(124, 92, 255, 0.7);
+    }
   }
   .cta:active { transform: translateY(0) scale(0.985); }
   .cta:focus-visible { outline: 2px solid var(--cyan); outline-offset: 5px; }
@@ -565,7 +598,7 @@
   body.is-touch .only-touch-inline { display: inline; }
   body.is-touch .hud { padding: calc(env(safe-area-inset-top, 0px) + 14px) calc(env(safe-area-inset-right, 0px) + 16px) calc(env(safe-area-inset-bottom, 0px) + 16px) calc(env(safe-area-inset-left, 0px) + 16px); }
   body.is-touch .screen { padding: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-right, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 20px) calc(env(safe-area-inset-left, 0px) + 20px); }
-  body.is-touch .cta { padding: 19px 40px; font-size: 13.5px; }
+  body.is-touch .cta { padding: 19px 40px; font-size: 15px; }
   body.is-touch .lede { max-width: 34ch; }
   kbd {
     display: inline-grid;
@@ -578,7 +611,7 @@
     border-radius: 7px;
     background: rgba(20, 22, 46, 0.8);
     font-family: var(--font-ui);
-    font-size: 10.5px;
+    font-size: 11px;
     letter-spacing: 0.06em;
     color: var(--ink);
     box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
@@ -591,10 +624,10 @@
 
   .bestline {
     margin: 20px 0 0;
-    font-size: 11.5px;
-    letter-spacing: 0.22em;
+    font-size: 12px;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: rgba(139, 143, 179, 0.8);
+    color: rgba(238, 240, 255, 0.86);
   }
   .bestline b { color: var(--amber); font-weight: 600; }
 
@@ -640,9 +673,11 @@
     overflow: hidden;
     transition: transform 200ms var(--ease), box-shadow 200ms var(--ease);
   }
-  .pick:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 22px 48px -24px rgba(124, 92, 255, 0.55);
+  @media (hover: hover) and (pointer: fine) {
+    .pick:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 22px 48px -24px rgba(124, 92, 255, 0.55);
+    }
   }
   .pick:focus-visible {
     transform: translateY(-3px);
@@ -650,13 +685,33 @@
     outline-offset: 4px;
   }
   .pick:active { transform: translateY(-1px) scale(0.99); }
+  .pick.is-chosen {
+    box-shadow:
+      0 0 0 2px rgba(77, 225, 255, 0.55),
+      0 24px 60px -30px rgba(77, 225, 255, 0.45);
+  }
+  .pick__badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    padding: 4px 9px;
+    border-radius: 999px;
+    border: 1px solid rgba(77, 225, 255, 0.45);
+    background: rgba(77, 225, 255, 0.12);
+    color: var(--cyan);
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
   .pick__tag,
   .pick__name,
   .pick__desc,
   .pick__action { position: relative; z-index: 1; }
   .pick__tag {
-    font-size: 10px;
-    letter-spacing: 0.22em;
+    font-size: 11px;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -680,25 +735,34 @@
     width: 100%;
     padding: 12px 18px;
     border-radius: 999px;
-    background: linear-gradient(135deg, #7d5cf6, #6a4bf5 55%, #4b2fd6);
+    background: linear-gradient(135deg, #6a4bf5, #5a3bee 55%, #4326cd);
     color: #fff;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 700;
-    letter-spacing: 0.2em;
+    letter-spacing: 0.12em;
     text-align: center;
     text-transform: uppercase;
+    text-shadow: 0 1px 2px rgba(4, 5, 14, 0.45);
     box-shadow:
       0 0 0 1px rgba(180, 165, 255, 0.35) inset,
       0 10px 26px -10px rgba(124, 92, 255, 0.85);
     transition: transform 200ms var(--ease), box-shadow 200ms var(--ease), filter 200ms var(--ease);
   }
-  .pick:hover .pick__action,
   .pick:focus-visible .pick__action {
     transform: translateY(-2px);
     filter: brightness(1.08);
     box-shadow:
       0 0 0 1px rgba(200, 190, 255, 0.5) inset,
       0 16px 34px -12px rgba(124, 92, 255, 0.95);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .pick:hover .pick__action {
+      transform: translateY(-2px);
+      filter: brightness(1.08);
+      box-shadow:
+        0 0 0 1px rgba(200, 190, 255, 0.5) inset,
+        0 16px 34px -12px rgba(124, 92, 255, 0.95);
+    }
   }
 
   .loadout__hint {
@@ -712,6 +776,48 @@
     color: var(--muted);
   }
   .loadout__hint span { display: inline-flex; align-items: center; gap: 8px; }
+
+  /* вторичные действия: «Назад» в выборе модуля, «В меню» на экране смерти */
+  .btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 12px 26px;
+    border: 1px solid rgba(160, 170, 255, 0.24);
+    border-radius: 999px;
+    background: var(--glass);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 12.5px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 200ms var(--ease), border-color 200ms var(--ease), background 200ms var(--ease), transform 200ms var(--ease);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-ghost:hover {
+      border-color: rgba(77, 225, 255, 0.5);
+      background: rgba(124, 92, 255, 0.16);
+      transform: translateY(-1px);
+    }
+  }
+  .btn-ghost:active { transform: translateY(0) scale(0.985); }
+  .btn-ghost:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
+  .loadout__actions,
+  .over__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+  }
+  .loadout__actions { margin-top: 24px; }
+  .over__actions { margin-top: 28px; }
+  .over__actions .cta { margin-top: 0; }
 
   /* game over */
   .over__label {
@@ -750,8 +856,8 @@
     align-items: center;
   }
   .score-grid span {
-    font-size: 10.5px;
-    letter-spacing: 0.18em;
+    font-size: 11px;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -816,6 +922,7 @@
   }
   .pause-exit {
     margin-top: 26px;
+    min-height: 44px;
     padding: 12px 26px 12px calc(26px + 0.18em);
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -831,35 +938,24 @@
     cursor: pointer;
     transition: color 200ms var(--ease), border-color 200ms var(--ease), background 200ms var(--ease), transform 200ms var(--ease);
   }
-  .pause-exit:hover {
-    color: var(--ink);
-    border-color: rgba(160, 170, 255, 0.34);
-    background: rgba(124, 92, 255, 0.14);
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    .pause-exit:hover {
+      color: var(--ink);
+      border-color: rgba(160, 170, 255, 0.34);
+      background: rgba(124, 92, 255, 0.14);
+      transform: translateY(-1px);
+    }
   }
   .pause-exit:active { transform: translateY(0) scale(0.985); }
   .pause-exit:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 
-  .credit {
-    position: absolute;
-    bottom: 18px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 10.5px;
-    letter-spacing: 0.26em;
-    text-transform: uppercase;
-    color: rgba(139, 143, 179, 0.42);
-    pointer-events: none;
-  }
-
   @media (max-width: 560px) {
     .hints { gap: 16px; }
     .stat__value { font-size: 19px; }
-    .chips { gap: 6px; }
-    .chip { font-size: 9.5px; padding: 5px 9px; }
-    .credit { display: none; }
+    .chips { gap: 5px; max-width: 68vw; }
+    .chip { font-size: 11px; padding: 4px 9px; letter-spacing: 0.06em; }
     .plasma { margin-top: 2px; max-width: none; }
-    .plasma__head { font-size: 10px; letter-spacing: 0.16em; }
+    .plasma__head { font-size: 11px; letter-spacing: 0.12em; }
     .plasma__track { height: 6px; }
     .loadout__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
     .loadout__lede { font-size: 12.5px; }
@@ -870,7 +966,6 @@
   }
 
   @media (max-height: 640px) {
-    .eyebrow { margin-bottom: 16px; padding: 6px 12px; }
     .loadout__lede { display: none; }
     .loadout__grid { gap: 10px; margin-top: 14px; }
     .pick { padding: 14px 16px; gap: 6px; }
@@ -882,18 +977,36 @@
 
   @media (max-height: 560px) {
     .title { width: min(100%, 340px); }
-    .eyebrow { margin-bottom: 14px; padding: 6px 12px; }
     .lede { display: none; }
     .cta { margin-top: 14px; }
     .hints { margin-top: 20px; }
     .score-grid { margin-top: 20px; }
     .over__title { font-size: clamp(1.6rem, 6vh, 2.4rem); }
-    .credit { display: none; }
     .loadout__lede { display: none; }
     .loadout__grid { margin-top: 18px; }
     .loadout__hint { margin: 14px 0 0; }
     .pick { padding: 12px 16px; }
     .pick__action { padding: 9px 12px; }
+  }
+
+  /* Низкие и узкие экраны: контент выше вьюпорта — центрируем, но разрешаем
+     прокрутку, иначе нижняя карточка и рекорд обрезаются без возможности
+     доскроллить (например, 280×653) */
+  @media (max-height: 660px), (max-width: 340px) {
+    .screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-block: 12px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .screen > .panel { margin-block: auto; }
+    body.is-touch .screen {
+      padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
+      padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -903,10 +1016,10 @@
 </head>
 <body>
 <div id="app">
-  <canvas id="game" aria-label="Игровое поле GALAXY"></canvas>
+  <canvas id="game" role="img" aria-label="Игровое поле GALAXY"></canvas>
   <div class="vignette"></div>
 
-  <div class="hud is-hidden" id="hud">
+  <div class="hud is-hidden" id="hud" aria-hidden="true">
     <div class="hud__row">
       <div class="stat">
         <span class="stat__label">Очки</span>
@@ -915,7 +1028,10 @@
       <div class="plasma" id="plasma" role="progressbar" aria-label="Заряд плазмагана" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="plasma__head">
           <span class="plasma__label" id="plasmaLabel">Плазма</span>
-          <span class="plasma__pct" id="plasmaPct">0%</span>
+          <span class="plasma__meta">
+            <span class="plasma__key"><kbd>ПКМ</kbd> пуск</span>
+            <span class="plasma__pct" id="plasmaPct">0%</span>
+          </span>
         </div>
         <div class="plasma__track"><div class="plasma__fill" id="plasmaFill"></div></div>
       </div>
@@ -926,7 +1042,7 @@
     </div>
 
     <div class="hud__bottom">
-      <div class="lives" id="lives" aria-label="Прочность корпуса"></div>
+      <div class="lives" id="lives" role="img" aria-label="Сердца"></div>
       <div class="chips" id="chips">
         <span class="chip chip--weapon" data-chip="weapon" id="weaponChip"><span data-wlabel>Оружие</span> <b data-timer>0</b></span>
         <span class="chip chip--rapid" data-chip="rapid">Скорострел <b data-timer>0</b></span>
@@ -936,7 +1052,7 @@
       </div>
     </div>
 
-    <button class="pause-btn" id="pauseBtn" type="button" aria-label="Пауза">
+    <button class="pause-btn" id="pauseBtn" type="button" aria-label="Пауза" aria-keyshortcuts="Escape" title="Пауза (Esc)">
       <i></i>
     </button>
 
@@ -947,19 +1063,8 @@
     </button>
   </div>
 
-  <div class="music-vol" id="musicVol">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none"/>
-      <path d="M16.5 8.5a5 5 0 0 1 0 7"/>
-      <path d="M19 6a9 9 0 0 1 0 12"/>
-    </svg>
-    <input type="range" id="musicRange" min="0" max="100" step="1" value="10" aria-label="Громкость музыки" />
-    <span class="music-vol__val" id="musicVolVal">10%</span>
-  </div>
-
   <section class="screen" id="menu">
     <div class="panel">
-      <span class="eyebrow">Аркада в глубоком космосе</span>
       <h1 class="title">
         <img src="assets/galaxy-logo.png" alt="GALAXY" width="541" height="127" fetchpriority="high" />
       </h1>
@@ -978,18 +1083,17 @@
       </div>
       <p class="bestline">Рекорд: <b id="menuBest">0</b></p>
     </div>
-    <span class="credit">GALAXY · аркада на Canvas</span>
   </section>
 
   <section class="screen hidden" id="loadout" role="dialog" aria-modal="true" aria-label="Выбор модуля" tabindex="-1">
     <div class="panel panel--loadout">
-      <span class="eyebrow">Предполётная подготовка</span>
       <h2 class="loadout__title">Выбери модуль</h2>
       <p class="loadout__lede">
         Один модуль на полёт. Перед новым запуском можно выбрать другой.
       </p>
       <div class="loadout__grid">
         <button class="pick" id="pickPlasma" type="button">
+          <span class="pick__badge" aria-hidden="true" hidden>Прошлый</span>
           <span class="pick__tag">Супероружие</span>
           <span class="pick__name">Плазмаган</span>
           <span class="pick__desc">
@@ -1000,6 +1104,7 @@
           <span class="pick__action">Выбрать плазмаган</span>
         </button>
         <button class="pick" id="pickLives" type="button">
+          <span class="pick__badge" aria-hidden="true" hidden>Прошлый</span>
           <span class="pick__tag">+3 сердца к старту</span>
           <span class="pick__name">Жизнелюбие</span>
           <span class="pick__desc">
@@ -1009,9 +1114,13 @@
           <span class="pick__action">Выбрать жизнелюбие</span>
         </button>
       </div>
+      <div class="loadout__actions">
+        <button class="btn-ghost" id="backBtn" type="button">Назад</button>
+      </div>
       <p class="loadout__hint">
         <span class="only-desktop"><kbd>1</kbd> плазмаган</span>
         <span class="only-desktop"><kbd>2</kbd> жизнелюбие</span>
+        <span class="only-desktop"><kbd>ENTER</kbd> старт</span>
         <span class="only-desktop"><kbd>ESC</kbd> назад</span>
         <span class="only-touch">Коснись кнопки, чтобы начать</span>
       </p>
@@ -1028,9 +1137,13 @@
         <div><span>Рекорд</span><strong id="overBest">0</strong></div>
       </div>
       <p class="newbest" id="newBest">Новый рекорд</p>
-      <button class="cta" id="retryBtn" type="button">Новый полёт</button>
+      <div class="over__actions">
+        <button class="cta" id="retryBtn" type="button">Новый полёт</button>
+        <button class="btn-ghost" id="menuBtn" type="button">В меню</button>
+      </div>
       <div class="hints">
         <span class="only-desktop"><kbd>ENTER</kbd> новый полёт</span>
+        <span class="only-desktop"><kbd>ESC</kbd> в меню</span>
         <span class="only-touch"><kbd>ПАЛЕЦ</kbd> коснись «Новый полёт»</span>
       </div>
     </div>
@@ -1046,6 +1159,16 @@
       <button class="pause-exit" id="pauseExit" type="button">Выйти в меню</button>
     </div>
   </div>
+  <div class="music-vol" id="musicVol">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none"/>
+      <path d="M16.5 8.5a5 5 0 0 1 0 7"/>
+      <path d="M19 6a9 9 0 0 1 0 12"/>
+    </svg>
+    <input type="range" id="musicRange" min="0" max="100" step="1" value="10" aria-label="Громкость музыки" />
+    <span class="music-vol__val" id="musicVolVal">10%</span>
+  </div>
+
   <p class="sr-only" id="statusLine" role="status" aria-live="polite"></p>
 </div>
 
@@ -1076,6 +1199,8 @@
     loadoutBest: document.getElementById("loadoutBest"),
     startBtn: document.getElementById("startBtn"),
     retryBtn: document.getElementById("retryBtn"),
+    backBtn: document.getElementById("backBtn"),
+    menuBtn: document.getElementById("menuBtn"),
     menuBest: document.getElementById("menuBest"),
     overScore: document.getElementById("overScore"),
     overBest: document.getElementById("overBest"),
@@ -1091,6 +1216,7 @@
     overModule: document.getElementById("overModule"),
     statusLine: document.getElementById("statusLine")
   };
+  const app = document.getElementById("app");
 
   /* ============================================================
      CONFIG — единственное место правки баланса.
@@ -1269,8 +1395,8 @@
         doubleChance: 0.16     // шанс второго врага за тик
       },
       mobile: {
-        maxEnemies: Infinity,  // как было: без потолка врагов
-        maxEBullets: Infinity, // как было: без потолка пуль
+        maxEnemies: 34,        // потолок страховочный: на длинном забеге рост не ограничен
+        maxEBullets: 70,       // потолок вражеских пуль на экране
         spawnBase: 1.25,
         spawnStep: 0.075,
         spawnFloor: 0.32,
@@ -1305,6 +1431,12 @@
     (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
     (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
   if (IS_TOUCH) document.body.classList.add("is-touch");
+
+  // CSS уже гасит анимации при prefers-reduced-motion, но тряска и вспышки
+  // рисуются на канвасе — их тоже убираем.
+  const REDUCED_MOTION = !!(
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
   // мобильный поток остаётся прежним, десктопный — облегчённым
   const FLOW = IS_TOUCH ? CONFIG.flow.mobile : CONFIG.flow.desktop;
@@ -1519,7 +1651,9 @@
     function build() {
       els = TRACKS.map((src) => {
         const el = new window.Audio(src);
-        el.preload = "metadata";
+        // Треки по ~3,6 МБ. Держим их выключенными до старта: prefetch()
+        // поднимает до "auto" только текущий и следующий, остальные не тянутся.
+        el.preload = "none";
         el.volume = 0;
         el.playsInline = true;
         el.addEventListener("timeupdate", () => tick(el));
@@ -1963,43 +2097,60 @@
     }
   }
 
+  // Вызывается каждый кадр, а значения меняются примерно раз в секунду:
+  // кешируем узлы и пишем в DOM только реально изменившееся (иначе браузер
+  // пересчитывал стили 60 раз в секунду на ровном месте).
+  const chipsMemo = {
+    rapid: { on: null, timer: null, text: null },
+    triple: { on: null, timer: null, text: null },
+    shield: { on: null, timer: null, text: null },
+    weapon: { on: null, timer: null, label: null, text: null, name: null, color: null },
+    drone: { on: null, timer: null, text: null }
+  };
+
+  function setChip(m, chip, on, text) {
+    if (!chip) return;
+    if (m.on !== on) { m.on = on; chip.classList.toggle("on", on); }
+    if (!m.timer) m.timer = chip.querySelector("[data-timer]");
+    if (m.timer && m.text !== text) { m.text = text; m.timer.textContent = text; }
+  }
+
   function updateChips() {
-    const map = { rapid: "rapid", triple: "triple", shield: "shield" };
-    for (const key of Object.keys(map)) {
-      const chip = el.chips[key];
-      let on = false;
-      let t = 0;
-      if (key === "shield") { on = G.ship.shield; t = 0; }
-      else { t = G.ship[key]; on = t > 0; }
-      chip.classList.toggle("on", on);
-      const timer = chip.querySelector("[data-timer]");
-      if (timer) timer.textContent = on ? (key === "shield" ? "" : Math.ceil(t)) : "";
+    for (const key of ["rapid", "triple", "shield"]) {
+      const on = key === "shield" ? !!G.ship.shield : G.ship[key] > 0;
+      const text = on && key !== "shield" ? Math.ceil(G.ship[key]) : "";
+      setChip(chipsMemo[key], el.chips[key], on, text);
     }
     const wChip = el.chips.weapon;
     if (wChip) {
+      const m = chipsMemo.weapon;
       const w = G.ship.weapon;
       const on = !!w;
-      wChip.classList.toggle("on", on);
+      if (m.on !== on) { m.on = on; wChip.classList.toggle("on", on); }
       if (on) {
         const def = WEAPONS[w.id];
-        wChip.style.color = def ? def.color : "#ff9df0";
-        const label = wChip.querySelector("[data-wlabel]");
-        const timer = wChip.querySelector("[data-timer]");
-        if (label) label.textContent = w.name;
-        if (timer) timer.textContent = Math.ceil(w.t);
+        const color = def ? def.color : "#ff9df0";
+        if (m.color !== color) { m.color = color; wChip.style.color = color; }
+        if (!m.label) m.label = wChip.querySelector("[data-wlabel]");
+        if (m.label && m.name !== w.name) { m.name = w.name; m.label.textContent = w.name; }
+        if (!m.timer) m.timer = wChip.querySelector("[data-timer]");
+        const t = Math.ceil(w.t);
+        if (m.timer && m.text !== t) { m.text = t; m.timer.textContent = t; }
+      } else if (m.timer && m.text !== "") {
+        // оружие кончилось — не оставляем в чипе застывший таймер
+        m.text = "";
+        m.timer.textContent = "";
       }
     }
     const dChip = el.chips.drone;
     if (dChip) {
       const ds = G.drones;
       const on = ds.length > 0;
-      dChip.classList.toggle("on", on);
-      const timer = dChip.querySelector("[data-timer]");
-      if (timer) {
-        if (!on) timer.textContent = "";
-        else if (ds.length === 1) timer.textContent = Math.ceil(ds[0].t);
-        else timer.textContent = `×${ds.length} ${Math.ceil(Math.min(...ds.map((d) => d.t)))}`;
+      let text = "";
+      if (on) {
+        text = ds.length === 1 ? Math.ceil(ds[0].t) : `×${ds.length} ${Math.ceil(Math.min(...ds.map((d) => d.t)))}`;
       }
+      setChip(chipsMemo.drone, dChip, on, text);
     }
   }
 
@@ -2012,7 +2163,7 @@
     if (G.ship.lives > cap) G.ship.lives = cap;
     el.lives.innerHTML = "";
     for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
-    el.lives.setAttribute("aria-label", `Прочность корпуса: ${G.ship.lives} из ${cap}`);
+    el.lives.setAttribute("aria-label", `Сердца: ${G.ship.lives} из ${cap}`);
   }
 
   /* ---------------- плазмаган ---------------- */
@@ -2738,7 +2889,9 @@
       el.overBest.textContent = G.best.toLocaleString("ru-RU");
       el.newBest.classList.toggle("on", !!G.newRecord);
       el.over.classList.remove("hidden");
-      el.hud.classList.add("is-hidden");
+      setHudHidden(true);
+      pushModalHistory();
+      syncA11yBackground();
       el.statusLine.textContent =
         `Полёт окончен. Очки ${G.score.toLocaleString("ru-RU")}, рекорд ${G.best.toLocaleString("ru-RU")}.`;
       el.over.focus({ preventScroll: true });
@@ -2839,19 +2992,35 @@
 
   window.addEventListener("keydown", (e) => {
     const k = e.key.toLowerCase();
-    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "spacebar"].includes(k)) e.preventDefault();
-    G.keys[k] = true;
+    // Фокус на элементе формы (ползунок громкости, кнопки): не глушим стрелки,
+    // пробел и Enter — иначе с клавиатуры ими нельзя пользоваться, а Enter на
+    // карточке «+3 сердца» запускал плазму вместо выбранного бонуса.
+    const t = e.target;
+    const onControl =
+      !!t &&
+      (t.tagName === "INPUT" ||
+        t.tagName === "BUTTON" ||
+        t.tagName === "SELECT" ||
+        t.tagName === "TEXTAREA" ||
+        t.isContentEditable);
+    if (!onControl) {
+      if (["arrowup", "arrowdown", "arrowleft", "arrowright", " ", "spacebar"].includes(k)) e.preventDefault();
+      G.keys[k] = true;
+    }
     if (k === "escape" || k === "p") {
       if (G.mode === "play") togglePause();
       else if (k === "escape" && G.mode === "loadout") closeLoadout();
+      else if (k === "escape" && G.mode === "over" && !el.over.classList.contains("hidden")) exitToMenu();
+      return;
     }
+    if (onControl) return;
     if (G.mode === "loadout") {
       if (k === "1") startGame("plasma");
       else if (k === "2") startGame("lives");
     }
     if (k === "enter") {
       if (G.mode === "menu") openLoadout();
-      else if (G.mode === "loadout") startGame("plasma");
+      else if (G.mode === "loadout") startGame(lastModule || "plasma");
       else if (G.mode === "over" && !el.over.classList.contains("hidden")) openLoadout();
     }
   });
@@ -2877,10 +3046,11 @@
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", String(G.paused));
     if (G.paused) el.pause.focus({ preventScroll: true });
     else if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    syncA11yBackground();
     Music.setPaused(G.paused);
   }
 
-  function exitToMenu() {
+  function exitToMenu(opts) {
     resetGame();
     G.mode = "menu";
     G.paused = false;
@@ -2889,10 +3059,13 @@
     el.menu.classList.remove("hidden");
     el.over.classList.add("hidden");
     el.loadout.classList.add("hidden");
-    el.hud.classList.add("is-hidden");
+    setHudHidden(true);
     el.menuBest.textContent = G.best.toLocaleString("ru-RU");
+    if (!opts || !opts.fromHistory) dropModalHistory();
+    syncA11yBackground();
     Music.setPaused(true);
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    el.startBtn.focus({ preventScroll: true });
   }
 
   /* ---------------- reset / start ---------------- */
@@ -2952,12 +3125,107 @@
     updatePlasmaHud();
     // новый заход начинается с полного разрешения: если прошлый бой
     // просадил dpr, не тащим мутную картинку через все следующие попытки
-    if (IS_TOUCH && (dprCap !== DPR_START || perf.drops)) {
+    if (dprCap !== DPR_START || perf.drops) {
       dprCap = DPR_START;
       perf.drops = 0;
       perf.acc = 0;
       perf.n = 0;
       resize();
+    }
+  }
+
+  /* ---------------- модальные экраны ----------------
+     #loadout, #over и пауза объявлены role="dialog" aria-modal="true".
+     Держим контракт: фон становится inert, Tab не выходит за пределы
+     диалога, после закрытия фокус возвращается на «Начать полёт». */
+  const FOCUSABLE =
+    'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
+
+  function currentModal() {
+    if (G.mode === "loadout") return el.loadout;
+    if (G.mode === "over" && !el.over.classList.contains("hidden")) return el.over;
+    if (G.mode === "play" && G.paused) return el.pause;
+    return null;
+  }
+
+  function syncA11yBackground() {
+    const modal = currentModal();
+    const hudHidden = el.hud.classList.contains("is-hidden");
+    for (const child of app.children) {
+      if (child.id === "statusLine") continue; // aria-live должен оставаться доступным
+      const inert = modal ? child !== modal : child === el.hud && hudHidden;
+      if (inert) child.setAttribute("inert", "");
+      else child.removeAttribute("inert");
+    }
+    el.hud.setAttribute("aria-hidden", hudHidden ? "true" : "false");
+  }
+
+  function setHudHidden(hidden) {
+    el.hud.classList.toggle("is-hidden", hidden);
+    syncA11yBackground();
+  }
+
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Tab") return;
+    const modal = currentModal();
+    if (!modal) return;
+    const items = Array.from(modal.querySelectorAll(FOCUSABLE)).filter(
+      (n) => n.offsetWidth || n.offsetHeight || n === document.activeElement
+    );
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!modal.contains(active)) {
+      e.preventDefault();
+      first.focus();
+    } else if (e.shiftKey && (active === first || active === modal)) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }, true);
+
+  /* аппаратная «назад» на телефоне закрывает диалог, а не страницу */
+  let modalHistory = false;
+  function pushModalHistory() {
+    if (modalHistory) return;
+    try {
+      history.pushState({ galaxyModal: true }, "");
+      modalHistory = true;
+    } catch (_) {}
+  }
+  function dropModalHistory() {
+    if (!modalHistory) return;
+    modalHistory = false;
+    try { history.back(); } catch (_) {}
+  }
+  window.addEventListener("popstate", () => {
+    modalHistory = false;
+    if (G.mode === "loadout") closeLoadout({ fromHistory: true });
+    else if (G.mode === "over" && !el.over.classList.contains("hidden")) exitToMenu({ fromHistory: true });
+    else if (G.mode === "play" && G.paused) togglePause();
+  });
+
+  /* последний выбранный модуль: Enter и бейдж «прошлый выбор» */
+  const MODULE_KEY = "galaxy.module";
+  let lastModule = null;
+  try {
+    const stored = localStorage.getItem(MODULE_KEY);
+    if (stored === "plasma" || stored === "lives") lastModule = stored;
+  } catch (_) {}
+
+  function updateChosenModule() {
+    for (const [id, node] of [["plasma", el.pickPlasma], ["lives", el.pickLives]]) {
+      if (!node) continue;
+      const on = lastModule === id;
+      node.classList.toggle("is-chosen", on);
+      if (on) node.setAttribute("aria-current", "true");
+      else node.removeAttribute("aria-current");
+      const badge = node.querySelector(".pick__badge");
+      if (badge) badge.hidden = !on;
     }
   }
 
@@ -2972,25 +3240,35 @@
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
     el.menu.classList.add("hidden");
     el.over.classList.add("hidden");
-    el.hud.classList.add("is-hidden");
+    setHudHidden(true);
     el.loadout.classList.remove("hidden");
     el.loadoutBest.textContent = G.best.toLocaleString("ru-RU");
+    updateChosenModule();
+    pushModalHistory();
+    syncA11yBackground();
     Music.setPaused(true);
     el.loadout.focus({ preventScroll: true });
   }
 
-  function closeLoadout() {
+  function closeLoadout(opts) {
     if (G.mode !== "loadout") return;
     G.mode = "menu";
     el.loadout.classList.add("hidden");
     el.menu.classList.remove("hidden");
     el.menuBest.textContent = G.best.toLocaleString("ru-RU");
+    if (!opts || !opts.fromHistory) dropModalHistory();
+    syncA11yBackground();
+    el.startBtn.focus({ preventScroll: true });
   }
 
   function startGame(bonus) {
     Audio.unlock();
     Music.start();
     if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    if (bonus === "plasma" || bonus === "lives") {
+      lastModule = bonus;
+      try { localStorage.setItem(MODULE_KEY, bonus); } catch (_) {}
+    }
     G.bestStart = G.best;
     G.newRecord = false;
     resetGame();
@@ -3000,7 +3278,8 @@
     el.menu.classList.add("hidden");
     el.over.classList.add("hidden");
     el.loadout.classList.add("hidden");
-    el.hud.classList.remove("is-hidden");
+    dropModalHistory();
+    setHudHidden(false);
     syncLives();
     updateHud();
     updatePlasmaHud();
@@ -3017,6 +3296,8 @@
 
   el.startBtn.addEventListener("click", openLoadout);
   el.retryBtn.addEventListener("click", openLoadout);
+  if (el.backBtn) el.backBtn.addEventListener("click", () => closeLoadout());
+  if (el.menuBtn) el.menuBtn.addEventListener("click", () => exitToMenu());
   el.pickPlasma.addEventListener("click", () => startGame("plasma"));
   el.pickLives.addEventListener("click", () => startGame("lives"));
   if (el.plasmaBtn) {
@@ -3810,7 +4091,7 @@
     const w = G.w, h = G.h;
 
     ctx.save();
-    if (G.shake > 0.2) {
+    if (G.shake > 0.2 && !REDUCED_MOTION) {
       const s = G.shake * SHAKE_SCALE;
       ctx.translate(rand(-s, s), rand(-s, s));
     }
@@ -3820,7 +4101,14 @@
 
     if (bg.nebula) {
       ctx.globalAlpha = 0.5;
+      // туманность нарисована в половинном разрешении и растягивается на весь
+      // экран: при imageSmoothingQuality = "high" Skia пересобирает ~5 млн
+      // пикселей каждый кадр (18 fps на Retina вместо 60). На размытом фоне
+      // разница между "high" и "low" не видна (среднее расхождение 0.05/255),
+      // поэтому растягиваем дешёвым фильтром, а качество возвращаем сразу после.
+      ctx.imageSmoothingQuality = "low";
       ctx.drawImage(bg.nebula, 0, 0, w, h);
+      ctx.imageSmoothingQuality = "high";
       ctx.globalAlpha = 1;
     }
 
@@ -3839,7 +4127,7 @@
     drawBossBar();
 
     if (G.flash > 0.01) {
-      ctx.fillStyle = `rgba(255, 92, 138, ${G.flash * 0.3})`;
+      ctx.fillStyle = `rgba(255, 92, 138, ${G.flash * (REDUCED_MOTION ? 0.12 : 0.3)})`;
       ctx.fillRect(0, 0, w, h);
     }
 
@@ -6523,7 +6811,7 @@
     update(dt);
     draw();
 
-    if (IS_TOUCH && G.mode === "play" && !G.paused && !document.hidden) {
+    if (G.mode === "play" && !G.paused && !document.hidden) {
       perf.acc += dt;
       perf.n++;
       if (perf.acc >= 2) {
@@ -6558,6 +6846,7 @@
   el.best.textContent = G.best.toLocaleString("ru-RU");
   syncLives();
   updateHud();
+  syncA11yBackground();
 
   requestAnimationFrame(frame);
 
