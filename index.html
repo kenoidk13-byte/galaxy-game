@@ -639,6 +639,32 @@
   }
   .bestline b { color: var(--amber); font-weight: 600; }
 
+  /* переключатель языка под рекордом в главном меню */
+  .lang {
+    display: inline-flex;
+    gap: 2px;
+    margin: 14px auto 0;
+    padding: 3px;
+    border: 1px solid rgba(160, 170, 255, 0.24);
+    border-radius: 999px;
+    background: var(--glass);
+  }
+  .lang__btn {
+    min-width: 50px;
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--muted);
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    cursor: pointer;
+  }
+  .lang__btn.on { background: rgba(77, 225, 255, 0.16); color: var(--cyan); }
+  .lang__btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+
   /* ---------- предполётный выбор ---------- */
   .panel--upgrade { max-width: 760px; }
   .upgrade__title {
@@ -992,6 +1018,7 @@
     .pick__action { padding: 9px 12px; }
     .upgrade__hint { margin: 10px 0 0; }
     .bestline { margin-top: 14px; }
+    .lang { margin-top: 9px; }
   }
 
   @media (max-height: 560px) {
@@ -1006,6 +1033,8 @@
     .upgrade__hint { margin: 14px 0 0; }
     .pick { padding: 12px 16px; }
     .pick__action { padding: 9px 12px; }
+    .lang { margin-top: 7px; }
+    .lang__btn { padding-block: 5px; }
   }
 
   /* Низкие и узкие экраны: контент выше вьюпорта — центрируем, но разрешаем
@@ -1101,6 +1130,10 @@
         <span class="only-touch"><kbd><svg class="kbd-ico" viewBox="0 0 10 12" aria-hidden="true"><rect x="1" y="1" width="2.5" height="10" rx="1"/><rect x="6.5" y="1" width="2.5" height="10" rx="1"/></svg></kbd> пауза</span>
       </div>
       <p class="bestline">Рекорд: <b id="menuBest">0</b></p>
+      <div class="lang" role="group" aria-label="Язык / Language">
+        <button class="lang__btn on" type="button" data-lang="ru" aria-pressed="true">RU</button>
+        <button class="lang__btn" type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
     </div>
   </section>
 
@@ -1231,7 +1264,9 @@
       maxLivesBonus: 6,      // потолок жизней с модулем «Жизнелюбие»
       droneTime: 10,         // секунд работы одного защитного дрона
       droneMax: 3,           // одновременно активных дронов
-      shakeScale: 0.7        // общая сила тряски экрана
+      shakeScale: 0.7,       // сила тряски на ПК
+      shakeScaleTouch: 0.25, // на телефоне экран узкий — та же амплитуда ощущается сильнее
+      shakeMaxTouch: 8       // потолок смещения в px на тач-устройствах
     },
     plasma: {
       chargePerPart: 12,     // % заряда за деталь
@@ -1357,6 +1392,57 @@
           { kind: "minion", cd: [2.4, 3.2], n: 3, pool: ["drone", "runner", "weaver"] },
           { kind: "spiral", cd: [0.5, 0.75], arms: 3, step: 0.3, speed: 205, r: 3.4 },
           { kind: "aim", cd: [2.0, 2.8], n: 3, spread: 0.26, speed: 230, r: 4 }
+        ]
+      },
+      {
+        key: "pulsar", name: "ПУЛЬСАР", tag: "класс 6, волновой",
+        color: "#ff7a4d", style: "pulsar", r: 60, hpMul: 1.05,
+        move: { amp: 0.26, speed: 0.62, yAmp: 16, ySpeed: 1.3 },
+        atk: [
+          { kind: "wall", cd: [3.2, 4.2], speed: 195, gap: 120, r: 4.4 },
+          { kind: "ring", cd: [5.0, 6.2], speed: 150, grow: 9, r: 4 },
+          { kind: "aim", cd: [1.8, 2.5], n: 3, spread: 0.24, speed: 250, r: 4.2 }
+        ]
+      },
+      {
+        key: "lancer", name: "ЛАНСЕР", tag: "класс 7, копейщик",
+        color: "#b58cff", style: "lancer", r: 52, hpMul: 0.92,
+        move: { amp: 0.42, speed: 1.25, yAmp: 24, ySpeed: 2.2, figure8: true },
+        atk: [
+          { kind: "cross", cd: [1.6, 2.2], arms: 4, speed: 265, r: 4 },
+          { kind: "homing", cd: [4.2, 5.4], n: 2, speed: 190, turn: 1.5, r: 4.6 },
+          { kind: "aim", cd: [2.2, 3.0], n: 4, spread: 0.14, speed: 330, r: 3.6 }
+        ]
+      },
+      {
+        key: "miner", name: "МИНЕР", tag: "класс 8, минное поле",
+        color: "#ffd166", style: "miner", r: 66, hpMul: 1.18,
+        move: { amp: 0.2, speed: 0.45, yAmp: 12, ySpeed: 0.8 },
+        atk: [
+          { kind: "mine", cd: [2.2, 3.0], n: 3, speed: 95, fuse: 2.8, r: 7 },
+          { kind: "burst", cd: [3.8, 4.8], n: 10, speed: 150, r: 4.6 },
+          { kind: "wall", cd: [6.0, 7.5], speed: 170, gap: 140, r: 4 }
+        ]
+      },
+      {
+        key: "mirror", name: "ЗЕРКАЛО", tag: "класс 9, отражатель",
+        color: "#9fe8ff", style: "mirror", r: 56, hpMul: 1,
+        move: { amp: 0.36, speed: 0.9, yAmp: 30, ySpeed: 1.7, figure8: true },
+        atk: [
+          { kind: "cross", cd: [2.6, 3.4], arms: 6, speed: 210, r: 3.8 },
+          { kind: "ring", cd: [4.6, 5.8], speed: 135, grow: 7, r: 3.8 },
+          { kind: "mine", cd: [5.0, 6.4], n: 2, speed: 120, fuse: 2.2, r: 6 }
+        ]
+      },
+      {
+        key: "core", name: "ЯДРО", tag: "класс 10, финал",
+        color: "#ff4d5e", style: "core", r: 72, hpMul: 1.3,
+        move: { amp: 0.3, speed: 0.72, yAmp: 20, ySpeed: 1.45 },
+        atk: [
+          { kind: "spiral", cd: [0.2, 0.28], arms: 3, step: 0.42, speed: 220, r: 3.6 },
+          { kind: "homing", cd: [3.2, 4.2], n: 3, speed: 210, turn: 1.7, r: 4.6 },
+          { kind: "wall", cd: [4.6, 6.0], speed: 190, gap: 110, r: 4.2 },
+          { kind: "mine", cd: [6.0, 8.0], n: 2, speed: 110, fuse: 2.4, r: 6.5 }
         ]
       }
     ],
@@ -1531,6 +1617,48 @@
         id: "risk", tier: 5, max: 1, tag: "Риск", color: "#ffc46b",
         name: "Азарт",
         desc: ["<b>+50%</b> очков за всё, но сразу <b>−1</b> сердце."]
+      },
+
+      // ——— босс 6: корпус ———
+      {
+        id: "titan", tier: 6, max: 2, tag: "Корпус", color: "#63ffc4",
+        name: "Титан",
+        desc: ["Потолок сердец <b>+2</b>, полный ремонт.", "Ещё <b>+2</b> сердца, полный ремонт."]
+      },
+
+      // ——— босс 7: скорость ———
+      {
+        id: "injector", tier: 7, max: 2, tag: "Ствол", color: "#4de1ff",
+        name: "Инжектор",
+        desc: ["Скорость пуль <b>+18%</b>.", "Скорость пуль <b>+36%</b>."]
+      },
+
+      // ——— босс 8: плазма ———
+      {
+        id: "charger", tier: 8, max: 2, tag: "Плазма", color: "#ff3b5c",
+        name: "Зарядник",
+        desc: ["Деталь плазмы даёт ещё <b>+8%</b> заряда.", "Ещё <b>+8%</b> заряда за деталь."]
+      },
+
+      // ——— босс 9: залп ———
+      {
+        id: "repeater", tier: 9, max: 2, tag: "Ствол", color: "#c08bff",
+        name: "Репитер",
+        desc: ["<b>+1</b> пуля в залпе.", "Ещё <b>+1</b> пуля в залпе."]
+      },
+
+      // ——— босс 10: урон ———
+      {
+        id: "berserk", tier: 10, max: 2, tag: "Ствол", color: "#ff5c8a",
+        name: "Берсерк",
+        desc: ["Урон по всем целям <b>+25%</b>.", "Урон по всем целям <b>+50%</b>."]
+      },
+
+      // страховка: если всё выкачано, модернизация не превращается в пустой экран
+      {
+        id: "salvage", repeatable: true, max: Infinity, tier: 1, tag: "Ремкомплект",
+        color: "#ffc46b", name: "Наладка",
+        desc: ["Полный ремонт корпуса и <b>+10%</b> урона. Берётся снова и снова."]
       }
     ]
   };
@@ -1546,7 +1674,6 @@
   const PLASMA_CHARGE_STEP = CONFIG.plasma.chargePerPart;
   const PLASMA_DURATION = CONFIG.plasma.duration;
   const PLASMA_DROP = CONFIG.plasma.dropChance;
-  const SHAKE_SCALE = CONFIG.player.shakeScale;
   const UPGRADES = CONFIG.upgrades;
   const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
   const ROMAN = ["", "I", "II", "III"];
@@ -1561,6 +1688,12 @@
     (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
     (navigator.maxTouchPoints > 0 && window.innerWidth <= 900);
   if (IS_TOUCH) document.body.classList.add("is-touch");
+
+  // на телефоне экран узкий: отдельный коэффициент и жёсткий потолок смещения.
+  // все источники тряски проходят через них в draw().
+  const SHAKE_SCALE = IS_TOUCH
+    ? CONFIG.player.shakeScaleTouch
+    : CONFIG.player.shakeScale;
 
   // CSS уже гасит анимации при prefers-reduced-motion, но тряска и вспышки
   // рисуются на канвасе — их тоже убираем.
@@ -1587,7 +1720,8 @@
 
   function buzz(ms) {
     if (IS_TOUCH && navigator.vibrate) {
-      try { navigator.vibrate(ms); } catch (_) {}
+      // вибрация на телефоне тоже ощущается вдвое сильнее — половинная длительность
+      try { navigator.vibrate(ms * 0.5); } catch (_) {}
     }
   }
 
@@ -1598,6 +1732,318 @@
   function rgba(hex, a) {
     const [r, g, b] = hexToRgb(hex);
     return `rgba(${r},${g},${b},${a})`;
+  }
+
+  /* ---------------- language ----------------
+     Русский — исходный текст. Английский словарь накрывает и статику в HTML,
+     и строки, которые игра показывает во время полёта. */
+  const EN = {
+    // интерфейс
+    "Игровое поле GALAXY": "GALAXY playfield",
+    "Очки": "Score",
+    "Плазма": "Plasma",
+    "ПКМ": "RMB",
+    "пуск": "launch",
+    "Рекорд": "Record",
+    "Рекорд:": "Record:",
+    "Оружие": "Weapon",
+    "Скорострел": "Rapid fire",
+    "Тройной залп": "Triple shot",
+    "Щит": "Shield",
+    "Дрон": "Drone",
+    "Ты последний пилот сектора. Держи курс сквозь бесконечный рой, собирай":
+      "You are the sector's last pilot. Steer through the endless swarm, collect",
+    "усиления": "upgrades",
+    "и держись как можно дольше.": "and survive as long as you can.",
+    "Начать полёт": "Start flight",
+    "МЫШЬ": "MOUSE",
+    "движение": "move",
+    "ЛКМ": "LMB",
+    "огонь": "fire",
+    "пауза": "pause",
+    "ПАЛЕЦ": "FINGER",
+    "коснись или веди": "tap or drag",
+    "ОГОНЬ": "FIRE",
+    "включается сам": "auto-fires",
+    "Модернизация": "Upgrade",
+    "Босс повержен. Один апгрейд на выбор — он останется до конца полёта.":
+      "Boss defeated. Pick one upgrade — it stays with you for the rest of the flight.",
+    "выбор": "select",
+    "Коснись карточки": "Tap a card",
+    "Модуль": "Module",
+    "Корабль уничтожен": "Ship destroyed",
+    "Новый рекорд": "New record",
+    "Новый полёт": "New flight",
+    "В меню": "Main menu",
+    "новый полёт": "new flight",
+    "в меню": "main menu",
+    "коснись «Новый полёт»": "tap «New flight»",
+    "Пауза": "Pause",
+    "Нажми ESC, чтобы продолжить": "Press ESC to resume",
+    "Коснись экрана, чтобы продолжить": "Tap the screen to resume",
+    "Выйти в меню": "Exit to menu",
+    "Заряд плазмагана": "Plasma charge",
+    "Пауза (Esc)": "Pause (Esc)",
+    "Пуск плазмы": "Fire plasma",
+    "Полёт окончен": "Flight over",
+    "Громкость музыки": "Music volume",
+    "Язык / Language": "Language / Язык",
+
+    // оружие
+    "Шторм": "Storm",
+    "сдвоенные пробивающие сгустки": "twin piercing bolts",
+    "Ионный резак": "Ion Cutter",
+    "веер режущих лучей": "fan of cutting beams",
+    "Квантовое копьё": "Quantum Lance",
+    "тяжёлый снаряд с ударной волной": "heavy shot with a shockwave",
+    "Нова-бластер": "Nova Blaster",
+    "плазменные сферы с разлётом": "scattering plasma orbs",
+
+    // боссы
+    "СТРАЖ": "WARDEN", "класс 1, дредноут": "class 1, dreadnought",
+    "ВИХРЬ": "VORTEX", "класс 2, воронка": "class 2, vortex",
+    "БОМБАРДИР": "BOMBER", "класс 3, осадный": "class 3, siege",
+    "СНАЙПЕР": "MARKSMAN", "класс 4, прицельный": "class 4, precision",
+    "РОЙ": "SWARM", "класс 5, улей": "class 5, hive",
+    "ПУЛЬСАР": "PULSAR", "класс 6, волновой": "class 6, wave",
+    "ЛАНСЕР": "LANCER", "класс 7, копейщик": "class 7, lancer",
+    "МИНЕР": "MINER", "класс 8, минное поле": "class 8, mine layer",
+    "ЗЕРКАЛО": "MIRROR", "класс 9, отражатель": "class 9, reflector",
+    "ЯДРО": "CORE", "класс 10, финал": "class 10, finale",
+
+    // фракции
+    "ФРАКЦИЯ · МОЛОТ": "FACTION · HAMMER",
+    "клёпаная броня, тяжёлые орудия": "riveted armor, heavy guns",
+    "ФРАКЦИЯ · КЛИНОК": "FACTION · BLADE",
+    "холодная сталь, острые носы": "cold steel, sharp prows",
+    "ФРАКЦИЯ · ЛЕГИОН": "FACTION · LEGION",
+    "бронированные, с шипами": "armored, spiked",
+    "ФРАКЦИЯ · РОЙ": "FACTION · SWARM",
+    "панцирные, с прожилками": "carapaced, veined",
+    "ФРАКЦИЯ · БЕЗДНА": "FACTION · ABYSS",
+    "чёрные лезвия, белое ядро": "black blades, white cores",
+
+    // модернизации
+    "Супероружие": "Superweapon",
+    "Плазмаган": "Plasma gun",
+    "Детали врагов копят заряд. На <b>100%</b> — 10 секунд урона <b>×5</b> насквозь.":
+      "Enemy parts build charge. At <b>100%</b> — 10 seconds of <b>×5</b> piercing damage.",
+    "Взять плазмаган": "Take plasma gun",
+    "+3 сердца": "+3 hearts",
+    "Жизнелюбие": "Vitality",
+    "Потолок запаса <b>3 → 6</b> сердец. Сразу <b>+3</b> к корпусу.":
+      "Heart cap <b>3 → 6</b>. Instantly <b>+3</b> hull.",
+    "Взять сердца": "Take hearts",
+    "Ствол": "Gun",
+    "Спарка": "Twin barrels",
+    "Вторая пушка в залпе: <b>+60%</b> урона.": "Second gun in the volley: <b>+60%</b> damage.",
+    "Третья пуля в залпе: <b>+110%</b> урона от базы.": "Third bullet in the volley: <b>+110%</b> base damage.",
+    "Четыре пули: <b>+180%</b> урона от базы.": "Four bullets: <b>+180%</b> base damage.",
+    "Калибр": "Caliber",
+    "Урон пули <b>1 → 1.6</b>.": "Bullet damage <b>1 → 1.6</b>.",
+    "Урон пули <b>1 → 2.2</b>.": "Bullet damage <b>1 → 2.2</b>.",
+    "Урон пули <b>1 → 2.8</b>.": "Bullet damage <b>1 → 2.8</b>.",
+    "Перезарядка <b>0.15 → 0.12</b> с.": "Reload <b>0.15 → 0.12</b> s.",
+    "Перезарядка <b>0.15 → 0.105</b> с.": "Reload <b>0.15 → 0.105</b> s.",
+    "Перезарядка <b>0.15 → 0.09</b> с.": "Reload <b>0.15 → 0.09</b> s.",
+    "Разрыв": "Burst",
+    "Пули взрываются: радиус <b>26 px</b>, 55% урона соседям.":
+      "Bullets explode: <b>26 px</b> radius, 55% damage to neighbors.",
+    "Радиус взрыва <b>40 px</b>.": "Explosion radius <b>40 px</b>.",
+    "Радиус <b>54 px</b>, <b>70%</b> урона соседям.": "Radius <b>54 px</b>, <b>70%</b> damage to neighbors.",
+    "Корпус": "Hull",
+    "Щит гасит удар и возвращается за <b>20 с</b>.": "Shield absorbs a hit and returns in <b>20 s</b>.",
+    "Щит возвращается за <b>10 с</b>.": "Shield returns in <b>10 s</b>.",
+    "Пронзание": "Piercing",
+    "Пули пробивают <b>+1</b> цель.": "Bullets pierce <b>+1</b> target.",
+    "Пули пробивают <b>+2</b> цели.": "Bullets pierce <b>+2</b> targets.",
+    "Дроны": "Drones",
+    "Эскадрилья": "Squadron",
+    "<b>Два</b> постоянных дрона, стреляют сами.": "<b>Two</b> permanent drones, they fire on their own.",
+    "<b>Третий</b> постоянный дрон.": "<b>Third</b> permanent drone.",
+    "Утилита": "Utility",
+    "Магнит": "Magnet",
+    "Радиус подбора бонусов <b>+60%</b>.": "Pickup radius <b>+60%</b>.",
+    "Радиус подбора <b>+120%</b>.": "Pickup radius <b>+120%</b>.",
+    "Конденсатор": "Capacitor",
+    "Деталь даёт <b>18%</b> заряда вместо 12% и падает чаще.":
+      "A part gives <b>18%</b> charge instead of 12% and drops more often.",
+    "Деталь даёт <b>24%</b> заряда.": "A part gives <b>24%</b> charge.",
+    "Ремонт": "Repair",
+    "<b>+2</b> к потолку сердец и полный ремонт.": "<b>+2</b> heart cap and full repair.",
+    "Ещё <b>+2</b> к потолку, полный ремонт.": "Another <b>+2</b> cap, full repair.",
+    "Броня": "Armor",
+    "<b>25%</b> попаданий не отнимают сердце.": "<b>25%</b> of hits cost no heart.",
+    "<b>40%</b> попаданий не отнимают сердце.": "<b>40%</b> of hits cost no heart.",
+    "Реактор": "Reactor",
+    "Плазма: <b>14 с</b> вместо 10.": "Plasma: <b>14 s</b> instead of 10.",
+    "Плазма: <b>18 с</b> вместо 14.": "Plasma: <b>18 s</b> instead of 14.",
+    "Натиск": "Onslaught",
+    "<b>+30%</b> урона по боссам.": "<b>+30%</b> damage to bosses.",
+    "<b>+60%</b> урона по боссам.": "<b>+60%</b> damage to bosses.",
+    "Форсаж": "Afterburner",
+    "Скорость <b>+12%</b>, неуязвимость после удара <b>+0.6 с</b>.":
+      "Speed <b>+12%</b>, post-hit invulnerability <b>+0.6 s</b>.",
+    "Скорость <b>+24%</b>.": "Speed <b>+24%</b>.",
+    "Овердрайв": "Overdrive",
+    "Перезарядка <b>−30%</b> навсегда.": "Reload <b>−30%</b> permanently.",
+    "Арсенал": "Arsenal",
+    "Оружие с боссов больше не истекает через 24 с.": "Boss weapons no longer expire after 24 s.",
+    "Двойной заряд": "Double charge",
+    "Плазма копится <b>×2</b>, урон <b>×8</b>.": "Plasma charges <b>×2</b>, damage <b>×8</b>.",
+    "Урон плазмы <b>×11</b>.": "Plasma damage <b>×11</b>.",
+    "Риск": "Risk",
+    "Азарт": "Gamble",
+    "<b>+50%</b> очков за всё, но сразу <b>−1</b> сердце.":
+      "<b>+50%</b> points for everything, but instantly <b>−1</b> heart.",
+    "Титан": "Titan",
+    "Потолок сердец <b>+2</b>, полный ремонт.": "Heart cap <b>+2</b>, full repair.",
+    "Ещё <b>+2</b> сердца, полный ремонт.": "Another <b>+2</b> hearts, full repair.",
+    "Инжектор": "Injector",
+    "Скорость пуль <b>+18%</b>.": "Bullet speed <b>+18%</b>.",
+    "Скорость пуль <b>+36%</b>.": "Bullet speed <b>+36%</b>.",
+    "Зарядник": "Charger",
+    "Деталь плазмы даёт ещё <b>+8%</b> заряда.": "Plasma part gives another <b>+8%</b> charge.",
+    "Ещё <b>+8%</b> заряда за деталь.": "Another <b>+8%</b> charge per part.",
+    "Репитер": "Repeater",
+    "<b>+1</b> пуля в залпе.": "<b>+1</b> bullet per volley.",
+    "Ещё <b>+1</b> пуля в залпе.": "Another <b>+1</b> bullet per volley.",
+    "Берсерк": "Berserk",
+    "Урон по всем целям <b>+25%</b>.": "Damage to all targets <b>+25%</b>.",
+    "Урон по всем целям <b>+50%</b>.": "Damage to all targets <b>+50%</b>.",
+    "Ремкомплект": "Repair kit",
+    "Наладка": "Tune-up",
+    "Полный ремонт корпуса и <b>+10%</b> урона. Берётся снова и снова.":
+      "Full hull repair and <b>+10%</b> damage. Can be taken again and again.",
+    "Улучшить": "Improve",
+    "Взять": "Take",
+    "В строю:": "In service:",
+
+    // объявления во время полёта
+    "Готово": "Ready",
+    "Готово: ПКМ": "Ready: RMB",
+    "готова к пуску": "ready to fire",
+    "ПЛАЗМА ГОТОВА": "PLASMA READY",
+    "ПЛАЗМА": "PLASMA",
+    "БОСС В ЯРОСТИ": "BOSS ENRAGED",
+    "атаки ускорены": "attacks accelerated",
+    "оружие в арсенале, готовь модернизацию": "weapon in the arsenal, get ready to upgrade",
+    "Без модернизаций": "No upgrades",
+    "БОСС": "BOSS",
+    "сектор закрыт, приготовься": "sector sealed, brace yourself",
+    "АРКАДНЫЙ НАЛЁТ": "ARCADE RAID",
+    "враги идут строем и пикируют": "enemies advance in formation and dive",
+    "ПЛАЗМАГАН": "PLASMA GUN",
+    "детали врагов копят заряд": "enemy parts build charge",
+    "ЖИЗНЕЛЮБИЕ": "VITALITY",
+    "РЕМОНТ": "REPAIR",
+    "ТИТАН": "TITAN",
+    "НАЛАДКА": "TUNE-UP",
+    "ЭСКАДРИЛЬЯ": "SQUADRON",
+    "дроны держатся до конца полёта": "drones stay for the rest of the flight",
+    "АЗАРТ": "GAMBLE",
+    "очки ×1.5, корпус тоньше": "points ×1.5, thinner hull",
+    "ВЗЛЁТ": "LAUNCH",
+    "веди палец, автоогонь": "drag your finger, auto-fire",
+    "держи курс": "hold your course",
+    "ПЛАЗМА ОСТЫЛА": "PLASMA COOLED",
+    "собери детали заново": "collect parts again",
+    "ЗАПАС ПОЛОН": "HULL FULL",
+    "РЕМОНТ КОРПУСА": "HULL REPAIRED",
+    "ДРОНЫ ×3": "DRONES ×3",
+    "ДРОН": "DRONE",
+
+    // строки с подстановками
+    "Сердца: {0} из {1}": "Lives: {0} of {1}",
+    "{0}с": "{0}s",
+    "Плазмаган ×{0}": "Plasma ×{0}",
+    "активна, {0} секунд": "active, {0} seconds",
+    "{0} процентов": "{0} percent",
+    "жми «Пуск плазмы»: урон ×{0}": "tap «Fire plasma»: damage ×{0}",
+    "ПКМ: урон ×{0} насквозь": "RMB: damage ×{0}, piercing",
+    "{0} секунд, урон ×{1} насквозь": "{0} seconds, damage ×{1}, piercing",
+    "{0} ПОВЕРЖЕН": "{0} DEFEATED",
+    "Боссов: {0} · улучшений: {1}": "Bosses: {0} · upgrades: {1}",
+    "Полёт окончен. Очки {0}, рекорд {1}.": "Flight over. Score {0}, record {1}.",
+    "Босс {0} повержен. Выбери одну карточку — она останется до конца полёта.":
+      "Boss {0} defeated. Pick one card — it stays with you for the rest of the flight.",
+    "{0} · ур. {1} из {2}": "{0} · lvl {1} of {2}",
+    "{0} · ур. {1}": "{0} · lvl {1}",
+    "потолок {0} сердец": "cap {0} lives",
+    "корпус {0} / {1}": "hull {0} / {1}",
+    "{0} / {1}, +250 очков": "{0} / {1}, +250 points",
+    "+1 жизнь, {0} / {1}": "+1 life, {0} / {1}",
+    "{0} / {1}, {2} секунд": "{0} / {1}, {2} seconds",
+    "таймер обновлён, {0} секунд": "timer refreshed, {0} seconds",
+    "комбо ×{0}": "combo ×{0}",
+    "{0}: ЯРОСТЬ": "{0}: ENRAGED"
+  };
+  const EN_REV = Object.fromEntries(Object.entries(EN).map(([ru, en]) => [en, ru]));
+  let LANG = "ru";
+
+  function L(s) {
+    return LANG === "en" ? (EN[s] ?? s) : s;
+  }
+  function F(s, ...args) {
+    const out = LANG === "en" ? (EN[s] ?? s) : s;
+    return out.replace(/\{(\d+)\}/g, (_, i) => String(args[Number(i)]));
+  }
+  function num(v) {
+    return v.toLocaleString(LANG === "en" ? "en-US" : "ru-RU");
+  }
+
+  function setLang(lang) {
+    LANG = lang === "en" ? "en" : "ru";
+    store.lang = LANG;
+    document.documentElement.lang = LANG;
+    const dict = LANG === "en" ? EN : EN_REV;
+
+    // статика: переводим текстовые узлы, сохраняя пробелы вокруг вложенных тегов
+    const translateValue = (v) => {
+      const key = v.replace(/\s+/g, " ").trim();
+      if (!key || !dict[key]) return v;
+      const lead = v.slice(0, v.length - v.trimStart().length);
+      const tail = v.slice(v.trimEnd().length);
+      return lead + dict[key] + tail;
+    };
+    const root = document.getElementById("app");
+    const textNodes = [];
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) textNodes.push(walker.currentNode);
+    for (const n of textNodes) {
+      const next = translateValue(n.nodeValue);
+      if (next !== n.nodeValue) n.nodeValue = next;
+    }
+    for (const node of root.querySelectorAll("[aria-label], [title], [placeholder], [alt]")) {
+      for (const attr of ["aria-label", "title", "placeholder", "alt"]) {
+        if (!node.hasAttribute(attr)) continue;
+        const before = node.getAttribute(attr);
+        const after = translateValue(before);
+        if (after !== before) node.setAttribute(attr, after);
+      }
+    }
+
+    for (const btn of document.querySelectorAll(".lang__btn")) {
+      const on = btn.dataset.lang === LANG;
+      btn.classList.toggle("on", on);
+      btn.setAttribute("aria-pressed", String(on));
+    }
+
+    if (G.banner && el.statusLine) {
+      const title = L(G.banner.text);
+      const subtitle = L(G.banner.sub);
+      el.statusLine.textContent = subtitle ? `${title}. ${subtitle}` : title;
+    }
+    if (G.mode === "upgrade" || G.upgradeChoice.length) renderUpgrade();
+    renderOverStats(G.mode === "over");
+    plasmaSig = "";
+    chipsMemo.weapon.name = null;
+    chipsMemo.weapon.text = null;
+    renderBest();
+    syncLives();
+    updatePlasmaHud();
+    updateChips();
+    updateHud();
   }
 
   /* ---------------- persistence ---------------- */
@@ -1617,6 +2063,13 @@
     },
     set musicVol(v) {
       try { localStorage.setItem("galaxy.musicVol", String(v)); } catch (_) {}
+    },
+    get lang() {
+      try { return localStorage.getItem("galaxy.lang") === "en" ? "en" : "ru"; }
+      catch (_) { return "ru"; }
+    },
+    set lang(v) {
+      try { localStorage.setItem("galaxy.lang", v); } catch (_) {}
     }
   };
 
@@ -2218,13 +2671,21 @@
   }
 
   function banner(text, sub = "") {
+    // храним исходные ключи: язык может переключиться, пока баннер на экране
     G.banner = { text, sub, t: 0, dur: 1.9 };
-    if (el.statusLine) el.statusLine.textContent = sub ? `${text}. ${sub}` : text;
+    const title = L(text);
+    const subtitle = L(sub);
+    if (el.statusLine) el.statusLine.textContent = subtitle ? `${title}. ${subtitle}` : title;
+  }
+
+  function renderBest() {
+    el.menuBest.textContent = num(G.best);
+    el.best.textContent = num(G.best);
   }
 
   function updateHud() {
-    el.score.textContent = G.score.toLocaleString("ru-RU");
-    el.best.textContent = G.best.toLocaleString("ru-RU");
+    el.score.textContent = num(G.score);
+    el.best.textContent = num(G.best);
     const sig = `${G.ship.lives}/${maxLives()}`;
     if (livesSig !== sig) {
       livesSig = sig;
@@ -2275,7 +2736,7 @@
     }
     const shieldOn = !!G.ship.shield;
     const shieldWait = !shieldOn && G.mods.shield ? Math.ceil(G.ship.shieldRecharge || 0) : 0;
-    setChip(chipsMemo.shield, el.chips.shield, shieldOn, shieldOn ? "" : shieldWait > 0 ? `${shieldWait}с` : "");
+    setChip(chipsMemo.shield, el.chips.shield, shieldOn, shieldOn ? "" : shieldWait > 0 ? F("{0}с", shieldWait) : "");
     const wChip = el.chips.weapon;
     if (wChip) {
       const m = chipsMemo.weapon;
@@ -2287,7 +2748,8 @@
         const color = def ? def.color : "#ff9df0";
         if (m.color !== color) { m.color = color; wChip.style.color = color; }
         if (!m.label) m.label = wChip.querySelector("[data-wlabel]");
-        if (m.label && m.name !== w.name) { m.name = w.name; m.label.textContent = w.name; }
+        const label = L(w.name);
+        if (m.label && m.name !== label) { m.name = label; m.label.textContent = label; }
         if (!m.timer) m.timer = wChip.querySelector("[data-timer]");
         const t = isFinite(w.t) ? Math.ceil(w.t) : "∞";
         if (m.timer && m.text !== t) { m.text = t; m.timer.textContent = t; }
@@ -2314,7 +2776,7 @@
 
   function maxLives() {
     const base = G.mods.lives ? MAX_LIVES_BONUS : MAX_LIVES_BASE;
-    return base + 2 * (G.mods.repair || 0);
+    return base + 2 * (G.mods.repair || 0) + 2 * (G.mods.titan || 0);
   }
 
   function scoreMul() {
@@ -2332,7 +2794,7 @@
   function plasmaStep() {
     const cap = G.mods.capacitor || 0;
     const step = cap >= 2 ? 24 : cap === 1 ? 18 : PLASMA_CHARGE_STEP;
-    return step * (G.mods.plasmaBoost ? 2 : 1);
+    return (step + 8 * (G.mods.charger || 0)) * (G.mods.plasmaBoost ? 2 : 1);
   }
 
   function shieldRechargeTime() {
@@ -2344,7 +2806,7 @@
     if (G.ship.lives > cap) G.ship.lives = cap;
     livesSig = `${G.ship.lives}/${cap}`;
     renderLives();
-    el.lives.setAttribute("aria-label", `Сердца: ${G.ship.lives} из ${cap}`);
+    el.lives.setAttribute("aria-label", F("Сердца: {0} из {1}", G.ship.lives, cap));
   }
 
   /* ---------------- плазмаган ---------------- */
@@ -2364,14 +2826,16 @@
     el.plasma.classList.toggle("is-ready", on && ready);
     el.plasma.classList.toggle("is-active", on && active);
     el.plasmaFill.style.transform = `scaleX(${(pct / 100).toFixed(4)})`;
-    el.plasmaPct.textContent = active ? `${Math.ceil(p.active)}с` : `${Math.round(pct)}%`;
+    el.plasmaPct.textContent = active ? F("{0}с", Math.ceil(p.active)) : `${Math.round(pct)}%`;
     el.plasmaLabel.textContent = active
-      ? `Плазмаган ×${plasmaMul()}`
+      ? F("Плазмаган ×{0}", plasmaMul())
       : ready
-        ? (IS_TOUCH ? "Готово" : "Готово: ПКМ")
-        : "Плазмаган";
+        ? L(IS_TOUCH ? "Готово" : "Готово: ПКМ")
+        : L("Плазмаган");
     el.plasma.setAttribute("aria-valuenow", String(Math.round(pct)));
-    el.plasma.setAttribute("aria-valuetext", active ? `активна, ${Math.ceil(p.active)} секунд` : ready ? "готова к пуску" : `${Math.round(pct)} процентов`);
+    el.plasma.setAttribute("aria-valuetext", active
+      ? F("активна, {0} секунд", Math.ceil(p.active))
+      : ready ? L("готова к пуску") : F("{0} процентов", Math.round(pct)));
     if (el.plasmaBtn) el.plasmaBtn.classList.toggle("on", on && ready);
   }
 
@@ -2381,7 +2845,7 @@
     p.charge = Math.min(100, p.charge + plasmaStep());
     if (p.charge >= 100) {
       p.ready = true;
-      banner("ПЛАЗМА ГОТОВА", IS_TOUCH ? `жми «Пуск плазмы»: урон ×${plasmaMul()}` : `ПКМ: урон ×${plasmaMul()} насквозь`);
+      banner("ПЛАЗМА ГОТОВА", F(IS_TOUCH ? "жми «Пуск плазмы»: урон ×{0}" : "ПКМ: урон ×{0} насквозь", plasmaMul()));
       Audio.unique();
       buzz(55);
       G.flash = Math.max(G.flash, 0.22);
@@ -2399,7 +2863,7 @@
     p.ready = false;
     G.flash = Math.max(G.flash, 0.55);
     G.shake = Math.min(G.shake + 12, 28);
-    banner("ПЛАЗМА", `${plasmaDuration()} секунд, урон ×${plasmaMul()} насквозь`);
+    banner("ПЛАЗМА", F("{0} секунд, урон ×{1} насквозь", plasmaDuration(), plasmaMul()));
     Audio.unique();
     buzz(70);
     updatePlasmaHud();
@@ -2759,7 +3223,7 @@
       dmg: 1, pierce: 0, splash: 0, color: COLORS.cyan, hit: null,
       ...opts
     };
-    const k = G.bulletSpeed || 1;
+    const k = (G.bulletSpeed || 1) * (1 + 0.18 * (G.mods.injector || 0));
     b.vx *= k;
     b.vy *= k;
     if (G.mods.pierce) b.pierce += G.mods.pierce;
@@ -2792,6 +3256,10 @@
     const offs = [];
     for (let i = 0; i < count; i++) offs.push((i - (count - 1) / 2) * step);
     if (s.triple > 0) offs.push(-0.2, 0.2);
+    const extra = G.mods.repeater || 0;
+    for (let i = 0; i < extra; i++) {
+      offs.push((i % 2 ? 1 : -1) * (0.14 + Math.floor(i / 2) * 0.11));
+    }
 
     for (const off of offs) {
       pushBullet({
@@ -2897,6 +3365,8 @@
   /* ---------------- damage ---------------- */
   function damageEnemy(e, dmg) {
     if (e.type === "boss" && G.mods.bossDmg) dmg *= 1 + 0.3 * G.mods.bossDmg;
+    if (G.mods.berserk) dmg *= 1 + 0.25 * G.mods.berserk;
+    if (G.mods.salvage) dmg *= 1 + 0.1 * G.mods.salvage;
     e.hp -= dmg;
     e.flash = 0.12;
     if (e.type === "boss") Audio.bossHit();
@@ -3021,7 +3491,7 @@
     G.bossesDefeated++;
     G.upgradeQueue = 1.6;
     G.waveDelay = 2.6;
-    banner(`${e.name} ПОВЕРЖЕН`, "оружие в арсенале, готовь модернизацию");
+    banner(F("{0} ПОВЕРЖЕН", L(e.name)), "оружие в арсенале, готовь модернизацию");
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
@@ -3068,6 +3538,21 @@
     if (s.lives <= 0) gameOver();
   }
 
+  function renderOverStats(withStatus = true) {
+    if (el.overModule) {
+      const modsCount = Object.keys(G.mods).length;
+      el.overModule.textContent = G.bossesDefeated
+        ? F("Боссов: {0} · улучшений: {1}", G.bossesDefeated, modsCount)
+        : L("Без модернизаций");
+    }
+    el.overScore.textContent = num(G.score);
+    el.overBest.textContent = num(G.best);
+    if (withStatus) {
+      el.statusLine.textContent =
+        F("Полёт окончен. Очки {0}, рекорд {1}.", num(G.score), num(G.best));
+    }
+  }
+
   function gameOver() {
     G.ship.alive = false;
     G.mode = "over";
@@ -3091,21 +3576,12 @@
     Audio.gameover();
     buzz(70);
     setTimeout(() => {
-      if (el.overModule) {
-        const modsCount = Object.keys(G.mods).length;
-        el.overModule.textContent = G.bossesDefeated
-          ? `Боссов: ${G.bossesDefeated} · улучшений: ${modsCount}`
-          : "Без модернизаций";
-      }
-      el.overScore.textContent = G.score.toLocaleString("ru-RU");
-      el.overBest.textContent = G.best.toLocaleString("ru-RU");
+      renderOverStats();
       el.newBest.classList.toggle("on", !!G.newRecord);
       el.over.classList.remove("hidden");
       setHudHidden(true);
       pushModalHistory();
       syncA11yBackground();
-      el.statusLine.textContent =
-        `Полёт окончен. Очки ${G.score.toLocaleString("ru-RU")}, рекорд ${G.best.toLocaleString("ru-RU")}.`;
       el.over.focus({ preventScroll: true });
     }, 900);
   }
@@ -3274,7 +3750,7 @@
     el.upgrade.classList.add("hidden");
     el.upgradeGrid.innerHTML = "";
     setHudHidden(true);
-    el.menuBest.textContent = G.best.toLocaleString("ru-RU");
+    el.menuBest.textContent = num(G.best);
     if (!opts || !opts.fromHistory) dropModalHistory();
     syncA11yBackground();
     Music.setPaused(true);
@@ -3440,7 +3916,9 @@
   /* открыто боссами и ещё не выжато до максимума */
   function upgradePool() {
     const tier = Math.max(1, G.bossesDefeated);
-    return UPGRADES.filter((u) => u.tier <= tier && upgradeLevel(u.id) < u.max);
+    return UPGRADES.filter(
+      (u) => !u.repeatable && u.tier <= tier && upgradeLevel(u.id) < u.max
+    );
   }
 
   function rollUpgradeCards() {
@@ -3459,13 +3937,15 @@
     // вторая — из всего открытого пула. Всего две, как после первого босса
     take(fresh.length ? fresh : open);
     take(open);
+    // даже после того, как всё выкачано, держим ровно две карточки
+    while (picks.length < 2) picks.push("salvage");
     return picks;
   }
 
   function renderUpgrade() {
     el.upgradeGrid.innerHTML = "";
     el.upgradeLede.textContent =
-      `Босс ${G.bossesDefeated} повержен. Выбери одну карточку — она останется до конца полёта.`;
+      F("Босс {0} повержен. Выбери одну карточку — она останется до конца полёта.", G.bossesDefeated);
     G.upgradeChoice.forEach((id) => {
       const u = UPGRADE_BY_ID[id];
       if (!u) return;
@@ -3479,22 +3959,24 @@
 
       const tag = document.createElement("span");
       tag.className = "pick__tag";
-      tag.textContent = u.max > 1 ? `${u.tag} · ур. ${next} из ${u.max}` : u.tag;
+      tag.textContent = isFinite(u.max) && u.max > 1
+        ? F("{0} · ур. {1} из {2}", L(u.tag), next, u.max)
+        : u.repeatable ? F("{0} · ур. {1}", L(u.tag), next) : L(u.tag);
       card.appendChild(tag);
 
       const name = document.createElement("span");
       name.className = "pick__name";
-      name.textContent = u.name;
+      name.textContent = L(u.name);
       card.appendChild(name);
 
       const desc = document.createElement("span");
       desc.className = "pick__desc";
-      desc.innerHTML = u.desc[Math.min(lvl, u.desc.length - 1)];
+      desc.innerHTML = L(u.desc[Math.min(lvl, u.desc.length - 1)]);
       card.appendChild(desc);
 
       const act = document.createElement("span");
       act.className = "pick__action";
-      act.textContent = lvl > 0 ? "Улучшить" : "Взять";
+      act.textContent = L(lvl > 0 ? "Улучшить" : "Взять");
       card.appendChild(act);
 
       el.upgradeGrid.appendChild(card);
@@ -3502,8 +3984,12 @@
 
     const owned = UPGRADES.filter((u) => upgradeLevel(u.id) > 0);
     el.upgradeOwned.innerHTML = owned.length
-      ? "В строю: " + owned
-        .map((u) => `<b>${u.name}${u.max > 1 ? " " + ROMAN[upgradeLevel(u.id)] : ""}</b>`)
+      ? L("В строю:") + " " + owned
+        .map((u) => {
+          const lvl = upgradeLevel(u.id);
+          const roman = isFinite(u.max) && u.max > 1 ? " " + (ROMAN[lvl] || lvl) : "";
+          return `<b>${L(u.name)}${roman}</b>`;
+        })
         .join(" · ")
       : "";
   }
@@ -3562,10 +4048,13 @@
       banner("ПЛАЗМАГАН", "детали врагов копят заряд");
     } else if (id === "lives") {
       s.lives = Math.min(maxLives(), s.lives + 3);
-      banner("ЖИЗНЕЛЮБИЕ", `потолок ${maxLives()} сердец`);
-    } else if (id === "repair") {
+      banner("ЖИЗНЕЛЮБИЕ", F("потолок {0} сердец", maxLives()));
+    } else if (id === "repair" || id === "titan" || id === "salvage") {
       s.lives = maxLives();
-      banner("РЕМОНТ", `корпус ${s.lives} / ${maxLives()}`);
+      banner(
+        id === "repair" ? "РЕМОНТ" : id === "titan" ? "ТИТАН" : "НАЛАДКА",
+        F("корпус {0} / {1}", s.lives, maxLives())
+      );
     } else if (id === "swarm") {
       addPermanentDrones(lvl + 1);
       banner("ЭСКАДРИЛЬЯ", "дроны держатся до конца полёта");
@@ -3949,6 +4438,26 @@
     if (G.ebullets.length > guard) G.ebullets.splice(0, G.ebullets.length - guard);
     for (let i = G.ebullets.length - 1; i >= 0; i--) {
       const b = G.ebullets[i];
+
+      if (b.kind === "mine") {
+        b.spin = (b.spin || 0) + dt * 2.4;
+        b.fuse -= dt;
+        if (b.fuse <= 0) {
+          mineBurst(b);
+          G.ebullets.splice(i, 1);
+          continue;
+        }
+      } else if (b.kind === "homing" && s.alive) {
+        // самонаводящийся снаряд мягко доворачивается, но не телепортируется
+        const cur = Math.atan2(b.vy, b.vx);
+        const want = Math.atan2(s.y - b.y, s.x - b.x);
+        const diff = ((want - cur + Math.PI * 3) % TAU) - Math.PI;
+        const stepA = clamp(diff, -b.turn * dt, b.turn * dt);
+        const ang = cur + stepA;
+        b.vx = Math.cos(ang) * b.speed;
+        b.vy = Math.sin(ang) * b.speed;
+      }
+
       b.x += b.vx * dt;
       b.y += b.vy * dt;
       b.life -= dt;
@@ -4230,9 +4739,13 @@
     G.enemies = G.enemies.filter((e) => !e.dead);
   }
 
+  function pushEBullet(o) {
+    G.ebullets.push({ life: 6, trail: true, ...o });
+  }
+
   function bossBullet(e, angle, speed, r, color) {
     const sp = speed * (IS_TOUCH ? 0.82 : 1);
-    G.ebullets.push({
+    const b = {
       x: e.x + Math.cos(angle) * e.r * 0.55,
       y: e.y + Math.sin(angle) * e.r * 0.55,
       vx: Math.cos(angle) * sp,
@@ -4241,7 +4754,25 @@
       life: 6,
       color,
       trail: true
-    });
+    };
+    G.ebullets.push(b);
+    return b;
+  }
+
+  // мина висит на поле, затем рвётся кольцом осколков
+  function mineBurst(b) {
+    const n = 10;
+    const a0 = b.spin || 0;
+    for (let i = 0; i < n; i++) {
+      const a = a0 + (i / n) * TAU;
+      pushEBullet({
+        x: b.x, y: b.y,
+        vx: Math.cos(a) * 205, vy: Math.sin(a) * 205,
+        r: 4, color: b.color
+      });
+    }
+    explode(b.x, b.y, { size: 23, color: b.color, rings: 1, shake: 4, sound: false, debris: false });
+    Audio.boom(false);
   }
 
   function fireBossAttack(e, a) {
@@ -4291,6 +4822,58 @@
         );
         m.y = e.y + rand(-10, 20);
       }
+    } else if (a.kind === "wall") {
+      // завеса сверху с единственной щелью — можно уйти в сторону
+      const n = clamp(Math.round(G.w / (IS_TOUCH ? 52 : 72)), 8, 20);
+      const gap = a.gap * (IS_TOUCH ? 0.85 : 1);
+      const gapX = G.ship.x + rand(-18, 18);
+      const sp = a.speed * (IS_TOUCH ? 0.82 : 1);
+      for (let i = 0; i < n; i++) {
+        const x = ((i + 0.5) / n) * G.w;
+        if (Math.abs(x - gapX) < gap / 2) continue;
+        pushEBullet({
+          x,
+          y: -16 - rand(0, 24),
+          vx: 0,
+          vy: sp,
+          r: a.r,
+          color: col
+        });
+      }
+      Audio.boom(false);
+      G.shake = Math.min(G.shake + 3, 18);
+    } else if (a.kind === "cross") {
+      const s = G.ship;
+      const base = Math.atan2(s.y - e.y, s.x - e.x);
+      const arms = (a.arms || 4) + (enr ? 2 : 0);
+      for (let i = 0; i < arms; i++) {
+        bossBullet(e, base + (i / arms) * TAU, a.speed, a.r, col);
+      }
+      Audio.bossShot();
+    } else if (a.kind === "homing") {
+      const n = a.n + (enr ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const angle = Math.PI / 2 + (i - (n - 1) / 2) * 0.5;
+        const b = bossBullet(e, angle, a.speed, a.r, col);
+        b.kind = "homing";
+        b.speed = a.speed * (IS_TOUCH ? 0.82 : 1);
+        b.turn = a.turn || 1.5;
+        b.life = 7;
+      }
+      Audio.bossShot();
+    } else if (a.kind === "mine") {
+      const n = a.n + (enr ? 1 : 0);
+      for (let i = 0; i < n; i++) {
+        const b = bossBullet(e, Math.PI / 2 + rand(-0.35, 0.35), a.speed, a.r, col);
+        b.x = clamp(b.x, 22, G.w - 22);
+        b.kind = "mine";
+        b.fuse = a.fuse || 2.6;
+        b.spin = rand(0, TAU);
+        b.vx *= 0.35;
+        b.vy = Math.max(30, a.speed * 0.5) * (IS_TOUCH ? 0.82 : 1);
+        b.life = 12;
+      }
+      Audio.bossShot();
     }
   }
 
@@ -4318,7 +4901,12 @@
     const ease = ramp * ramp * (3 - 2 * ramp);
     const dir = Math.sin(e.seed) >= 0 ? 1 : -1;
     e.x = G.w / 2 + Math.sin(e.mt * mv.speed) * swing * dir * ease;
-    e.y = targetY + Math.sin(e.mt * mv.ySpeed) * mv.yAmp * ease;
+    if (mv.figure8) {
+      // восьмёрка: по вертикали частота вдвое выше горизонтальной
+      e.y = targetY + Math.sin(e.mt * mv.speed * 2) * mv.yAmp * ease;
+    } else {
+      e.y = targetY + Math.sin(e.mt * mv.ySpeed) * mv.yAmp * ease;
+    }
     e.angle += dt * (e.enraged ? 0.9 : 0.5);
 
     if (!s.alive) return;
@@ -4393,7 +4981,7 @@
             updateHud();
             banner(
               full ? "ЗАПАС ПОЛОН" : "РЕМОНТ КОРПУСА",
-              full ? `${max} / ${max}, +250 очков` : `+1 жизнь, ${s.lives} / ${max}`
+              full ? F("{0} / {1}, +250 очков", max, max) : F("+1 жизнь, {0} / {1}", s.lives, max)
             );
             explode(p.x, p.y, {
               size: 40, color: COLORS.pink, secondary: COLORS.white,
@@ -4424,11 +5012,11 @@
               });
               banner(
                 ds.length === CONFIG.player.droneMax ? "ДРОНЫ ×3" : "ДРОН",
-                `${ds.length} / ${CONFIG.player.droneMax}, ${DRONE_TIME} секунд`
+                F("{0} / {1}, {2} секунд", ds.length, CONFIG.player.droneMax, DRONE_TIME)
               );
             } else {
               for (const d of ds) { d.t = DRONE_TIME; d.max = DRONE_TIME; }
-              banner("ДРОНЫ ×3", `таймер обновлён, ${DRONE_TIME} секунд`);
+              banner("ДРОНЫ ×3", F("таймер обновлён, {0} секунд", DRONE_TIME));
             }
             explode(p.x, p.y, {
               size: 36, color: COLORS.mint, secondary: COLORS.white,
@@ -4463,7 +5051,8 @@
 
     ctx.save();
     if (G.shake > 0.2 && !REDUCED_MOTION) {
-      const s = G.shake * SHAKE_SCALE;
+      const raw = G.shake * SHAKE_SCALE;
+      const s = IS_TOUCH ? Math.min(raw, CONFIG.player.shakeMaxTouch) : raw;
       ctx.translate(rand(-s, s), rand(-s, s));
     }
 
@@ -4510,7 +5099,7 @@
       ctx.font = "600 13px 'Google Sans Flex', sans-serif";
       ctx.textAlign = "center";
       ctx.fillStyle = COLORS.amber;
-      ctx.fillText(`комбо ×${G.combo}`, w / 2, h - 32);
+      ctx.fillText(F("комбо ×{0}", G.combo), w / 2, h - 32);
       ctx.restore();
     }
   }
@@ -4649,6 +5238,29 @@
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.arc(b.x, b.y, rad * 1.55, 0, TAU);
+        ctx.stroke();
+      }
+
+      if (b.kind === "mine") {
+        const pulse = 1 + Math.sin((b.spin || 0) * 3) * 0.12;
+        const ang = b.spin || 0;
+        ctx.strokeStyle = rgba(b.color, 0.95);
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, rad * 1.6 * pulse, 0, TAU);
+        for (let k = 0; k < 4; k++) {
+          const a = ang + (k / 4) * TAU;
+          ctx.moveTo(b.x + Math.cos(a) * rad * 1.7, b.y + Math.sin(a) * rad * 1.7);
+          ctx.lineTo(b.x + Math.cos(a) * rad * 2.3, b.y + Math.sin(a) * rad * 2.3);
+        }
+        ctx.stroke();
+      } else if (b.kind === "homing") {
+        const a = Math.atan2(b.vy, b.vx);
+        ctx.strokeStyle = rgba(b.color, 0.75);
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(b.x - Math.cos(a) * rad * 1.4, b.y - Math.sin(a) * rad * 1.4);
+        ctx.lineTo(b.x - Math.cos(a) * rad * 3.4, b.y - Math.sin(a) * rad * 3.4);
         ctx.stroke();
       }
     }
@@ -6826,6 +7438,238 @@
     for (const side of [-1, 1]) lightDot(side * r * 0.58, -r * 1.14, r * 0.035, fill, 0.8);
   }
 
+  function drawBossPulsar(e, fill, hot, r, t) {
+    // расходящиеся волновые дуги
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let k = 0; k < 3; k++) {
+      const rr = r * (1.08 + k * 0.16) + Math.sin(t * 2.4 - k * 0.8) * r * 0.06;
+      ctx.strokeStyle = rgba(fill, 0.22 - k * 0.05);
+      ctx.lineWidth = 2.2 - k * 0.4;
+      ctx.beginPath();
+      ctx.arc(0, 0, rr, t * 0.6 + k, t * 0.6 + k + TAU * 0.72);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU - Math.PI / 2;
+      const x = Math.cos(a) * r * 0.95;
+      const y = Math.sin(a) * r * 0.82;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = hullFill(r, hot, "#582f36", "#2c1625", "#0b0712");
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.9);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    for (const side of [-1, 1]) {
+      const yy = side * r * 0.9;
+      roundRectPath(-r * 0.18, yy - r * 0.1, r * 0.36, r * 0.2, r * 0.06);
+      ctx.fillStyle = hot ? "#ffffff" : "#170d18";
+      ctx.fill();
+      ctx.strokeStyle = rgba(fill, 0.8);
+      ctx.lineWidth = 1.2;
+      ctx.stroke();
+      lightDot(0, yy, r * 0.06, fill, 0.9);
+    }
+
+    const pulse = 0.52 + Math.sin(t * 3.2) * 0.06;
+    ctx.fillStyle = "#080610";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * pulse, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.9);
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+    lightDot(Math.cos(t * 1.7) * r * 0.2, Math.sin(t * 1.7) * r * 0.2, r * 0.09, fill, 0.95);
+  }
+
+  function drawBossLancer(e, fill, hot, r, t) {
+    // боковые копья
+    ctx.strokeStyle = rgba(fill, 0.8);
+    ctx.lineWidth = r * 0.07;
+    ctx.beginPath();
+    for (const side of [-1, 1]) {
+      ctx.moveTo(side * r * 0.55, r * 0.1);
+      ctx.lineTo(side * r * 1.15, r * 0.62);
+      ctx.lineTo(side * r * 1.34, r * 0.94);
+    }
+    ctx.stroke();
+    for (const side of [-1, 1]) lightDot(side * r * 1.34, r * 0.94, r * 0.05, fill, 0.95);
+
+    ctx.beginPath();
+    ctx.moveTo(0, r * 1.12);
+    ctx.lineTo(r * 0.42, r * 0.35);
+    ctx.lineTo(r * 0.72, -r * 0.45);
+    ctx.lineTo(r * 0.3, -r * 0.32);
+    ctx.lineTo(0, -r * 1.02);
+    ctx.lineTo(-r * 0.3, -r * 0.32);
+    ctx.lineTo(-r * 0.72, -r * 0.45);
+    ctx.lineTo(-r * 0.42, r * 0.35);
+    ctx.closePath();
+    ctx.fillStyle = hullFill(r, hot, "#3b3057", "#1d1835", "#080614");
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.95);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.strokeStyle = rgba(fill, 0.6);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 0.9);
+    ctx.lineTo(0, r * 0.85);
+    ctx.stroke();
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(side * r * 0.18, r * 0.62);
+      ctx.lineTo(side * r * 0.52, r * 0.92);
+      ctx.stroke();
+    }
+    lightDot(0, r * 0.1, r * (0.16 + Math.sin(t * 5) * 0.012), fill, 0.95);
+  }
+
+  function drawBossMiner(e, fill, hot, r, t) {
+    ctx.beginPath();
+    for (let i = 0; i < 6; i++) {
+      const a = (i / 6) * TAU + Math.PI / 6;
+      const x = Math.cos(a) * r * 0.92;
+      const y = Math.sin(a) * r * 0.82;
+      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = hullFill(r, hot, "#5c4220", "#30230f", "#0a0805");
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.9);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // бур и рудные отсеки
+    ctx.beginPath();
+    ctx.moveTo(-r * 0.28, r * 0.7);
+    ctx.lineTo(0, r * 1.18);
+    ctx.lineTo(r * 0.28, r * 0.7);
+    ctx.closePath();
+    ctx.fillStyle = hot ? "#ffffff" : "#1c1408";
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.85);
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.translate(side * r * 0.94, r * 0.14);
+      ctx.rotate(t * (side > 0 ? 1 : -1) * 0.9);
+      ctx.strokeStyle = rgba(fill, 0.85);
+      ctx.lineWidth = r * 0.035;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.23, 0, TAU);
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * TAU;
+        ctx.moveTo(Math.cos(a) * r * 0.08, Math.sin(a) * r * 0.08);
+        ctx.lineTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    for (const x of [-0.32, 0, 0.32]) {
+      roundRectPath(x * r - r * 0.09, -r * 0.3, r * 0.18, r * 0.36, r * 0.03);
+      ctx.fillStyle = "#0d0a06";
+      ctx.fill();
+      ctx.strokeStyle = rgba(fill, 0.7);
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      lightDot(x * r, -r * 0.12, r * 0.045, fill, 0.9);
+    }
+  }
+
+  function drawBossMirror(e, fill, hot, r, t) {
+    for (const side of [-1, 1]) {
+      ctx.save();
+      ctx.scale(side, 1);
+      ctx.beginPath();
+      ctx.moveTo(r * 0.08, -r * 1.02);
+      ctx.lineTo(r * 0.98, -r * 0.24);
+      ctx.lineTo(r * 0.64, r * 0.86);
+      ctx.lineTo(r * 0.1, r * 1.0);
+      ctx.closePath();
+      ctx.fillStyle = hullFill(r, hot, "#23485c", "#122b3a", "#060d14");
+      ctx.fill();
+      ctx.strokeStyle = rgba(fill, 0.9);
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255,255,255,0.22)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(r * 0.22, -r * 0.8);
+      ctx.lineTo(r * 0.78, -r * 0.22);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.strokeStyle = rgba(fill, 0.8);
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * 1.14);
+    ctx.lineTo(0, r * 1.14);
+    ctx.stroke();
+    for (const y of [-0.6, 0.6]) lightDot(0, y * r, r * 0.05, fill, 0.9);
+
+    ctx.fillStyle = "#060d14";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.3, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.95);
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    lightDot(Math.sin(t * 2) * r * 0.08, 0, r * (0.1 + Math.sin(t * 3.5) * 0.015), fill, 0.95);
+  }
+
+  function drawBossCore(e, fill, hot, r, t) {
+    ctx.strokeStyle = rgba(fill, 0.7);
+    ctx.lineWidth = r * 0.05;
+    ctx.beginPath();
+    for (let k = 0; k < 8; k++) {
+      const a = (k / 8) * TAU + t * 0.15;
+      ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
+      ctx.lineTo(Math.cos(a) * r * 1.16, Math.sin(a) * r * 1.16);
+    }
+    ctx.stroke();
+
+    for (let k = 0; k < 3; k++) {
+      ctx.save();
+      ctx.rotate(t * (k % 2 ? -0.5 : 0.7) + k);
+      ctx.strokeStyle = rgba(fill, 0.42 - k * 0.08);
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, r * (0.9 + k * 0.12), r * (0.6 + k * 0.1), 0, 0, TAU);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.78, 0, TAU);
+    ctx.fillStyle = hullFill(r, hot, "#591724", "#2c0a14", "#090205");
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 0.95);
+    ctx.lineWidth = 2.4;
+    ctx.stroke();
+
+    const pulse = 1 + Math.sin(t * 4) * 0.09;
+    ctx.fillStyle = hot ? "#ffffff" : "#1a0309";
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.3 * pulse, 0, TAU);
+    ctx.fill();
+    ctx.strokeStyle = rgba(fill, 1);
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    lightDot(0, 0, r * 0.1, fill, 0.95);
+  }
+
   function drawBoss(e) {
     const hot = e.flash > 0;
     const fill = hot ? "#ffffff" : e.color;
@@ -6839,6 +7683,11 @@
       case "bomber": drawBossBomber(e, fill, hot, r, t); break;
       case "marksman": drawBossMarksman(e, fill, hot, r, t); break;
       case "swarm": drawBossSwarm(e, fill, hot, r, t); break;
+      case "pulsar": drawBossPulsar(e, fill, hot, r, t); break;
+      case "lancer": drawBossLancer(e, fill, hot, r, t); break;
+      case "miner": drawBossMiner(e, fill, hot, r, t); break;
+      case "mirror": drawBossMirror(e, fill, hot, r, t); break;
+      case "core": drawBossCore(e, fill, hot, r, t); break;
       default: drawBossWarden(e, fill, hot, r, t);
     }
   }
@@ -7126,7 +7975,7 @@
     ctx.textBaseline = "middle";
     ctx.font = "700 11px 'Google Sans Flex', sans-serif";
     ctx.fillStyle = rgba(boss.color, 0.95);
-    ctx.fillText(boss.enraged ? `${boss.name}: ЯРОСТЬ` : boss.name, w / 2, by + 7);
+    ctx.fillText(boss.enraged ? F("{0}: ЯРОСТЬ", L(boss.name)) : L(boss.name), w / 2, by + 7);
 
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(bx, by + 16, bw, 7);
@@ -7162,12 +8011,12 @@
     ctx.fillStyle = "rgba(238,240,255,0.95)";
     ctx.shadowColor = "rgba(124,92,255,0.9)";
     ctx.shadowBlur = 30;
-    ctx.fillText(b.text.toUpperCase(), G.w / 2, G.h * 0.44);
+    ctx.fillText(L(b.text).toUpperCase(), G.w / 2, G.h * 0.44);
     if (b.sub) {
       ctx.shadowBlur = 0;
       ctx.font = "500 12px 'Google Sans Flex', sans-serif";
       ctx.fillStyle = "rgba(139,143,179,0.9)";
-      ctx.fillText(b.sub.toUpperCase(), G.w / 2, G.h * 0.44 + 56);
+      ctx.fillText(L(b.sub).toUpperCase(), G.w / 2, G.h * 0.44 + 56);
     }
     ctx.restore();
   }
@@ -7213,10 +8062,20 @@
   window.addEventListener("resize", scheduleResize);
   window.addEventListener("orientationchange", scheduleResize);
   if (window.visualViewport) window.visualViewport.addEventListener("resize", scheduleResize);
-  el.menuBest.textContent = G.best.toLocaleString("ru-RU");
-  el.best.textContent = G.best.toLocaleString("ru-RU");
+  el.menuBest.textContent = num(G.best);
+  el.best.textContent = num(G.best);
   syncLives();
   updateHud();
+
+  for (const btn of document.querySelectorAll(".lang__btn")) {
+    btn.addEventListener("click", () => {
+      if (btn.dataset.lang === LANG) return;
+      Audio.unlock();
+      setLang(btn.dataset.lang);
+    });
+  }
+  setLang(store.lang);
+
   syncA11yBackground();
 
   requestAnimationFrame(frame);
