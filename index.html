@@ -428,6 +428,14 @@
     filter: drop-shadow(0 0 7px rgba(255, 92, 138, 0.85));
     transition: opacity 200ms var(--ease), transform 200ms var(--ease), filter 200ms var(--ease);
   }
+  .lives__more {
+    font-family: var(--font-ui);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #ffb0c6;
+    text-shadow: 0 0 10px rgba(255, 92, 138, 0.45);
+  }
   .lives i.dead {
     opacity: 0.22;
     background: #8b8fb3;
@@ -632,8 +640,8 @@
   .bestline b { color: var(--amber); font-weight: 600; }
 
   /* ---------- предполётный выбор ---------- */
-  .panel--loadout { max-width: 720px; }
-  .loadout__title {
+  .panel--upgrade { max-width: 760px; }
+  .upgrade__title {
     margin: 0;
     font-family: var(--font-display);
     font-size: clamp(1.7rem, 5.5vw, 2.8rem);
@@ -641,22 +649,34 @@
     line-height: 1;
     letter-spacing: -0.03em;
   }
-  .loadout__lede {
+  .upgrade__lede {
     margin: 14px 0 0;
     max-width: 48ch;
     font-size: 13px;
     line-height: 1.6;
     color: var(--muted);
   }
-  .loadout__grid {
+  .upgrade__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
     gap: 14px;
     width: 100%;
-    max-width: 720px;
+    max-width: 760px;
     margin-top: 26px;
   }
+  .upgrade__owned {
+    margin: 18px 0 0;
+    max-width: 760px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .upgrade__owned b { color: var(--cyan); font-weight: 600; }
+  .upgrade__owned:empty { display: none; }
   .pick {
+    --pick-accent: var(--cyan);
     position: relative;
     display: flex;
     flex-direction: column;
@@ -713,7 +733,8 @@
     font-size: 11px;
     letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: var(--pick-accent);
+    opacity: 0.92;
   }
   .pick__name {
     font-family: var(--font-display);
@@ -765,7 +786,7 @@
     }
   }
 
-  .loadout__hint {
+  .upgrade__hint {
     display: flex;
     gap: 22px;
     flex-wrap: wrap;
@@ -775,9 +796,9 @@
     letter-spacing: 0.04em;
     color: var(--muted);
   }
-  .loadout__hint span { display: inline-flex; align-items: center; gap: 8px; }
+  .upgrade__hint span { display: inline-flex; align-items: center; gap: 8px; }
 
-  /* вторичные действия: «Назад» в выборе модуля, «В меню» на экране смерти */
+  /* вторичное действие: «В меню» на экране смерти */
   .btn-ghost {
     display: inline-flex;
     align-items: center;
@@ -807,7 +828,6 @@
   }
   .btn-ghost:active { transform: translateY(0) scale(0.985); }
   .btn-ghost:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
-  .loadout__actions,
   .over__actions {
     display: flex;
     flex-wrap: wrap;
@@ -815,7 +835,6 @@
     justify-content: center;
     gap: 12px;
   }
-  .loadout__actions { margin-top: 24px; }
   .over__actions { margin-top: 28px; }
   .over__actions .cta { margin-top: 0; }
 
@@ -957,21 +976,21 @@
     .plasma { margin-top: 2px; max-width: none; }
     .plasma__head { font-size: 11px; letter-spacing: 0.12em; }
     .plasma__track { height: 6px; }
-    .loadout__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
-    .loadout__lede { font-size: 12.5px; }
+    .upgrade__grid { grid-template-columns: 1fr; gap: 12px; margin-top: 22px; }
+    .upgrade__lede { font-size: 12.5px; }
     .pick { padding: 16px 18px 15px; }
     .pick__name { font-size: 21px; }
     .pick__desc { font-size: 12px; }
-    .loadout__hint { margin: 18px 0 0; gap: 14px; }
+    .upgrade__hint { margin: 18px 0 0; gap: 14px; }
   }
 
   @media (max-height: 640px) {
-    .loadout__lede { display: none; }
-    .loadout__grid { gap: 10px; margin-top: 14px; }
+    .upgrade__lede { display: none; }
+    .upgrade__grid { gap: 10px; margin-top: 14px; }
     .pick { padding: 14px 16px; gap: 6px; }
     .pick__desc { font-size: 12px; line-height: 1.5; }
     .pick__action { padding: 9px 12px; }
-    .loadout__hint { margin: 10px 0 0; }
+    .upgrade__hint { margin: 10px 0 0; }
     .bestline { margin-top: 14px; }
   }
 
@@ -982,9 +1001,9 @@
     .hints { margin-top: 20px; }
     .score-grid { margin-top: 20px; }
     .over__title { font-size: clamp(1.6rem, 6vh, 2.4rem); }
-    .loadout__lede { display: none; }
-    .loadout__grid { margin-top: 18px; }
-    .loadout__hint { margin: 14px 0 0; }
+    .upgrade__lede { display: none; }
+    .upgrade__grid { margin-top: 18px; }
+    .upgrade__hint { margin: 14px 0 0; }
     .pick { padding: 12px 16px; }
     .pick__action { padding: 9px 12px; }
   }
@@ -1085,46 +1104,18 @@
     </div>
   </section>
 
-  <section class="screen hidden" id="loadout" role="dialog" aria-modal="true" aria-label="Выбор модуля" tabindex="-1">
-    <div class="panel panel--loadout">
-      <h2 class="loadout__title">Выбери модуль</h2>
-      <p class="loadout__lede">
-        Один модуль на полёт. Перед новым запуском можно выбрать другой.
+  <section class="screen hidden" id="upgrade" role="dialog" aria-modal="true" aria-label="Модернизация" tabindex="-1">
+    <div class="panel panel--upgrade">
+      <h2 class="upgrade__title" id="upgradeTitle">Модернизация</h2>
+      <p class="upgrade__lede" id="upgradeLede">
+        Босс повержен. Один апгрейд на выбор — он останется до конца полёта.
       </p>
-      <div class="loadout__grid">
-        <button class="pick" id="pickPlasma" type="button">
-          <span class="pick__badge" aria-hidden="true" hidden>Прошлый</span>
-          <span class="pick__tag">Супероружие</span>
-          <span class="pick__name">Плазмаган</span>
-          <span class="pick__desc">
-            Детали врагов заполняют шкалу до 100%. На полном заряде
-            <span class="only-desktop-inline">жми <b>ПКМ</b></span><span class="only-touch-inline">жми <b>«Пуск плазмы»</b></span>:
-            10 секунд урона <b>×5</b> насквозь. Запас: <b>3 сердца</b>, максимум.
-          </span>
-          <span class="pick__action">Выбрать плазмаган</span>
-        </button>
-        <button class="pick" id="pickLives" type="button">
-          <span class="pick__badge" aria-hidden="true" hidden>Прошлый</span>
-          <span class="pick__tag">+3 сердца к старту</span>
-          <span class="pick__name">Жизнелюбие</span>
-          <span class="pick__desc">
-            Старт с <b>6 сердцами</b>: это потолок запаса. Потерянную жизнь
-            вернёт выпавшее сердце, но выше шести не поднять.
-          </span>
-          <span class="pick__action">Выбрать жизнелюбие</span>
-        </button>
-      </div>
-      <div class="loadout__actions">
-        <button class="btn-ghost" id="backBtn" type="button">Назад</button>
-      </div>
-      <p class="loadout__hint">
-        <span class="only-desktop"><kbd>1</kbd> плазмаган</span>
-        <span class="only-desktop"><kbd>2</kbd> жизнелюбие</span>
-        <span class="only-desktop"><kbd>ENTER</kbd> старт</span>
-        <span class="only-desktop"><kbd>ESC</kbd> назад</span>
-        <span class="only-touch">Коснись кнопки, чтобы начать</span>
+      <div class="upgrade__grid" id="upgradeGrid"></div>
+      <p class="upgrade__owned" id="upgradeOwned"></p>
+      <p class="upgrade__hint" id="upgradeHint">
+        <span class="only-desktop"><kbd>1</kbd><kbd>2</kbd> выбор</span>
+        <span class="only-touch">Коснись карточки</span>
       </p>
-      <p class="bestline">Рекорд: <b id="loadoutBest">0</b></p>
     </div>
   </section>
 
@@ -1193,13 +1184,14 @@
     },
     menu: document.getElementById("menu"),
     over: document.getElementById("over"),
-    loadout: document.getElementById("loadout"),
-    pickPlasma: document.getElementById("pickPlasma"),
-    pickLives: document.getElementById("pickLives"),
-    loadoutBest: document.getElementById("loadoutBest"),
+    upgrade: document.getElementById("upgrade"),
+    upgradeTitle: document.getElementById("upgradeTitle"),
+    upgradeLede: document.getElementById("upgradeLede"),
+    upgradeGrid: document.getElementById("upgradeGrid"),
+    upgradeOwned: document.getElementById("upgradeOwned"),
+    upgradeHint: document.getElementById("upgradeHint"),
     startBtn: document.getElementById("startBtn"),
     retryBtn: document.getElementById("retryBtn"),
-    backBtn: document.getElementById("backBtn"),
     menuBtn: document.getElementById("menuBtn"),
     menuBest: document.getElementById("menuBest"),
     overScore: document.getElementById("overScore"),
@@ -1405,7 +1397,142 @@
         formationChance: 0.16,
         doubleChance: 0.28
       }
-    }
+    },
+
+    /* Модернизация после босса.
+       tier — с какого побеждённого босса карточка попадает в пул,
+       max — сколько уровней можно взять, desc — текст следующего уровня. */
+    upgrades: [
+      // ——— босс 1: модуль, фиксированная пара ———
+      {
+        id: "plasma", module: true, tier: 1, max: 1, tag: "Супероружие", color: "#ff3b5c",
+        name: "Плазмаган",
+        desc: ["Детали врагов копят заряд. На <b>100%</b> — 10 секунд урона <b>×5</b> насквозь."],
+        action: "Взять плазмаган"
+      },
+      {
+        id: "lives", module: true, tier: 1, max: 1, tag: "+3 сердца", color: "#ff5c8a",
+        name: "Жизнелюбие",
+        desc: ["Потолок запаса <b>3 → 6</b> сердец. Сразу <b>+3</b> к корпусу."],
+        action: "Взять сердца"
+      },
+
+      // ——— босс 2: ствол ———
+      {
+        id: "twin", tier: 2, max: 3, tag: "Ствол", color: "#4de1ff",
+        name: "Спарка",
+        desc: [
+          "Вторая пушка в залпе: <b>+60%</b> урона.",
+          "Третья пуля в залпе: <b>+110%</b> урона от базы.",
+          "Четыре пули: <b>+180%</b> урона от базы."
+        ]
+      },
+      {
+        id: "caliber", tier: 2, max: 3, tag: "Ствол", color: "#4de1ff",
+        name: "Калибр",
+        desc: ["Урон пули <b>1 → 1.6</b>.", "Урон пули <b>1 → 2.2</b>.", "Урон пули <b>1 → 2.8</b>."]
+      },
+      {
+        id: "rapid", tier: 2, max: 3, tag: "Ствол", color: "#4de1ff",
+        name: "Скорострел",
+        desc: [
+          "Перезарядка <b>0.15 → 0.12</b> с.",
+          "Перезарядка <b>0.15 → 0.105</b> с.",
+          "Перезарядка <b>0.15 → 0.09</b> с."
+        ]
+      },
+      {
+        id: "burst", tier: 2, max: 3, tag: "Ствол", color: "#ff9a5c",
+        name: "Разрыв",
+        desc: [
+          "Пули взрываются: радиус <b>26 px</b>, 55% урона соседям.",
+          "Радиус взрыва <b>40 px</b>.",
+          "Радиус <b>54 px</b>, <b>70%</b> урона соседям."
+        ]
+      },
+      {
+        id: "shield", tier: 2, max: 2, tag: "Корпус", color: "#63ffc4",
+        name: "Щит",
+        desc: ["Щит гасит удар и возвращается за <b>20 с</b>.", "Щит возвращается за <b>10 с</b>."]
+      },
+
+      // ——— босс 3: плотность ———
+      {
+        id: "pierce", tier: 3, max: 2, tag: "Ствол", color: "#c08bff",
+        name: "Пронзание",
+        desc: ["Пули пробивают <b>+1</b> цель.", "Пули пробивают <b>+2</b> цели."]
+      },
+      {
+        id: "swarm", tier: 3, max: 2, tag: "Дроны", color: "#63ffc4",
+        name: "Эскадрилья",
+        desc: ["<b>Два</b> постоянных дрона, стреляют сами.", "<b>Третий</b> постоянный дрон."]
+      },
+      {
+        id: "magnet", tier: 3, max: 2, tag: "Утилита", color: "#9fe8ff",
+        name: "Магнит",
+        desc: ["Радиус подбора бонусов <b>+60%</b>.", "Радиус подбора <b>+120%</b>."]
+      },
+      {
+        id: "capacitor", tier: 3, max: 2, tag: "Плазма", color: "#ff3b5c",
+        name: "Конденсатор",
+        desc: [
+          "Деталь даёт <b>18%</b> заряда вместо 12% и падает чаще.",
+          "Деталь даёт <b>24%</b> заряда."
+        ]
+      },
+      {
+        id: "repair", tier: 3, max: 2, tag: "Корпус", color: "#ff5c8a",
+        name: "Ремонт",
+        desc: ["<b>+2</b> к потолку сердец и полный ремонт.", "Ещё <b>+2</b> к потолку, полный ремонт."]
+      },
+
+      // ——— босс 4: живучесть ———
+      {
+        id: "armor", tier: 4, max: 2, tag: "Корпус", color: "#ffc46b",
+        name: "Броня",
+        desc: ["<b>25%</b> попаданий не отнимают сердце.", "<b>40%</b> попаданий не отнимают сердце."]
+      },
+      {
+        id: "reactor", tier: 4, max: 2, tag: "Плазма", color: "#ff3b5c",
+        name: "Реактор",
+        desc: ["Плазма: <b>14 с</b> вместо 10.", "Плазма: <b>18 с</b> вместо 14."]
+      },
+      {
+        id: "bossDmg", tier: 4, max: 2, tag: "Ствол", color: "#ff5c8a",
+        name: "Натиск",
+        desc: ["<b>+30%</b> урона по боссам.", "<b>+60%</b> урона по боссам."]
+      },
+      {
+        id: "thrust", tier: 4, max: 2, tag: "Корпус", color: "#4de1ff",
+        name: "Форсаж",
+        desc: [
+          "Скорость <b>+12%</b>, неуязвимость после удара <b>+0.6 с</b>.",
+          "Скорость <b>+24%</b>."
+        ]
+      },
+
+      // ——— босс 5: козырь ———
+      {
+        id: "overdrive", tier: 5, max: 1, tag: "Ствол", color: "#ffc46b",
+        name: "Овердрайв",
+        desc: ["Перезарядка <b>−30%</b> навсегда."]
+      },
+      {
+        id: "arsenal", tier: 5, max: 1, tag: "Оружие", color: "#c08bff",
+        name: "Арсенал",
+        desc: ["Оружие с боссов больше не истекает через 24 с."]
+      },
+      {
+        id: "plasmaBoost", tier: 5, max: 2, tag: "Плазма", color: "#ff3b5c",
+        name: "Двойной заряд",
+        desc: ["Плазма копится <b>×2</b>, урон <b>×8</b>.", "Урон плазмы <b>×11</b>."]
+      },
+      {
+        id: "risk", tier: 5, max: 1, tag: "Риск", color: "#ffc46b",
+        name: "Азарт",
+        desc: ["<b>+50%</b> очков за всё, но сразу <b>−1</b> сердце."]
+      }
+    ]
   };
 
   // псевдонимы, чтобы остальной код читался как раньше
@@ -1420,6 +1547,9 @@
   const PLASMA_DURATION = CONFIG.plasma.duration;
   const PLASMA_DROP = CONFIG.plasma.dropChance;
   const SHAKE_SCALE = CONFIG.player.shakeScale;
+  const UPGRADES = CONFIG.upgrades;
+  const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
+  const ROMAN = ["", "I", "II", "III"];
 
   let ENEMY_ID = 0;
 
@@ -1784,7 +1914,7 @@
     w: 0,
     h: 0,
     dpr: 1,
-    mode: "menu", // menu | play | over
+    mode: "menu", // menu | play | upgrade | over
     paused: false,
     time: 0,
     last: 0,
@@ -1801,7 +1931,10 @@
     galagaTimer: 0,
     waveDelay: 0,
     genSeen: 1,
-    bonus: null, // "plasma" | "lives"
+    mods: {},    // id модернизации → уровень
+    bossesDefeated: 0,
+    upgradeQueue: 0,   // секунд до открытия экрана модернизации
+    upgradeChoice: [], // id карточек на текущем экране
     plasma: { charge: 0, ready: false, active: 0 },
     bulletSpeed: 1,
     combo: 0,
@@ -1827,6 +1960,7 @@
       invuln: 0,
       shield: false,
       shieldFx: 0,
+      shieldRecharge: 0,
       rapid: 0,
       triple: 0,
       weapon: null,
@@ -2091,9 +2225,28 @@
   function updateHud() {
     el.score.textContent = G.score.toLocaleString("ru-RU");
     el.best.textContent = G.best.toLocaleString("ru-RU");
-    if (el.lives.children.length !== G.ship.lives) {
-      el.lives.innerHTML = "";
-      for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
+    const sig = `${G.ship.lives}/${maxLives()}`;
+    if (livesSig !== sig) {
+      livesSig = sig;
+      renderLives();
+    }
+  }
+
+  // выше шести сердец рисовать нечего: на телефоне строка HUD ломается,
+  // остаток показываем числом
+  const HEARTS_MAX_DRAWN = 6;
+  let livesSig = "";
+
+  function renderLives() {
+    const n = G.ship.lives;
+    const draw = Math.min(n, HEARTS_MAX_DRAWN);
+    el.lives.innerHTML = "";
+    for (let i = 0; i < draw; i++) el.lives.appendChild(document.createElement("i"));
+    if (n > draw) {
+      const more = document.createElement("b");
+      more.className = "lives__more";
+      more.textContent = `+${n - draw}`;
+      el.lives.appendChild(more);
     }
   }
 
@@ -2116,11 +2269,13 @@
   }
 
   function updateChips() {
-    for (const key of ["rapid", "triple", "shield"]) {
-      const on = key === "shield" ? !!G.ship.shield : G.ship[key] > 0;
-      const text = on && key !== "shield" ? Math.ceil(G.ship[key]) : "";
-      setChip(chipsMemo[key], el.chips[key], on, text);
+    for (const key of ["rapid", "triple"]) {
+      const on = G.ship[key] > 0;
+      setChip(chipsMemo[key], el.chips[key], on, on ? Math.ceil(G.ship[key]) : "");
     }
+    const shieldOn = !!G.ship.shield;
+    const shieldWait = !shieldOn && G.mods.shield ? Math.ceil(G.ship.shieldRecharge || 0) : 0;
+    setChip(chipsMemo.shield, el.chips.shield, shieldOn, shieldOn ? "" : shieldWait > 0 ? `${shieldWait}с` : "");
     const wChip = el.chips.weapon;
     if (wChip) {
       const m = chipsMemo.weapon;
@@ -2134,7 +2289,7 @@
         if (!m.label) m.label = wChip.querySelector("[data-wlabel]");
         if (m.label && m.name !== w.name) { m.name = w.name; m.label.textContent = w.name; }
         if (!m.timer) m.timer = wChip.querySelector("[data-timer]");
-        const t = Math.ceil(w.t);
+        const t = isFinite(w.t) ? Math.ceil(w.t) : "∞";
         if (m.timer && m.text !== t) { m.text = t; m.timer.textContent = t; }
       } else if (m.timer && m.text !== "") {
         // оружие кончилось — не оставляем в чипе застывший таймер
@@ -2148,21 +2303,47 @@
       const on = ds.length > 0;
       let text = "";
       if (on) {
-        text = ds.length === 1 ? Math.ceil(ds[0].t) : `×${ds.length} ${Math.ceil(Math.min(...ds.map((d) => d.t)))}`;
+        const timed = ds.filter((d) => !d.permanent);
+        if (!timed.length) text = `×${ds.length}`;
+        else if (ds.length === 1) text = String(Math.ceil(timed[0].t));
+        else text = `×${ds.length} ${Math.ceil(Math.min(...timed.map((d) => d.t)))}`;
       }
       setChip(chipsMemo.drone, dChip, on, text);
     }
   }
 
   function maxLives() {
-    return G.bonus === "lives" ? MAX_LIVES_BONUS : MAX_LIVES_BASE;
+    const base = G.mods.lives ? MAX_LIVES_BONUS : MAX_LIVES_BASE;
+    return base + 2 * (G.mods.repair || 0);
+  }
+
+  function scoreMul() {
+    return 1 + 0.5 * (G.mods.risk || 0);
+  }
+
+  function plasmaDuration() {
+    return PLASMA_DURATION + 4 * (G.mods.reactor || 0);
+  }
+
+  function plasmaMul() {
+    return 5 + 3 * (G.mods.plasmaBoost || 0);
+  }
+
+  function plasmaStep() {
+    const cap = G.mods.capacitor || 0;
+    const step = cap >= 2 ? 24 : cap === 1 ? 18 : PLASMA_CHARGE_STEP;
+    return step * (G.mods.plasmaBoost ? 2 : 1);
+  }
+
+  function shieldRechargeTime() {
+    return G.mods.shield >= 2 ? 10 : 20;
   }
 
   function syncLives() {
     const cap = maxLives();
     if (G.ship.lives > cap) G.ship.lives = cap;
-    el.lives.innerHTML = "";
-    for (let i = 0; i < G.ship.lives; i++) el.lives.appendChild(document.createElement("i"));
+    livesSig = `${G.ship.lives}/${cap}`;
+    renderLives();
     el.lives.setAttribute("aria-label", `Сердца: ${G.ship.lives} из ${cap}`);
   }
 
@@ -2171,9 +2352,9 @@
 
   function updatePlasmaHud() {
     const p = G.plasma;
-    const on = G.bonus === "plasma";
+    const on = !!G.mods.plasma;
     const active = p.active > 0;
-    const pct = active ? (p.active / PLASMA_DURATION) * 100 : p.charge;
+    const pct = active ? (p.active / plasmaDuration()) * 100 : p.charge;
     const ready = !active && p.charge >= 100;
     const sig = `${on ? 1 : 0}|${active ? Math.ceil(p.active * 10) : Math.round(pct)}|${ready ? 1 : 0}`;
     if (sig === plasmaSig) return;
@@ -2185,7 +2366,7 @@
     el.plasmaFill.style.transform = `scaleX(${(pct / 100).toFixed(4)})`;
     el.plasmaPct.textContent = active ? `${Math.ceil(p.active)}с` : `${Math.round(pct)}%`;
     el.plasmaLabel.textContent = active
-      ? "Плазмаган ×5"
+      ? `Плазмаган ×${plasmaMul()}`
       : ready
         ? (IS_TOUCH ? "Готово" : "Готово: ПКМ")
         : "Плазмаган";
@@ -2196,11 +2377,11 @@
 
   function addPlasmaCharge() {
     const p = G.plasma;
-    if (G.bonus !== "plasma" || p.active > 0) return;
-    p.charge = Math.min(100, p.charge + PLASMA_CHARGE_STEP);
+    if (!G.mods.plasma || p.active > 0) return;
+    p.charge = Math.min(100, p.charge + plasmaStep());
     if (p.charge >= 100) {
       p.ready = true;
-      banner("ПЛАЗМА ГОТОВА", IS_TOUCH ? "жми «Пуск плазмы»: урон ×5" : "ПКМ: урон ×5 насквозь");
+      banner("ПЛАЗМА ГОТОВА", IS_TOUCH ? `жми «Пуск плазмы»: урон ×${plasmaMul()}` : `ПКМ: урон ×${plasmaMul()} насквозь`);
       Audio.unique();
       buzz(55);
       G.flash = Math.max(G.flash, 0.22);
@@ -2213,12 +2394,12 @@
   function activatePlasma() {
     const p = G.plasma;
     if (G.mode !== "play" || G.paused) return false;
-    if (G.bonus !== "plasma" || !p.ready || p.active > 0) return false;
-    p.active = PLASMA_DURATION;
+    if (!G.mods.plasma || !p.ready || p.active > 0) return false;
+    p.active = plasmaDuration();
     p.ready = false;
     G.flash = Math.max(G.flash, 0.55);
     G.shake = Math.min(G.shake + 12, 28);
-    banner("ПЛАЗМА", "10 секунд, урон ×5 насквозь");
+    banner("ПЛАЗМА", `${plasmaDuration()} секунд, урон ×${plasmaMul()} насквозь`);
     Audio.unique();
     buzz(70);
     updatePlasmaHud();
@@ -2230,7 +2411,7 @@
     pushBullet({
       x: s.x, y: s.y - 22,
       vx: 0, vy: -1450,
-      r: 10, len: 46, life: 1.6, dmg: 5, pierce: 99,
+      r: 10, len: 46, life: 1.6, dmg: plasmaMul(), pierce: 99,
       color: "#ff3b5c", heavy: true
     });
     addParticles(s.x, s.y - 20, 6, {
@@ -2519,12 +2700,12 @@
   }
 
   function dropPowerup(x, y) {
-    // деталь плазмагана — только если на старте выбран плазмаган
+    // деталь плазмагана — только если взята модернизация «Плазмаган»
     if (
-      G.bonus === "plasma" &&
+      !!G.mods.plasma &&
       G.plasma.charge < 100 &&
       G.plasma.active <= 0 &&
-      Math.random() < PLASMA_DROP
+      Math.random() < PLASMA_DROP * (G.mods.capacitor ? 1.5 : 1)
     ) {
       G.powerups.push({
         x, y,
@@ -2563,19 +2744,12 @@
     });
   }
 
-  function dropWeapon(x, y) {
+  function grantBossWeapon() {
     const level = Math.max(1, Math.floor(G.wave / CONFIG.weaponLevelStep));
     const id = WEAPON_ORDER[(level - 1) % WEAPON_ORDER.length];
-    G.powerups.push({
-      x, y,
-      r: 17,
-      kind: "weapon",
-      weapon: id,
-      t: 0,
-      vy: 40,
-      vx: rand(-10, 10),
-      life: 26
-    });
+    const def = WEAPONS[id];
+    G.ship.weapon = { id, name: def.name, t: G.mods.arsenal ? Infinity : 24 };
+    updateChips();
   }
 
   /* ---------------- shooting ---------------- */
@@ -2588,6 +2762,7 @@
     const k = G.bulletSpeed || 1;
     b.vx *= k;
     b.vy *= k;
+    if (G.mods.pierce) b.pierce += G.mods.pierce;
     G.bullets.push(b);
   }
 
@@ -2598,15 +2773,36 @@
     const w = s.weapon;
     if (w && WEAPONS[w.id]) { shootWeapon(s, WEAPONS[w.id]); return; }
 
+    // базовая пушка: модернизации меняют темп, урон, число пуль и разрыв
+    const mods = G.mods;
+    const twin = mods.twin || 0;
+    const caliber = mods.caliber || 0;
+    const rapidLvl = Math.min(mods.rapid || 0, 3);
+    const burst = mods.burst || 0;
     const rapid = s.rapid > 0;
-    s.cool = rapid ? 0.085 : 0.15;
-    const spread = s.triple > 0 ? [-0.2, 0, 0.2] : [0];
-    for (const off of spread) {
+    const overdrive = mods.overdrive ? 0.7 : 1;
+
+    s.cool = [0.15, 0.12, 0.105, 0.09][rapidLvl] * overdrive * (rapid ? 0.567 : 1);
+
+    const per = [1, 1.6, 2.2, 2.8][Math.min(caliber, 3)] * (twin === 1 ? 0.8 : twin > 1 ? 0.7 : 1);
+    const radius = 3.4 + 0.27 * caliber;
+    const splash = burst ? [0, 26, 40, 54][Math.min(burst, 3)] : 0;
+    const count = 1 + twin;
+    const step = twin === 1 ? 0.09 : 0.12;
+    const offs = [];
+    for (let i = 0; i < count; i++) offs.push((i - (count - 1) / 2) * step);
+    if (s.triple > 0) offs.push(-0.2, 0.2);
+
+    for (const off of offs) {
       pushBullet({
         x: s.x + Math.sin(off) * 10,
         y: s.y - 16,
         vx: Math.sin(off) * 800,
         vy: -Math.cos(off) * 800,
+        r: radius,
+        dmg: per,
+        splash,
+        splashMul: burst >= 3 ? 0.7 : 0.55,
         color: COLORS.cyan
       });
     }
@@ -2700,6 +2896,7 @@
 
   /* ---------------- damage ---------------- */
   function damageEnemy(e, dmg) {
+    if (e.type === "boss" && G.mods.bossDmg) dmg *= 1 + 0.3 * G.mods.bossDmg;
     e.hp -= dmg;
     e.flash = 0.12;
     if (e.type === "boss") Audio.bossHit();
@@ -2733,7 +2930,7 @@
     G.combo = G.comboTimer > 0 ? Math.min(G.combo + 1, 9) : 1;
     G.comboTimer = 2.4;
     const mult = 1 + (G.combo - 1) * 0.25;
-    G.score += Math.round(e.score * mult);
+    G.score += Math.round(e.score * mult * scoreMul());
     if (e.type === "boss") G.waveKills++;
     else if (!G.bossWave) G.waveKills++;
 
@@ -2819,10 +3016,12 @@
       G.score += m.score;
     }
 
-    dropWeapon(cx, cy);
+    grantBossWeapon();
     G.bulletSpeed *= 1.07;
+    G.bossesDefeated++;
+    G.upgradeQueue = 1.6;
     G.waveDelay = 2.6;
-    banner(`${e.name} ПОВЕРЖЕН`, `выпало оружие, скорость снарядов +${Math.round((G.bulletSpeed - 1) * 100)}%`);
+    banner(`${e.name} ПОВЕРЖЕН`, "оружие в арсенале, готовь модернизацию");
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
@@ -2832,6 +3031,7 @@
     if (s.shield) {
       s.shield = false;
       s.shieldFx = 1;
+      s.shieldRecharge = shieldRechargeTime();
       s.invuln = 1.2;
       G.shake = 16;
       G.flash = 0.35;
@@ -2842,8 +3042,20 @@
       updateChips();
       return;
     }
+    // броня: часть попаданий гасится целиком
+    if (G.mods.armor && Math.random() < (G.mods.armor >= 2 ? 0.4 : 0.25)) {
+      s.invuln = 0.9;
+      G.shake = 10;
+      G.flash = Math.max(G.flash, 0.25);
+      explode(s.x, s.y, { size: 24, color: COLORS.amber, rings: 1, smoke: false, debris: false });
+      addParticles(s.x, s.y, 12, { color: COLORS.amber, speed: 240, size: 2, life: 0.45, kind: "spark" });
+      Audio.hurt();
+      buzz(16);
+      return;
+    }
+
     s.lives--;
-    s.invuln = 1.6;
+    s.invuln = 1.6 + 0.6 * (G.mods.thrust || 0);
     G.shake = 24;
     G.flash = 0.6;
     G.combo = 0;
@@ -2880,10 +3092,10 @@
     buzz(70);
     setTimeout(() => {
       if (el.overModule) {
-        el.overModule.textContent =
-          G.bonus === "plasma" ? "Модуль: плазмаган"
-            : G.bonus === "lives" ? "Модуль: Жизнелюбие"
-              : "Модуль не выбран";
+        const modsCount = Object.keys(G.mods).length;
+        el.overModule.textContent = G.bossesDefeated
+          ? `Боссов: ${G.bossesDefeated} · улучшений: ${modsCount}`
+          : "Без модернизаций";
       }
       el.overScore.textContent = G.score.toLocaleString("ru-RU");
       el.overBest.textContent = G.best.toLocaleString("ru-RU");
@@ -3009,19 +3221,20 @@
     }
     if (k === "escape" || k === "p") {
       if (G.mode === "play") togglePause();
-      else if (k === "escape" && G.mode === "loadout") closeLoadout();
       else if (k === "escape" && G.mode === "over" && !el.over.classList.contains("hidden")) exitToMenu();
+      return; // экран модернизации не закрывается: выбор обязательный
+    }
+    // цифры должны работать и когда фокус уже стоит на карточке
+    if (G.mode === "upgrade" && (k === "1" || k === "2")) {
+      e.preventDefault();
+      const id = G.upgradeChoice[Number(k) - 1];
+      if (id) chooseUpgrade(id);
       return;
     }
     if (onControl) return;
-    if (G.mode === "loadout") {
-      if (k === "1") startGame("plasma");
-      else if (k === "2") startGame("lives");
-    }
     if (k === "enter") {
-      if (G.mode === "menu") openLoadout();
-      else if (G.mode === "loadout") startGame(lastModule || "plasma");
-      else if (G.mode === "over" && !el.over.classList.contains("hidden")) openLoadout();
+      if (G.mode === "menu") startGame();
+      else if (G.mode === "over" && !el.over.classList.contains("hidden")) startGame();
     }
   });
 
@@ -3058,7 +3271,8 @@
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
     el.menu.classList.remove("hidden");
     el.over.classList.add("hidden");
-    el.loadout.classList.add("hidden");
+    el.upgrade.classList.add("hidden");
+    el.upgradeGrid.innerHTML = "";
     setHudHidden(true);
     el.menuBest.textContent = G.best.toLocaleString("ru-RU");
     if (!opts || !opts.fromHistory) dropModalHistory();
@@ -3071,7 +3285,10 @@
   /* ---------------- reset / start ---------------- */
   function resetGame() {
     G.score = 0;
-    G.bonus = null;
+    G.mods = {};
+    G.bossesDefeated = 0;
+    G.upgradeQueue = 0;
+    G.upgradeChoice = [];
     G.plasma.charge = 0;
     G.plasma.ready = false;
     G.plasma.active = 0;
@@ -3110,6 +3327,7 @@
       invuln: 1.2,
       shield: false,
       shieldFx: 0,
+      shieldRecharge: 0,
       rapid: 0,
       triple: 0,
       weapon: null,
@@ -3135,14 +3353,14 @@
   }
 
   /* ---------------- модальные экраны ----------------
-     #loadout, #over и пауза объявлены role="dialog" aria-modal="true".
+     #upgrade, #over и пауза объявлены role="dialog" aria-modal="true".
      Держим контракт: фон становится inert, Tab не выходит за пределы
      диалога, после закрытия фокус возвращается на «Начать полёт». */
   const FOCUSABLE =
     'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
   function currentModal() {
-    if (G.mode === "loadout") return el.loadout;
+    if (G.mode === "upgrade") return el.upgrade;
     if (G.mode === "over" && !el.over.classList.contains("hidden")) return el.over;
     if (G.mode === "play" && G.paused) return el.pause;
     return null;
@@ -3204,102 +3422,233 @@
   }
   window.addEventListener("popstate", () => {
     modalHistory = false;
-    if (G.mode === "loadout") closeLoadout({ fromHistory: true });
-    else if (G.mode === "over" && !el.over.classList.contains("hidden")) exitToMenu({ fromHistory: true });
+    if (G.mode === "upgrade") {
+      // выбор после босса обязательный: «назад» не выпускает из диалога
+      pushModalHistory();
+      return;
+    }
+    if (G.mode === "over" && !el.over.classList.contains("hidden")) exitToMenu({ fromHistory: true });
     else if (G.mode === "play" && G.paused) togglePause();
   });
 
-  /* последний выбранный модуль: Enter и бейдж «прошлый выбор» */
-  const MODULE_KEY = "galaxy.module";
-  let lastModule = null;
-  try {
-    const stored = localStorage.getItem(MODULE_KEY);
-    if (stored === "plasma" || stored === "lives") lastModule = stored;
-  } catch (_) {}
+  /* ---------------- модернизация после босса ---------------- */
 
-  function updateChosenModule() {
-    for (const [id, node] of [["plasma", el.pickPlasma], ["lives", el.pickLives]]) {
-      if (!node) continue;
-      const on = lastModule === id;
-      node.classList.toggle("is-chosen", on);
-      if (on) node.setAttribute("aria-current", "true");
-      else node.removeAttribute("aria-current");
-      const badge = node.querySelector(".pick__badge");
-      if (badge) badge.hidden = !on;
-    }
+  function upgradeLevel(id) {
+    return G.mods[id] || 0;
   }
 
-  function openLoadout() {
+  /* открыто боссами и ещё не выжато до максимума */
+  function upgradePool() {
+    const tier = Math.max(1, G.bossesDefeated);
+    return UPGRADES.filter((u) => u.tier <= tier && upgradeLevel(u.id) < u.max);
+  }
+
+  function rollUpgradeCards() {
+    // первая развилка — ровно та пара, что раньше стояла в меню
+    if (G.bossesDefeated <= 1) return ["plasma", "lives"];
+    const open = upgradePool();
+    const fresh = open.filter((u) => u.tier === G.bossesDefeated);
+    const picks = [];
+    const take = (pool) => {
+      const free = pool.filter((u) => !picks.includes(u.id));
+      if (!free.length) return false;
+      picks.push(free[Math.floor(Math.random() * free.length)].id);
+      return true;
+    };
+    // одна карточка гарантированно из тира только что побеждённого босса,
+    // вторая — из всего открытого пула. Всего две, как после первого босса
+    take(fresh.length ? fresh : open);
+    take(open);
+    return picks;
+  }
+
+  function renderUpgrade() {
+    el.upgradeGrid.innerHTML = "";
+    el.upgradeLede.textContent =
+      `Босс ${G.bossesDefeated} повержен. Выбери одну карточку — она останется до конца полёта.`;
+    G.upgradeChoice.forEach((id) => {
+      const u = UPGRADE_BY_ID[id];
+      if (!u) return;
+      const lvl = upgradeLevel(id);
+      const next = Math.min(lvl + 1, u.max);
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "pick";
+      card.dataset.upgrade = id;
+      card.style.setProperty("--pick-accent", u.color);
+
+      const tag = document.createElement("span");
+      tag.className = "pick__tag";
+      tag.textContent = u.max > 1 ? `${u.tag} · ур. ${next} из ${u.max}` : u.tag;
+      card.appendChild(tag);
+
+      const name = document.createElement("span");
+      name.className = "pick__name";
+      name.textContent = u.name;
+      card.appendChild(name);
+
+      const desc = document.createElement("span");
+      desc.className = "pick__desc";
+      desc.innerHTML = u.desc[Math.min(lvl, u.desc.length - 1)];
+      card.appendChild(desc);
+
+      const act = document.createElement("span");
+      act.className = "pick__action";
+      act.textContent = lvl > 0 ? "Улучшить" : "Взять";
+      card.appendChild(act);
+
+      el.upgradeGrid.appendChild(card);
+    });
+
+    const owned = UPGRADES.filter((u) => upgradeLevel(u.id) > 0);
+    el.upgradeOwned.innerHTML = owned.length
+      ? "В строю: " + owned
+        .map((u) => `<b>${u.name}${u.max > 1 ? " " + ROMAN[upgradeLevel(u.id)] : ""}</b>`)
+        .join(" · ")
+      : "";
+  }
+
+  function openUpgrade() {
+    if (G.mode !== "play") return;
     Audio.unlock();
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    G.mode = "loadout";
-    G.paused = false;
-    document.body.classList.remove("is-paused");
+    G.mode = "upgrade";
+    G.upgradeQueue = 0;
+    G.upgradeChoice = rollUpgradeCards();
+    renderUpgrade();
     G.pointer.down = false;
+    for (const k in G.keys) G.keys[k] = false;
     el.pause.classList.remove("on");
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
-    el.menu.classList.add("hidden");
-    el.over.classList.add("hidden");
+    document.body.classList.remove("is-paused");
     setHudHidden(true);
-    el.loadout.classList.remove("hidden");
-    el.loadoutBest.textContent = G.best.toLocaleString("ru-RU");
-    updateChosenModule();
+    el.upgrade.classList.remove("hidden");
     pushModalHistory();
     syncA11yBackground();
     Music.setPaused(true);
-    el.loadout.focus({ preventScroll: true });
+    updateHud();
+    const first = el.upgradeGrid.querySelector(".pick");
+    (first || el.upgrade).focus({ preventScroll: true });
   }
 
-  function closeLoadout(opts) {
-    if (G.mode !== "loadout") return;
-    G.mode = "menu";
-    el.loadout.classList.add("hidden");
-    el.menu.classList.remove("hidden");
-    el.menuBest.textContent = G.best.toLocaleString("ru-RU");
-    if (!opts || !opts.fromHistory) dropModalHistory();
-    syncA11yBackground();
-    el.startBtn.focus({ preventScroll: true });
-  }
-
-  function startGame(bonus) {
-    Audio.unlock();
-    Music.start();
-    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-    if (bonus === "plasma" || bonus === "lives") {
-      lastModule = bonus;
-      try { localStorage.setItem(MODULE_KEY, bonus); } catch (_) {}
-    }
-    G.bestStart = G.best;
-    G.newRecord = false;
-    resetGame();
-    G.bonus = bonus === "lives" ? "lives" : bonus === "plasma" ? "plasma" : null;
-    if (G.bonus === "lives") G.ship.lives = Math.min(maxLives(), G.ship.lives + 3);
+  function chooseUpgrade(id) {
+    if (G.mode !== "upgrade") return;
+    if (!G.upgradeChoice.includes(id)) return;
+    applyUpgrade(id);
+    G.upgradeChoice = [];
+    el.upgradeGrid.innerHTML = "";
+    el.upgrade.classList.add("hidden");
     G.mode = "play";
-    el.menu.classList.add("hidden");
-    el.over.classList.add("hidden");
-    el.loadout.classList.add("hidden");
     dropModalHistory();
     setHudHidden(false);
     syncLives();
     updateHud();
+    updateChips();
     updatePlasmaHud();
-    banner(
-      "ВЗЛЁТ",
-      G.bonus === "plasma"
-        ? "3 сердца на весь полёт, выше не поднять"
-        : G.bonus === "lives"
-          ? "6 сердец, это потолок запаса"
-          : IS_TOUCH ? "веди палец, автоогонь" : "держи курс"
-    );
+    syncA11yBackground();
+    G.waveDelay = 1.8;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
+  function applyUpgrade(id) {
+    const u = UPGRADE_BY_ID[id];
+    if (!u) return;
+    const lvl = Math.min(upgradeLevel(id) + 1, u.max);
+    G.mods[id] = lvl;
+    const s = G.ship;
+
+    if (id === "plasma") {
+      G.plasma.charge = 0;
+      G.plasma.ready = false;
+      banner("ПЛАЗМАГАН", "детали врагов копят заряд");
+    } else if (id === "lives") {
+      s.lives = Math.min(maxLives(), s.lives + 3);
+      banner("ЖИЗНЕЛЮБИЕ", `потолок ${maxLives()} сердец`);
+    } else if (id === "repair") {
+      s.lives = maxLives();
+      banner("РЕМОНТ", `корпус ${s.lives} / ${maxLives()}`);
+    } else if (id === "swarm") {
+      addPermanentDrones(lvl + 1);
+      banner("ЭСКАДРИЛЬЯ", "дроны держатся до конца полёта");
+    } else if (id === "shield") {
+      s.shield = true;
+      s.shieldRecharge = 0;
+      s.shieldFx = 1;
+    } else if (id === "risk") {
+      s.lives = Math.max(1, s.lives - 1);
+      banner("АЗАРТ", "очки ×1.5, корпус тоньше");
+    }
+
+    syncLives();
+    updateChips();
+    updatePlasmaHud();
+    Audio.power();
+  }
+
+  function addPermanentDrones(count) {
+    const ds = G.drones;
+    const s = G.ship;
+    const max = CONFIG.player.droneMax;
+    for (let k = 0; k < count; k++) {
+      if (ds.length >= max) break;
+      const slot = Array.from({ length: max }, (_, n) => n).find((n) => !ds.some((d) => d.slot === n));
+      const orbit = (slot * TAU) / max;
+      ds.push({
+        x: s.x + Math.cos(orbit) * 36,
+        y: s.y + Math.sin(orbit) * 18 - 4,
+        t: 0,
+        max: 0,
+        permanent: true,
+        cool: 0.22,
+        orbit,
+        slot,
+        bossCd: 0,
+        r: 9,
+        seed: rand(0, TAU)
+      });
+    }
+    updateChips();
+  }
+
+  /* ---------------- старт забега ---------------- */
+  function startGame() {
+    Audio.unlock();
+    Music.start();
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    G.bestStart = G.best;
+    G.newRecord = false;
+    resetGame();
+    G.mode = "play";
+    el.menu.classList.add("hidden");
+    el.over.classList.add("hidden");
+    el.upgrade.classList.add("hidden");
+    dropModalHistory();
+    setHudHidden(false);
+    syncLives();
+    updateHud();
+    updateChips();
+    updatePlasmaHud();
+    syncA11yBackground();
+    banner("ВЗЛЁТ", IS_TOUCH ? "веди палец, автоогонь" : "держи курс");
     G.ship.invuln = 1.4;
   }
 
-  el.startBtn.addEventListener("click", openLoadout);
-  el.retryBtn.addEventListener("click", openLoadout);
-  if (el.backBtn) el.backBtn.addEventListener("click", () => closeLoadout());
+  el.startBtn.addEventListener("click", startGame);
+  el.retryBtn.addEventListener("click", startGame);
   if (el.menuBtn) el.menuBtn.addEventListener("click", () => exitToMenu());
-  el.pickPlasma.addEventListener("click", () => startGame("plasma"));
-  el.pickLives.addEventListener("click", () => startGame("lives"));
+
+  el.upgradeGrid.addEventListener("click", (e) => {
+    const card = e.target.closest("[data-upgrade]");
+    if (card) chooseUpgrade(card.dataset.upgrade);
+  });
+
+  // крючки для автотестов: включаются только при ?debug
+  if (new URLSearchParams(location.search).has("debug")) {
+    window.__galaxy = {
+      G, startGame, openUpgrade, chooseUpgrade, applyUpgrade, rollUpgradeCards,
+      killBoss, spawnBoss, advanceLevel, maxLives, upgradePool,
+      playerShoot, hurtPlayer, activatePlasma, addPlasmaCharge, syncLives
+    };
+  }
   if (el.plasmaBtn) {
     el.plasmaBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -3360,6 +3709,15 @@
       return;
     }
 
+    // пауза на модернизацию открывается сама, когда догорел взрыв босса
+    if (G.upgradeQueue > 0) {
+      G.upgradeQueue -= dt;
+      if (G.upgradeQueue <= 0) {
+        openUpgrade();
+        return;
+      }
+    }
+
     // плазмаган: 10 секунд работы, затем заряд сгорает
     if (G.plasma.active > 0) {
       G.plasma.active = Math.max(0, G.plasma.active - dt);
@@ -3380,16 +3738,18 @@
         (G.keys["arrowup"] || G.keys["w"] ? -1 : 0) +
         (G.keys["arrowdown"] || G.keys["s"] ? 1 : 0);
 
+      const spd = 1 + 0.12 * (G.mods.thrust || 0);
+
       if (G.pointer.active && G.pointer.moved > 0) {
         const offY = G.pointer.touch ? 58 : 0;
         const minY = G.pointer.touch ? 86 : 40;
         const tx = clamp(G.pointer.x, 27, G.w - 27);
         const ty = clamp(G.pointer.y - offY, minY, G.h - 24);
-        s.vx += ((tx - s.x) * 320 - s.vx * 36) * dt;
-        s.vy += ((ty - s.y) * 320 - s.vy * 36) * dt;
+        s.vx += ((tx - s.x) * 320 * spd - s.vx * 36) * dt;
+        s.vy += ((ty - s.y) * 320 * spd - s.vy * 36) * dt;
       } else {
-        s.vx += keyboard * 2600 * dt;
-        s.vy += keyboardY * 2600 * dt;
+        s.vx += keyboard * 2600 * spd * dt;
+        s.vy += keyboardY * 2600 * spd * dt;
         s.vx *= Math.pow(0.0012, dt);
         s.vy *= Math.pow(0.0012, dt);
       }
@@ -3405,6 +3765,16 @@
       s.engine += dt;
       s.invuln = Math.max(0, s.invuln - dt);
       s.shieldFx = Math.max(0, (s.shieldFx || 0) - dt * 1.7);
+      // щит из модернизации возвращается сам
+      if (G.mods.shield && !s.shield) {
+        s.shieldRecharge = Math.max(0, (s.shieldRecharge || 0) - dt);
+        if (s.shieldRecharge <= 0) {
+          s.shield = true;
+          s.shieldFx = 1;
+          updateChips();
+          buzz(14);
+        }
+      }
       s.cool = Math.max(0, (s.cool || 0) - dt);
       s.rapid = Math.max(0, s.rapid - dt);
       s.triple = Math.max(0, s.triple - dt);
@@ -3555,7 +3925,7 @@
             }
           }
           damageEnemy(e, b.dmg);
-          if (b.splash) applySplash(b.x, b.y, b.splash, b.dmg * 0.55, b.color, e);
+          if (b.splash) applySplash(b.x, b.y, b.splash, b.dmg * (b.splashMul || 0.55), b.color, e);
           addParticles(b.x, b.y, b.heavy ? 8 : 5, {
             color: b.color || COLORS.white, speed: 150, size: 1.7, life: 0.22, kind: "spark"
           });
@@ -3611,10 +3981,10 @@
 
     for (let i = ds.length - 1; i >= 0; i--) {
       const d = ds[i];
-      d.t -= dt;
+      if (!d.permanent) d.t -= dt;
       d.bossCd = Math.max(0, d.bossCd - dt);
 
-      if (d.t <= 0) {
+      if (!d.permanent && d.t <= 0) {
         explode(d.x, d.y, {
           size: 26, color: COLORS.mint, secondary: COLORS.white,
           rings: 1, smoke: false, debris: false, sound: false
@@ -3982,7 +4352,8 @@
         const dx = s.x - p.x;
         const dy = s.y - p.y;
         const d2 = dx * dx + dy * dy;
-        const pull = p.kind === "weapon" || p.kind === "part" ? 210 : 150;
+        const magnet = 1 + 0.6 * (G.mods.magnet || 0);
+        const pull = (p.kind === "weapon" || p.kind === "part" ? 210 : 150) * magnet;
         if (d2 < pull * pull && d2 > 1) {
           const d = Math.sqrt(d2);
           const k = 1 - Math.pow(0.001, dt);
