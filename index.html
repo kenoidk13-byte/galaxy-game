@@ -148,6 +148,16 @@
     letter-spacing: 0.1em;
     font-weight: 500;
   }
+  .stat__sub {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 220ms var(--ease);
+  }
+  .stat__sub.is-elite { color: var(--amber); }
+  .stat__sub.is-boss { color: var(--pink); }
 
   /* ---------- заряд плазмагана ---------- */
   .plasma {
@@ -1072,6 +1082,7 @@
       <div class="stat">
         <span class="stat__label">Очки</span>
         <span class="stat__value" id="hudScore">0</span>
+        <span class="stat__sub" id="wavePill">Волна 1</span>
       </div>
       <div class="plasma" id="plasma" role="progressbar" aria-label="Заряд плазмагана" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
         <div class="plasma__head">
@@ -1207,6 +1218,7 @@
     hud: document.getElementById("hud"),
     score: document.getElementById("hudScore"),
     best: document.getElementById("hudBest"),
+    wavePill: document.getElementById("wavePill"),
     lives: document.getElementById("lives"),
     chips: {
       weapon: document.querySelector('[data-chip="weapon"]'),
@@ -1485,6 +1497,47 @@
       }
     },
 
+    /* Рогалик-лайт: режиссёр волн и элиты.
+       templates задают состав волны, elites — чемпиона с правилом.
+       Элита приходит каждые eliteEvery обычных волн (босс и налёт
+       не считаются), начиная с eliteStart-й обычной волны. */
+    encounters: {
+      eliteStart: 3,
+      eliteEvery: 4,
+      eliteEscort: 4,
+      eliteBaseHp: 16,
+      eliteHpPerWave: 3.4,
+      templates: [
+        { key: "swarm", name: "РОЙ", types: { drone: 46, runner: 24, weaver: 20, splitter: 10 } },
+        { key: "rush", name: "НАБЕГ", types: { runner: 42, charger: 34, drone: 16, weaver: 8 } },
+        { key: "siege", name: "ОСАДА", types: { tank: 34, guardian: 26, orb: 22, bomber: 10, sniper: 8 } },
+        { key: "hunt", name: "ОХОТА", types: { sniper: 32, bomber: 24, orb: 20, charger: 14, drone: 10 } },
+        { key: "mixed", name: "СМЕШАННЫЙ", types: null }
+      ],
+      elites: [
+        { key: "bulwark", name: "БАСТИОН", mod: "armored", type: "tank", color: "#ffc46b", tag: "броня: -45% урона" },
+        { key: "ravager", name: "РАЗРУШИТЕЛЬ", mod: "enraged", type: "charger", color: "#ff7a4d", tag: "скорость и огонь +35%" },
+        { key: "brood", name: "МАТКА", mod: "splitting", type: "splitter", color: "#b48bff", tag: "при смерти делится" },
+        { key: "herald", name: "ГЛАШАТАЙ", mod: "aura", type: "guardian", color: "#63ffc4", tag: "усиливает свиту" },
+        { key: "sapper", name: "САПЁР", mod: "mines", type: "bomber", color: "#ffd166", tag: "ставит мины" }
+      ]
+    },
+
+    /* Трофеи элиты: маленькие постоянные бонусы, которые складываются.
+       Заметно слабее модернизаций: босс строит билд, элита тюнит его.
+       Отдельный пул, чтобы не ломать обязательную пару после босса. */
+    boons: [
+      { id: "hull", boon: true, repeatable: true, max: Infinity, tag: "Корпус", color: "#ff5c8a", name: "Заплатка", desc: "Потолок сердец <b>+1</b>, сразу латает одно." },
+      { id: "power", boon: true, repeatable: true, max: Infinity, tag: "Ствол", color: "#4de1ff", name: "Калибровка", desc: "<b>+8%</b> урона до конца полёта." },
+      { id: "haste", boon: true, repeatable: true, max: Infinity, tag: "Ствол", color: "#4de1ff", name: "Разгон", desc: "Перезарядка <b>-4%</b> до конца полёта." },
+      { id: "agility", boon: true, repeatable: true, max: Infinity, tag: "Корпус", color: "#63ffc4", name: "Маневр", desc: "Скорость корабля <b>+6%</b>." },
+      { id: "pull", boon: true, repeatable: true, max: Infinity, tag: "Утилита", color: "#9fe8ff", name: "Притяжение", desc: "Радиус подбора <b>+25%</b>." },
+      { id: "charge", boon: true, repeatable: true, max: Infinity, tag: "Плазма", color: "#ff3b5c", name: "Импульс", desc: "Сразу <b>+35%</b> заряда плазмагана.", need: "plasma" },
+      { id: "supply", boon: true, repeatable: true, max: Infinity, tag: "Ремкомплект", color: "#ffc46b", name: "Ремонт", desc: "Потолок сердец <b>+1</b> и полный ремонт." },
+      { id: "barrier", boon: true, repeatable: false, max: 1, tag: "Корпус", color: "#63ffc4", name: "Барьер", desc: "Мгновенный щит на один удар." },
+      { id: "score", boon: true, repeatable: true, max: Infinity, tag: "Трофей", color: "#ffc46b", name: "Дань", desc: "<b>+750</b> очков сразу." }
+    ],
+
     /* Модернизация после босса.
        tier — с какого побеждённого босса карточка попадает в пул,
        max — сколько уровней можно взять, desc — текст следующего уровня. */
@@ -1676,6 +1729,9 @@
   const PLASMA_DROP = CONFIG.plasma.dropChance;
   const UPGRADES = CONFIG.upgrades;
   const UPGRADE_BY_ID = Object.fromEntries(UPGRADES.map((u) => [u.id, u]));
+  const BOONS = CONFIG.boons;
+  const BOON_BY_ID = Object.fromEntries(BOONS.map((b) => [b.id, b]));
+  const ENCOUNTERS = CONFIG.encounters;
   const ROMAN = ["", "I", "II", "III"];
 
   let ENEMY_ID = 0;
@@ -1976,7 +2032,68 @@
     "{0} / {1}, {2} секунд": "{0} / {1}, {2} seconds",
     "таймер обновлён, {0} секунд": "timer refreshed, {0} seconds",
     "комбо ×{0}": "combo ×{0}",
-    "{0}: ЯРОСТЬ": "{0}: ENRAGED"
+    "{0}: ЯРОСТЬ": "{0}: ENRAGED",
+
+    // режиссёр волн и элиты
+    "Волна {0}": "Wave {0}",
+    "ЭЛИТА": "ELITE",
+    "НАЛЁТ": "RAID",
+    "НАБЕГ": "ONSLAUGHT",
+    "ОСАДА": "SIEGE",
+    "ОХОТА": "HUNT",
+    "СМЕШАННЫЙ": "MIXED",
+    "БАСТИОН": "BULWARK",
+    "РАЗРУШИТЕЛЬ": "RAVAGER",
+    "МАТКА": "BROODMOTHER",
+    "ГЛАШАТАЙ": "HERALD",
+    "САПЁР": "SAPPER",
+    "броня: -45% урона": "armor: -45% damage",
+    "скорость и огонь +35%": "speed and fire +35%",
+    "при смерти делится": "splits on death",
+    "усиливает свиту": "buffs its escort",
+    "ставит мины": "lays mines",
+    "ЭЛИТА · {0}": "ELITE · {0}",
+    "ЭЛИТА ПОВЕРЖЕНА": "ELITE DEFEATED",
+    "{0} · трофей в трюме": "{0} · trophy secured",
+    "Трофей элиты": "Elite trophy",
+    "Элита уничтожена. Выбери одну карточку из двух — она останется до конца полёта.":
+      "Elite destroyed. Pick one of two cards — it stays with you for the rest of the flight.",
+
+    // трофеи элиты
+    "Трофей": "Trophy",
+    "Заплатка": "Patch",
+    "Потолок сердец <b>+1</b>, сразу латает одно.": "Heart cap <b>+1</b>, instantly patches one.",
+    "Калибровка": "Calibration",
+    "<b>+8%</b> урона до конца полёта.": "<b>+8%</b> damage for the rest of the flight.",
+    "Разгон": "Overclock",
+    "Перезарядка <b>-4%</b> до конца полёта.": "Reload <b>-4%</b> for the rest of the flight.",
+    "Маневр": "Maneuver",
+    "Скорость корабля <b>+6%</b>.": "Ship speed <b>+6%</b>.",
+    "Притяжение": "Gravity",
+    "Радиус подбора <b>+25%</b>.": "Pickup radius <b>+25%</b>.",
+    "Импульс": "Impulse",
+    "Сразу <b>+35%</b> заряда плазмагана.": "Instantly <b>+35%</b> plasma charge.",
+    "Потолок сердец <b>+1</b> и полный ремонт.": "Heart cap <b>+1</b> and a full repair.",
+    "Барьер": "Barrier",
+    "Мгновенный щит на один удар.": "Instant shield for one hit.",
+    "Дань": "Tribute",
+    "<b>+750</b> очков сразу.": "<b>+750</b> points instantly.",
+    "ЗАПЛАТКА": "PATCH",
+    "КАЛИБРОВКА": "CALIBRATION",
+    "РАЗГОН": "OVERCLOCK",
+    "МАНЕВР": "MANEUVER",
+    "ПРИТЯЖЕНИЕ": "GRAVITY",
+    "ИМПУЛЬС": "IMPULSE",
+    "БАРЬЕР": "BARRIER",
+    "ДАНЬ": "TRIBUTE",
+    "урон +{0}%": "damage +{0}%",
+    "перезарядка -{0}%": "reload -{0}%",
+    "скорость +{0}%": "speed +{0}%",
+    "радиус подбора +{0}%": "pickup radius +{0}%",
+    "заряд {0}%": "charge {0}%",
+    "щит держит один удар": "shield absorbs one hit",
+    "+750 очков": "+750 points",
+    "Боссов: {0} · элит: {1} · улучшений: {2}": "Bosses: {0} · elites: {1} · upgrades: {2}"
   };
   const EN_REV = Object.fromEntries(Object.entries(EN).map(([ru, en]) => [en, ru]));
   let LANG = "ru";
@@ -2385,9 +2502,19 @@
     waveDelay: 0,
     genSeen: 1,
     mods: {},    // id модернизации → уровень
+    boons: {},   // трофеи элиты → количество
     bossesDefeated: 0,
+    elitesKilled: 0,
+    elitesSeen: 0,
     upgradeQueue: 0,   // секунд до открытия экрана модернизации
+    draftQueue: 0,     // секунд до черновика трофеев элиты
+    pendingPick: null, // "boss" | "elite" — какой экран выбора готовится
     upgradeChoice: [], // id карточек на текущем экране
+    encounter: { kind: "flow", template: null },
+    eliteWave: false,
+    eliteSpawned: false,
+    eliteDef: null,
+    eliteGap: 1,   // стартовая волна тоже считается обычной
     plasma: { charge: 0, ready: false, active: 0 },
     bulletSpeed: 1,
     combo: 0,
@@ -2686,6 +2813,20 @@
   function updateHud() {
     el.score.textContent = num(G.score);
     el.best.textContent = num(G.best);
+    if (el.wavePill) {
+      const enc = G.encounter || {};
+      const kind = G.bossWave
+        ? L("БОСС")
+        : G.eliteWave
+          ? L("ЭЛИТА")
+          : G.galagaWave
+            ? L("НАЛЁТ")
+            : enc.template ? L(enc.template.name) : "";
+      const text = F("Волна {0}", G.wave) + (kind ? " · " + kind : "");
+      if (el.wavePill.textContent !== text) el.wavePill.textContent = text;
+      el.wavePill.classList.toggle("is-elite", G.eliteWave);
+      el.wavePill.classList.toggle("is-boss", G.bossWave);
+    }
     const sig = `${G.ship.lives}/${maxLives()}`;
     if (livesSig !== sig) {
       livesSig = sig;
@@ -2776,11 +2917,19 @@
 
   function maxLives() {
     const base = G.mods.lives ? MAX_LIVES_BONUS : MAX_LIVES_BASE;
-    return base + 2 * (G.mods.repair || 0) + 2 * (G.mods.titan || 0);
+    return base +
+      2 * (G.mods.repair || 0) +
+      2 * (G.mods.titan || 0) +
+      (G.boons.hull || 0) +
+      (G.boons.supply || 0);
   }
 
   function scoreMul() {
     return 1 + 0.5 * (G.mods.risk || 0);
+  }
+
+  function boonCoolMul() {
+    return Math.max(0.55, 1 - 0.04 * (G.boons.haste || 0));
   }
 
   function plasmaDuration() {
@@ -2871,7 +3020,7 @@
   }
 
   function shootPlasma(s) {
-    s.cool = 0.1;
+    s.cool = 0.1 * boonCoolMul();
     pushBullet({
       x: s.x, y: s.y - 22,
       vx: 0, vy: -1450,
@@ -2902,7 +3051,29 @@
     return cfg.base;
   }
 
+  // режиссёр волн: шаблон задаёт состав, но не отменяет волновые гейты
+  function templateTypes() {
+    const tpl = G.encounter && G.encounter.template;
+    if (!tpl || !tpl.types) return null;
+    const gate = Object.fromEntries(
+      CONFIG.enemySpawn.map(({ type, weight }) => [type, weight.from != null ? weight.from : 0])
+    );
+    const entries = Object.entries(tpl.types).filter(([type]) => (gate[type] || 0) <= G.wave);
+    return entries.length ? entries : null;
+  }
+
   function pickType() {
+    const tplTypes = templateTypes();
+    if (tplTypes) {
+      let total = 0;
+      for (const [, w] of tplTypes) total += w;
+      let roll = Math.random() * total;
+      for (const [type, w] of tplTypes) {
+        roll -= w;
+        if (roll <= 0) return type;
+      }
+      return tplTypes[0][0];
+    }
     const w = G.wave;
     const pool = CONFIG.enemySpawn.map(({ type, weight }) => ({
       t: type,
@@ -2960,6 +3131,38 @@
 
   function spawnFormation() {
     const w = G.wave;
+    const tpl = G.encounter && G.encounter.template;
+    const key = tpl ? tpl.key : "mixed";
+
+    if (key === "siege" && w >= 5) {
+      const cx = rand(G.w * 0.3, G.w * 0.7);
+      spawnEnemy(cx, -46, "tank");
+      spawnEnemy(clamp(cx - 64, 26, G.w - 26), -78, "guardian");
+      spawnEnemy(clamp(cx + 64, 26, G.w - 26), -78, "guardian");
+      return;
+    }
+    if (key === "hunt" && w >= 7) {
+      for (let i = 0; i < 3; i++) {
+        spawnEnemy(
+          clamp(G.w * 0.5 + (i - 1) * 78, 26, G.w - 26),
+          -40 - (i % 2) * 36,
+          i === 1 ? "bomber" : "sniper"
+        );
+      }
+      return;
+    }
+    if (key === "rush" && w >= 3) {
+      const cx = rand(G.w * 0.3, G.w * 0.7);
+      for (let i = -1; i <= 1; i++) {
+        spawnEnemy(
+          clamp(cx + i * 56, 24, G.w - 24),
+          -40 - Math.abs(i) * 28,
+          i === 0 ? "charger" : "runner"
+        );
+      }
+      return;
+    }
+
     const roll = Math.random();
     if (roll < 0.42) {
       const cx = rand(G.w * 0.28, G.w * 0.72);
@@ -3124,6 +3327,50 @@
     }
   }
 
+  function spawnElite() {
+    const E = ENCOUNTERS;
+    const def = G.eliteDef || E.elites[0];
+    const base = TYPES[def.type] || TYPES.tank;
+    const hp = Math.round(E.eliteBaseHp + G.wave * E.eliteHpPerWave);
+    const e = spawnEnemy(G.w / 2, -80, def.type);
+
+    e.elite = true;
+    e.eliteDef = def;
+    e.eliteMod = def.mod;
+    e.eliteName = def.name;
+    e.color = def.color;
+    e.r = base.r * OBJ_SCALE * 1.5;
+    e.hp = hp;
+    e.maxHp = hp;
+    e.score = 220 + G.wave * 40;
+    if (def.mod === "enraged") {
+      e.speed *= 1.35;
+      e.fire = Math.min(e.fire, 1.2);
+    } else if (def.mod === "armored") {
+      e.speed *= 0.82;
+    }
+    if (def.mod === "splitting") e.fire = Infinity;
+    if (def.mod === "mines") e.mineCd = 2.4;
+    // чемпион не улетает за нижний край: держит высоту и крейсирует
+    if (def.type !== "charger") e.hoverY = rand(G.h * 0.2, G.h * 0.34);
+
+    G.eliteSpawned = true;
+    G.spawnTimer = 1.2;
+    banner(F("ЭЛИТА · {0}", L(def.name)), def.tag);
+    Audio.bossWarn();
+    buzz(50);
+
+    // свита: тот же шаблон волны, поэтому элита приходит не одна
+    const escorts = E.eliteEscort + (G.wave >= 11 ? 2 : 0);
+    for (let i = 0; i < escorts; i++) {
+      const a = (i / escorts) * TAU;
+      const x = clamp(G.w / 2 + Math.cos(a) * rand(80, 150), 30, G.w - 30);
+      const y = -44 - Math.abs(Math.sin(a)) * rand(20, 64) - (i % 2) * 26;
+      spawnEnemy(x, y);
+    }
+    updateHud();
+  }
+
   function spawnBoss() {
     const T = CONFIG.bossTuning;
     const level = Math.max(1, Math.floor(G.wave / T.waveStep));
@@ -3246,7 +3493,7 @@
     const rapid = s.rapid > 0;
     const overdrive = mods.overdrive ? 0.7 : 1;
 
-    s.cool = [0.15, 0.12, 0.105, 0.09][rapidLvl] * overdrive * (rapid ? 0.567 : 1);
+    s.cool = [0.15, 0.12, 0.105, 0.09][rapidLvl] * overdrive * (rapid ? 0.567 : 1) * boonCoolMul();
 
     const per = [1, 1.6, 2.2, 2.8][Math.min(caliber, 3)] * (twin === 1 ? 0.8 : twin > 1 ? 0.7 : 1);
     const radius = 3.4 + 0.27 * caliber;
@@ -3282,7 +3529,7 @@
 
   function shootWeapon(s, def) {
     const fast = s.rapid > 0;
-    s.cool = def.cool * (fast ? 0.72 : 1);
+    s.cool = def.cool * (fast ? 0.72 : 1) * boonCoolMul();
     const cy = s.y - 18;
 
     if (def.id === "plasma") {
@@ -3367,6 +3614,8 @@
     if (e.type === "boss" && G.mods.bossDmg) dmg *= 1 + 0.3 * G.mods.bossDmg;
     if (G.mods.berserk) dmg *= 1 + 0.25 * G.mods.berserk;
     if (G.mods.salvage) dmg *= 1 + 0.1 * G.mods.salvage;
+    if (G.boons.power) dmg *= 1 + 0.08 * G.boons.power;
+    if (e.elite && e.eliteMod === "armored") dmg *= 0.55;
     e.hp -= dmg;
     e.flash = 0.12;
     if (e.type === "boss") Audio.bossHit();
@@ -3404,7 +3653,9 @@
     if (e.type === "boss") G.waveKills++;
     else if (!G.bossWave) G.waveKills++;
 
-    if (e.type === "boss") {
+    if (e.elite) {
+      killElite(e);
+    } else if (e.type === "boss") {
       killBoss(e);
     } else {
       const big = e.type === "tank";
@@ -3418,9 +3669,9 @@
       });
     }
 
-    if (e.type !== "boss") dropPowerup(e.x, e.y);
+    if (e.type !== "boss" && !e.elite) dropPowerup(e.x, e.y);
 
-    if (e.type === "bomber") {
+    if (!e.elite && e.type === "bomber") {
       for (let k = 0; k < 10; k++) {
         const a = (k / 10) * TAU + rand(-0.08, 0.08);
         G.ebullets.push({
@@ -3432,7 +3683,7 @@
       addParticles(e.x, e.y, 14, {
         color: COLORS.amber, speed: 260, size: 2.2, life: 0.5, kind: "spark"
       });
-    } else if (e.type === "splitter") {
+    } else if (!e.elite && e.type === "splitter") {
       for (let k = 0; k < 2; k++) {
         const m = spawnEnemy(e.x + (k ? 14 : -14), e.y, "drone");
         m.speed = rand(95, 135);
@@ -3445,6 +3696,67 @@
     }
 
     if (G.score > G.best) { G.best = G.score; store.best = G.best; }
+    updateHud();
+  }
+
+  function killElite(e) {
+    G.elitesKilled++;
+
+    explode(e.x, e.y, {
+      size: 54, color: e.color, secondary: COLORS.white,
+      big: true, rings: 2, shake: 18, sound: true
+    });
+    for (let i = 0; i < 10; i++) {
+      const a = rand(0, TAU);
+      const d = rand(0, e.r * 1.2);
+      queueExplosion(
+        e.x + Math.cos(a) * d,
+        e.y + Math.sin(a) * d,
+        0.08 + i * 0.05,
+        { size: rand(12, 24), color: i % 2 ? COLORS.white : e.color, smoke: i % 2 === 0 }
+      );
+    }
+    addParticles(e.x, e.y, 26, {
+      color: e.color, speed: 300, size: 2.6, life: 0.8, kind: "spark"
+    });
+
+    // трофей: один гарантированный бонус плюс обычный случайный дроп
+    const kind = Math.random() < 0.45 ? "shield" : Math.random() < 0.5 ? "rapid" : "triple";
+    G.powerups.push({
+      x: e.x, y: e.y, r: 11, kind, t: 0,
+      vy: rand(58, 92), vx: rand(-16, 16), life: null
+    });
+    dropPowerup(e.x, e.y);
+
+    if (e.eliteMod === "splitting") {
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * TAU + rand(-0.2, 0.2);
+        const m = spawnEnemy(e.x + Math.cos(a) * 20, e.y + Math.sin(a) * 20, k % 2 ? "runner" : "drone");
+        m.speed = rand(95, 135);
+        m.drift = k % 2 ? 0.6 : -0.6;
+      }
+    }
+    if (e.eliteMod === "mines") {
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * TAU;
+        pushEBullet({
+          x: e.x + Math.cos(a) * 24, y: e.y + Math.sin(a) * 24,
+          vx: Math.cos(a) * 60, vy: Math.sin(a) * 60,
+          r: 6, color: "#ffd166", kind: "mine",
+          fuse: rand(1.8, 2.6), spin: rand(0, TAU), life: 10
+        });
+      }
+    }
+
+    banner(
+      "ЭЛИТА ПОВЕРЖЕНА",
+      F("{0} · трофей в трюме", L(e.eliteName))
+    );
+    Audio.unique();
+    buzz(45);
+    G.flash = Math.max(G.flash, 0.5);
+    G.pendingPick = "elite";
+    G.draftQueue = 1.15;
     updateHud();
   }
 
@@ -3489,6 +3801,7 @@
     grantBossWeapon();
     G.bulletSpeed *= 1.07;
     G.bossesDefeated++;
+    G.pendingPick = "boss";
     G.upgradeQueue = 1.6;
     G.waveDelay = 2.6;
     banner(F("{0} ПОВЕРЖЕН", L(e.name)), "оружие в арсенале, готовь модернизацию");
@@ -3540,9 +3853,9 @@
 
   function renderOverStats(withStatus = true) {
     if (el.overModule) {
-      const modsCount = Object.keys(G.mods).length;
-      el.overModule.textContent = G.bossesDefeated
-        ? F("Боссов: {0} · улучшений: {1}", G.bossesDefeated, modsCount)
+      const modsCount = Object.keys(G.mods).length + Object.keys(G.boons).length;
+      el.overModule.textContent = G.bossesDefeated || G.elitesKilled
+        ? F("Боссов: {0} · элит: {1} · улучшений: {2}", G.bossesDefeated, G.elitesKilled, modsCount)
         : L("Без модернизаций");
     }
     el.overScore.textContent = num(G.score);
@@ -3587,18 +3900,43 @@
   }
 
   /* ---------------- difficulty level ----------------
-     «Волн» как отдельных фаз больше нет: враги идут сплошным потоком,
-     а G.wave — внутренний счётчик сложности, который растёт сам и в HUD не показывается. */
+     Враги идут сплошным потоком, но G.wave — это номер волны:
+     он растёт сам, задаёт сложность и показывается в HUD строкой «Волна N · тип». */
   function advanceLevel() {
     G.wave++;
     G.waveKills = 0;
-    G.bossWave = G.wave % 7 === 0;
+    G.bossWave = G.wave % CONFIG.bossTuning.waveStep === 0;
     G.bossSpawned = false;
     G.galagaWave = !G.bossWave && G.wave >= 10 && (G.wave - 10) % 9 === 0;
     G.galagaSpawned = false;
     G.galagaTimer = 1.6;
+    // элиты считаются по «обычным» волнам: босс и налёт их не сдвигают,
+    // поэтому ритм трофеев остаётся ровным
+    G.eliteWave = false;
+    if (!G.bossWave && !G.galagaWave) {
+      G.eliteGap = (G.eliteGap || 0) + 1;
+      G.eliteWave =
+        G.eliteGap >= ENCOUNTERS.eliteStart &&
+        (G.eliteGap - ENCOUNTERS.eliteStart) % ENCOUNTERS.eliteEvery === 0;
+    }
+    G.eliteSpawned = false;
+    G.eliteDef = G.eliteWave
+      ? ENCOUNTERS.elites[G.elitesSeen++ % ENCOUNTERS.elites.length]
+      : null;
     G.waveDelay = 0;
-    G.spawnTimer = (G.bossWave || G.galagaWave) ? 1.4 : 0.8;
+
+    // режиссёр волн: обычные и элитные волны получают шаблон состава
+    let template = null;
+    if (!G.bossWave && !G.galagaWave) {
+      const list = G.wave < 4 ? ENCOUNTERS.templates.slice(0, 2) : ENCOUNTERS.templates;
+      template = list[(Math.random() * list.length) | 0];
+    }
+    G.encounter = {
+      kind: G.bossWave ? "boss" : G.galagaWave ? "galaga" : G.eliteWave ? "elite" : "flow",
+      template
+    };
+
+    G.spawnTimer = (G.bossWave || G.galagaWave) ? 1.4 : G.eliteWave ? 1.5 : 0.8;
     G.ship.lives = Math.min(maxLives(), G.ship.lives + (G.wave % 3 === 0 ? 1 : 0));
     syncLives();
 
@@ -3611,6 +3949,10 @@
       G.waveTarget = GALAGA_ROWS * GALAGA_COLS;
       banner("АРКАДНЫЙ НАЛЁТ", "враги идут строем и пикируют");
       buzz(40);
+    } else if (G.eliteWave) {
+      const escorts = ENCOUNTERS.eliteEscort + (G.wave >= 11 ? 2 : 0);
+      G.waveTarget = escorts + Math.round(7 + G.wave * 1.1);
+      buzz(40);
     } else {
       G.waveTarget = 9 + G.wave * 3;
     }
@@ -3622,6 +3964,7 @@
       banner(FLEET_NAME[gen][0], FLEET_NAME[gen][1]);
       buzz(30);
     }
+    updateHud();
   }
 
   /* ---------------- input ---------------- */
@@ -3701,7 +4044,7 @@
       return; // экран модернизации не закрывается: выбор обязательный
     }
     // цифры должны работать и когда фокус уже стоит на карточке
-    if (G.mode === "upgrade" && (k === "1" || k === "2")) {
+    if (G.mode === "upgrade" && /^[1-9]$/.test(k)) {
       e.preventDefault();
       const id = G.upgradeChoice[Number(k) - 1];
       if (id) chooseUpgrade(id);
@@ -3762,9 +4105,15 @@
   function resetGame() {
     G.score = 0;
     G.mods = {};
+    G.boons = {};
     G.bossesDefeated = 0;
+    G.elitesKilled = 0;
+    G.elitesSeen = 0;
     G.upgradeQueue = 0;
+    G.draftQueue = 0;
+    G.pendingPick = null;
     G.upgradeChoice = [];
+    G.encounter = { kind: "flow", template: null };
     G.plasma.charge = 0;
     G.plasma.ready = false;
     G.plasma.active = 0;
@@ -3774,6 +4123,10 @@
     G.waveTarget = 10;
     G.bossWave = false;
     G.bossSpawned = false;
+    G.eliteWave = false;
+    G.eliteSpawned = false;
+    G.eliteDef = null;
+    G.eliteGap = 1;
     G.bossLevel = 0;
     G.galagaWave = false;
     G.galagaSpawned = false;
@@ -3913,6 +4266,10 @@
     return G.mods[id] || 0;
   }
 
+  function boonLevel(id) {
+    return G.boons[id] || 0;
+  }
+
   /* открыто боссами и ещё не выжато до максимума */
   function upgradePool() {
     const tier = Math.max(1, G.bossesDefeated);
@@ -3942,14 +4299,53 @@
     return picks;
   }
 
+  function rollDraftCards() {
+    const eligible = BOONS.filter((b) => {
+      if (b.need === "plasma" && !G.mods.plasma) return false;
+      // взятый до предела трофей второй раз ничего не даёт
+      if (isFinite(b.max) && (G.boons[b.id] || 0) >= b.max) return false;
+      // заряд уже полный — «Импульс» был бы пустой карточкой
+      if (b.id === "charge" && (G.plasma.charge >= 100 || G.plasma.active > 0)) return false;
+      // щит уже стоит — «Барьер» был бы пустой карточкой
+      if (b.id === "barrier" && G.ship.shield) return false;
+      return true;
+    });
+    const picks = [];
+    const take = (pool) => {
+      const free = (pool || eligible).filter((b) => !picks.includes(b.id));
+      if (!free.length) return false;
+      picks.push(free[(Math.random() * free.length) | 0].id);
+      return true;
+    };
+    take();
+    take();
+    // страховка: пул никогда не должен дать дубли или меньше двух карточек
+    const fallback = ["score", "power", "haste", "agility", "pull"];
+    for (const id of fallback) {
+      if (picks.length >= 2) break;
+      if (!picks.includes(id) && BOON_BY_ID[id]) picks.push(id);
+    }
+    return picks;
+  }
+
+  function pickDef(id) {
+    return G.pendingPick === "elite"
+      ? BOON_BY_ID[id] || UPGRADE_BY_ID[id] || null
+      : UPGRADE_BY_ID[id] || BOON_BY_ID[id] || null;
+  }
+
   function renderUpgrade() {
+    const elite = G.pendingPick === "elite";
     el.upgradeGrid.innerHTML = "";
-    el.upgradeLede.textContent =
-      F("Босс {0} повержен. Выбери одну карточку — она останется до конца полёта.", G.bossesDefeated);
+    el.upgradeTitle.textContent = L(elite ? "Трофей элиты" : "Модернизация");
+    el.upgradeLede.textContent = elite
+      ? L("Элита уничтожена. Выбери одну карточку из двух — она останется до конца полёта.")
+      : F("Босс {0} повержен. Выбери одну карточку — она останется до конца полёта.", G.bossesDefeated);
+
     G.upgradeChoice.forEach((id) => {
-      const u = UPGRADE_BY_ID[id];
+      const u = pickDef(id);
       if (!u) return;
-      const lvl = upgradeLevel(id);
+      const lvl = u.boon ? boonLevel(id) : upgradeLevel(id);
       const next = Math.min(lvl + 1, u.max);
       const card = document.createElement("button");
       card.type = "button";
@@ -3959,9 +4355,11 @@
 
       const tag = document.createElement("span");
       tag.className = "pick__tag";
-      tag.textContent = isFinite(u.max) && u.max > 1
-        ? F("{0} · ур. {1} из {2}", L(u.tag), next, u.max)
-        : u.repeatable ? F("{0} · ур. {1}", L(u.tag), next) : L(u.tag);
+      tag.textContent = u.boon
+        ? lvl > 0 ? F("{0} · ур. {1}", L(u.tag), next) : L(u.tag)
+        : isFinite(u.max) && u.max > 1
+          ? F("{0} · ур. {1} из {2}", L(u.tag), next, u.max)
+          : u.repeatable ? F("{0} · ур. {1}", L(u.tag), next) : L(u.tag);
       card.appendChild(tag);
 
       const name = document.createElement("span");
@@ -3971,7 +4369,8 @@
 
       const desc = document.createElement("span");
       desc.className = "pick__desc";
-      desc.innerHTML = L(u.desc[Math.min(lvl, u.desc.length - 1)]);
+      const text = Array.isArray(u.desc) ? u.desc[Math.min(lvl, u.desc.length - 1)] : u.desc;
+      desc.innerHTML = L(text);
       card.appendChild(desc);
 
       const act = document.createElement("span");
@@ -3982,16 +4381,18 @@
       el.upgradeGrid.appendChild(card);
     });
 
-    const owned = UPGRADES.filter((u) => upgradeLevel(u.id) > 0);
-    el.upgradeOwned.innerHTML = owned.length
-      ? L("В строю:") + " " + owned
-        .map((u) => {
-          const lvl = upgradeLevel(u.id);
-          const roman = isFinite(u.max) && u.max > 1 ? " " + (ROMAN[lvl] || lvl) : "";
-          return `<b>${L(u.name)}${roman}</b>`;
-        })
-        .join(" · ")
-      : "";
+    const parts = [];
+    for (const u of UPGRADES) {
+      const lvl = upgradeLevel(u.id);
+      if (!lvl) continue;
+      const roman = isFinite(u.max) && u.max > 1 ? " " + (ROMAN[lvl] || lvl) : "";
+      parts.push(`<b>${L(u.name)}${roman}</b>`);
+    }
+    for (const b of BOONS) {
+      const lvl = boonLevel(b.id);
+      if (lvl) parts.push(`<b>${L(b.name)} ×${lvl}</b>`);
+    }
+    el.upgradeOwned.innerHTML = parts.length ? L("В строю:") + " " + parts.join(" · ") : "";
   }
 
   function openUpgrade() {
@@ -3999,7 +4400,9 @@
     Audio.unlock();
     G.mode = "upgrade";
     G.upgradeQueue = 0;
-    G.upgradeChoice = rollUpgradeCards();
+    G.draftQueue = 0;
+    if (G.pendingPick !== "elite") G.pendingPick = "boss";
+    G.upgradeChoice = G.pendingPick === "elite" ? rollDraftCards() : rollUpgradeCards();
     renderUpgrade();
     G.pointer.down = false;
     for (const k in G.keys) G.keys[k] = false;
@@ -4019,8 +4422,11 @@
   function chooseUpgrade(id) {
     if (G.mode !== "upgrade") return;
     if (!G.upgradeChoice.includes(id)) return;
-    applyUpgrade(id);
+    if (G.pendingPick === "elite" && BOON_BY_ID[id]) applyBoon(id);
+    else if (BOON_BY_ID[id] && !UPGRADE_BY_ID[id]) applyBoon(id);
+    else applyUpgrade(id);
     G.upgradeChoice = [];
+    G.pendingPick = null;
     el.upgradeGrid.innerHTML = "";
     el.upgrade.classList.add("hidden");
     G.mode = "play";
@@ -4068,6 +4474,48 @@
     }
 
     syncLives();
+    updateChips();
+    updatePlasmaHud();
+    Audio.power();
+  }
+
+  function applyBoon(id) {
+    const b = BOON_BY_ID[id];
+    if (!b) return;
+    G.boons[id] = (G.boons[id] || 0) + 1;
+    const s = G.ship;
+
+    if (id === "hull") {
+      s.lives = Math.min(maxLives(), s.lives + 1);
+      banner("ЗАПЛАТКА", F("корпус {0} / {1}", s.lives, maxLives()));
+    } else if (id === "power") {
+      banner("КАЛИБРОВКА", F("урон +{0}%", 8 * G.boons.power));
+    } else if (id === "haste") {
+      banner("РАЗГОН", F("перезарядка -{0}%", 4 * G.boons.haste));
+    } else if (id === "agility") {
+      banner("МАНЕВР", F("скорость +{0}%", 6 * G.boons.agility));
+    } else if (id === "pull") {
+      banner("ПРИТЯЖЕНИЕ", F("радиус подбора +{0}%", 25 * G.boons.pull));
+    } else if (id === "charge") {
+      if (G.mods.plasma && G.plasma.active <= 0) {
+        G.plasma.charge = Math.min(100, G.plasma.charge + 35);
+        if (G.plasma.charge >= 100) G.plasma.ready = true;
+      }
+      banner("ИМПУЛЬС", F("заряд {0}%", Math.round(G.plasma.charge)));
+    } else if (id === "supply") {
+      s.lives = maxLives();
+      banner("РЕМОНТ", F("корпус {0} / {1}", s.lives, maxLives()));
+    } else if (id === "barrier") {
+      s.shield = true;
+      s.shieldFx = 1;
+      banner("БАРЬЕР", "щит держит один удар");
+    } else if (id === "score") {
+      G.score += 750;
+      banner("ДАНЬ", "+750 очков");
+    }
+
+    syncLives();
+    updateHud();
     updateChips();
     updatePlasmaHud();
     Audio.power();
@@ -4135,7 +4583,9 @@
     window.__galaxy = {
       G, startGame, openUpgrade, chooseUpgrade, applyUpgrade, rollUpgradeCards,
       killBoss, spawnBoss, advanceLevel, maxLives, upgradePool,
-      playerShoot, hurtPlayer, activatePlasma, addPlasmaCharge, syncLives
+      playerShoot, hurtPlayer, activatePlasma, addPlasmaCharge, syncLives,
+      spawnElite, killElite, rollDraftCards, applyBoon, damageEnemy, spawnEnemy,
+      killEnemy, updateHud, CONFIG, update
     };
   }
   if (el.plasmaBtn) {
@@ -4207,6 +4657,15 @@
       }
     }
 
+    // трофей элиты: короткая пауза на взрыв, затем выбор одной из двух карточек
+    if (G.draftQueue > 0) {
+      G.draftQueue -= dt;
+      if (G.draftQueue <= 0) {
+        openUpgrade();
+        return;
+      }
+    }
+
     // плазмаган: 10 секунд работы, затем заряд сгорает
     if (G.plasma.active > 0) {
       G.plasma.active = Math.max(0, G.plasma.active - dt);
@@ -4227,7 +4686,7 @@
         (G.keys["arrowup"] || G.keys["w"] ? -1 : 0) +
         (G.keys["arrowdown"] || G.keys["s"] ? 1 : 0);
 
-      const spd = 1 + 0.12 * (G.mods.thrust || 0);
+      const spd = (1 + 0.12 * (G.mods.thrust || 0)) * (1 + 0.06 * (G.boons.agility || 0));
 
       if (G.pointer.active && G.pointer.moved > 0) {
         const offY = G.pointer.touch ? 58 : 0;
@@ -4307,6 +4766,8 @@
       if (!G.bossSpawned && G.spawnTimer <= 0) spawnBoss();
     } else if (G.galagaWave) {
       if (!G.galagaSpawned && G.spawnTimer <= 0) spawnGalagaWave();
+    } else if (G.eliteWave && !G.eliteSpawned) {
+      if (G.spawnTimer <= 0) spawnElite();
     } else if (G.spawnTimer <= 0 && G.waveKills < G.waveTarget) {
       const maxEnemies = FLOW.maxEnemies;
       const alive = G.enemies.length;
@@ -4352,7 +4813,8 @@
     // рост сложности: арена больше не «очищается», поток врагов не прерывается
     G.waveDelay = Math.max(0, G.waveDelay - dt);
     const bossAlive = G.enemies.some((e) => e.type === "boss" && !e.dead);
-    if (G.waveDelay <= 0 && !bossAlive && G.waveKills >= G.waveTarget) advanceLevel();
+    const eliteAlive = G.enemies.some((e) => e.elite && !e.dead);
+    if (G.waveDelay <= 0 && !bossAlive && !eliteAlive && G.waveKills >= G.waveTarget) advanceLevel();
 
     updateChips();
     updatePlasmaHud();
@@ -4582,11 +5044,26 @@
 
   function updateEnemies(dt) {
     const s = G.ship;
+    const auras = [];
+    for (const a of G.enemies) {
+      if (!a.dead && a.elite && a.eliteMod === "aura") auras.push(a);
+    }
     for (let i = G.enemies.length - 1; i >= 0; i--) {
       const e = G.enemies[i];
       if (e.dead) { G.enemies.splice(i, 1); continue; }
       e.t += dt;
       e.flash = Math.max(0, e.flash - dt);
+
+      // аура глашатая: свита рядом стреляет чаще
+      let auraBoost = 0;
+      if (auras.length && !e.elite) {
+        for (const a of auras) {
+          const adx = a.x - e.x;
+          const ady = a.y - e.y;
+          if (adx * adx + ady * ady < 200 * 200) { auraBoost = 1; break; }
+        }
+      }
+      e.auraBoost = auraBoost;
 
       // защитный дрон уничтожает врагов, коснувшихся его
       if (droneRam(e)) continue;
@@ -4664,7 +5141,7 @@
           e.angle = Math.PI;
           if (e.y >= e.hoverY) {
             e.chargeState = 1;
-            e.dashT = rand(0.65, 1.0);
+            e.dashT = rand(0.65, 1.0) * (e.elite && e.eliteMod === "enraged" ? 0.7 : 1);
           }
         } else if (e.chargeState === 1) {
           e.y = e.hoverY + Math.sin(e.t * 4 + e.seed) * 5;
@@ -4673,7 +5150,7 @@
           e.dashT -= dt;
           if (e.dashT <= 0) {
             const a = Math.atan2(s.y - e.y, s.x - e.x);
-            const spd = rand(380, 450);
+            const spd = rand(380, 450) * (e.elite && e.eliteMod === "enraged" ? 1.3 : 1);
             e.vx = Math.cos(a) * spd;
             e.vy = Math.sin(a) * spd;
             e.chargeState = 2;
@@ -4695,13 +5172,18 @@
           }
           if (e.dashT <= 0) {
             e.chargeState = 3;
-            e.vy = 150;
+            // элита не сваливается вниз: после рывка возвращается на высоту
+            e.vy = e.elite ? -180 : 150;
             e.vx *= 0.2;
           }
         } else {
           e.y += e.vy * dt;
           e.x += e.vx * dt;
           e.angle = Math.PI;
+          if (e.elite && e.y <= e.hoverY) {
+            e.y = e.hoverY;
+            e.chargeState = 0;
+          }
         }
       } else if (e.type === "guardian") {
         e.y += e.speed * dt;
@@ -4711,12 +5193,35 @@
 
       e.x = clamp(e.x, e.r + 6, G.w - e.r - 6);
 
+      // чемпион держит высоту: иначе танк/бомбер просто улетит и элита пропадёт
+      if (e.elite && e.eliteMod !== "enraged" && e.y >= e.hoverY) {
+        e.y = e.hoverY + Math.sin(e.t * 1.1 + e.seed) * 7;
+        e.x += Math.sin(e.t * 0.55 + e.seed) * 40 * dt;
+      }
+
       // fire
       if (isFinite(e.fire) && e.y > 10 && e.y < G.h * 0.8) {
-        e.fire -= dt;
+        e.fire -= dt * (e.auraBoost ? 1.35 : 1);
         if (e.fire <= 0) {
           enemyShoot(e);
           e.fire = e.type === "tank" ? rand(1.3, 2.0) : e.type === "sniper" ? rand(2.0, 3.0) : rand(1.6, 2.6);
+          if (e.auraBoost) e.fire *= 0.72;
+          if (e.elite && e.eliteMod === "enraged") e.fire *= 0.65;
+        }
+      }
+
+      // сапёр ставит мины, пока жив
+      if (e.elite && e.eliteMod === "mines") {
+        e.mineCd = (e.mineCd || 2.4) - dt;
+        if (e.mineCd <= 0) {
+          e.mineCd = rand(2.4, 3.4);
+          pushEBullet({
+            x: e.x + rand(-e.r * 0.5, e.r * 0.5),
+            y: e.y + e.r * 0.4,
+            vx: rand(-24, 24), vy: rand(36, 64),
+            r: 6, color: "#ffd166", kind: "mine",
+            fuse: rand(2.2, 3.0), spin: rand(0, TAU), life: 10
+          });
         }
       }
 
@@ -4940,7 +5445,7 @@
         const dx = s.x - p.x;
         const dy = s.y - p.y;
         const d2 = dx * dx + dy * dy;
-        const magnet = 1 + 0.6 * (G.mods.magnet || 0);
+        const magnet = 1 + 0.6 * (G.mods.magnet || 0) + 0.25 * (G.boons.pull || 0);
         const pull = (p.kind === "weapon" || p.kind === "part" ? 210 : 150) * magnet;
         if (d2 < pull * pull && d2 > 1) {
           const d = Math.sqrt(d2);
@@ -6703,7 +7208,7 @@
 
     // телеграфы поверх корпуса
     if (role === "bomber") bombBay(e, r, fill, hot);
-    if (role === "tank") {
+    if (role === "tank" && !e.elite) {
       const hpw = r * 2;
       ctx.fillStyle = "rgba(255,255,255,0.16)";
       ctx.fillRect(-hpw / 2, -r - 10, hpw, 3);
@@ -6757,6 +7262,83 @@
     }
   }
 
+  function drawElite(e) {
+    const r = e.r;
+    const col = e.color;
+    const pulse = 0.55 + Math.sin(e.t * 4.2) * 0.2;
+
+    ctx.save();
+    // пульсирующее кольцо чемпиона
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = rgba(col, 0.2 + pulse * 0.25);
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 1.5 + Math.sin(e.t * 3) * 2, 0, TAU);
+    ctx.stroke();
+
+    // корона
+    ctx.globalCompositeOperation = "source-over";
+    const cw = r * 1.1;
+    const cy = -r - 13;
+    ctx.fillStyle = rgba(col, 0.95);
+    ctx.beginPath();
+    ctx.moveTo(-cw * 0.5, cy);
+    ctx.lineTo(-cw * 0.32, cy - 11);
+    ctx.lineTo(-cw * 0.12, cy - 3);
+    ctx.lineTo(0, cy - 15);
+    ctx.lineTo(cw * 0.12, cy - 3);
+    ctx.lineTo(cw * 0.32, cy - 11);
+    ctx.lineTo(cw * 0.5, cy);
+    ctx.closePath();
+    ctx.fill();
+
+    // броня: шестигранный панцирь
+    if (e.eliteMod === "armored") {
+      ctx.strokeStyle = "rgba(255,255,255,0.42)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + (i / 6) * TAU;
+        const px = Math.cos(a) * r * 1.2;
+        const py = Math.sin(a) * r * 1.2;
+        if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // аура: пунктирный купол влияния
+    if (e.eliteMod === "aura") {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.strokeStyle = rgba(col, 0.16 + pulse * 0.1);
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 10]);
+      ctx.beginPath();
+      ctx.arc(0, 0, 200, 0, TAU);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // полоса здоровья и имя: выше короны, чтобы не наезжать на неё
+    const bw = Math.max(r * 2.4, 56);
+    const by = -r - 36;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "rgba(4,6,14,0.72)";
+    ctx.fillRect(-bw / 2, by, bw, 5);
+    ctx.fillStyle = col;
+    ctx.fillRect(-bw / 2, by, bw * clamp(e.hp / e.maxHp, 0, 1), 5);
+    ctx.strokeStyle = rgba(col, 0.55);
+    ctx.lineWidth = 1;
+    ctx.strokeRect(-bw / 2 - 0.5, by - 0.5, bw + 1, 6);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    ctx.font = "700 10px 'Google Sans Flex', sans-serif";
+    ctx.fillStyle = rgba(col, 0.95);
+    ctx.fillText(L(e.eliteName || ""), 0, by - 3);
+    ctx.restore();
+  }
+
   function drawEnemies() {
     for (const e of G.enemies) {
       ctx.save();
@@ -6782,6 +7364,7 @@
       }
 
       drawEnemyShip(e, e.flash > 0 ? "#ffffff" : e.color, e.flash > 0);
+      if (e.elite) drawElite(e);
       ctx.restore();
     }
   }
