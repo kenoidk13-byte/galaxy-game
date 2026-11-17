@@ -1535,6 +1535,11 @@
       { id: "charge", boon: true, repeatable: true, max: Infinity, tag: "Плазма", color: "#ff3b5c", name: "Импульс", desc: "Сразу <b>+35%</b> заряда плазмагана.", need: "plasma" },
       { id: "supply", boon: true, repeatable: true, max: Infinity, tag: "Ремкомплект", color: "#ffc46b", name: "Ремонт", desc: "Потолок сердец <b>+1</b> и полный ремонт." },
       { id: "barrier", boon: true, repeatable: false, max: 1, tag: "Корпус", color: "#63ffc4", name: "Барьер", desc: "Мгновенный щит на один удар." },
+      // синергии: работают только вместе с боссовой модернизацией, поэтому
+      // не бывают пустыми и не повторяют ни одну боссовую карточку
+      { id: "link", boon: true, repeatable: true, max: 2, tag: "Дроны", color: "#63ffc4", name: "Связка", desc: "Дроны стреляют на <b>12%</b> чаще.", need: "drones" },
+      { id: "feed", boon: true, repeatable: true, max: 2, tag: "Плазма", color: "#ff3b5c", name: "Подпитка", desc: "Детали заряжают плазмаган на <b>20%</b> сильнее.", need: "plasma" },
+      { id: "drift", boon: true, repeatable: true, max: 2, tag: "Корпус", color: "#63ffc4", name: "Дрейф", desc: "Под щитом корабль на <b>8%</b> быстрее.", need: "shield" },
       { id: "score", boon: true, repeatable: true, max: Infinity, tag: "Трофей", color: "#ffc46b", name: "Дань", desc: "<b>+750</b> очков сразу." }
     ],
 
@@ -2076,6 +2081,12 @@
     "Потолок сердец <b>+1</b> и полный ремонт.": "Heart cap <b>+1</b> and a full repair.",
     "Барьер": "Barrier",
     "Мгновенный щит на один удар.": "Instant shield for one hit.",
+    "Связка": "Link",
+    "Дроны стреляют на <b>12%</b> чаще.": "Drones fire <b>12%</b> faster.",
+    "Подпитка": "Feed",
+    "Детали заряжают плазмаган на <b>20%</b> сильнее.": "Parts charge the plasma gun <b>20%</b> stronger.",
+    "Дрейф": "Drift",
+    "Под щитом корабль на <b>8%</b> быстрее.": "With a shield up the ship is <b>8%</b> faster.",
     "Дань": "Tribute",
     "<b>+750</b> очков сразу.": "<b>+750</b> points instantly.",
     "ЗАПЛАТКА": "PATCH",
@@ -2085,6 +2096,12 @@
     "ПРИТЯЖЕНИЕ": "GRAVITY",
     "ИМПУЛЬС": "IMPULSE",
     "БАРЬЕР": "BARRIER",
+    "СВЯЗКА": "LINK",
+    "дроны стреляют чаще: +{0}%": "drones fire faster: +{0}%",
+    "ПОДПИТКА": "FEED",
+    "заряд плазмагана +{0}%": "plasma charge +{0}%",
+    "ДРЕЙФ": "DRIFT",
+    "под щитом скорость +{0}%": "speed with shield +{0}%",
     "ДАНЬ": "TRIBUTE",
     "урон +{0}%": "damage +{0}%",
     "перезарядка -{0}%": "reload -{0}%",
@@ -2514,6 +2531,8 @@
     eliteWave: false,
     eliteSpawned: false,
     eliteDef: null,
+    eliteBag: null,    // перемешанная очередь чемпионов на текущий забег
+    lastEliteKey: null,
     eliteGap: 1,   // стартовая волна тоже считается обычной
     plasma: { charge: 0, ready: false, active: 0 },
     bulletSpeed: 1,
@@ -2943,11 +2962,26 @@
   function plasmaStep() {
     const cap = G.mods.capacitor || 0;
     const step = cap >= 2 ? 24 : cap === 1 ? 18 : PLASMA_CHARGE_STEP;
-    return (step + 8 * (G.mods.charger || 0)) * (G.mods.plasmaBoost ? 2 : 1);
+    return (step + 8 * (G.mods.charger || 0)) *
+      (G.mods.plasmaBoost ? 2 : 1) *
+      (1 + 0.2 * (G.boons.feed || 0));
   }
 
   function shieldRechargeTime() {
     return G.mods.shield >= 2 ? 10 : 20;
+  }
+
+  // скорость корабля: модернизация «Форсаж», трофей «Маневр» и синергия
+  // «Дрейф», которая работает только под щитом
+  function shipSpeedMul() {
+    return (1 + 0.12 * (G.mods.thrust || 0)) *
+      (1 + 0.06 * (G.boons.agility || 0)) *
+      (G.ship.shield ? 1 + 0.08 * (G.boons.drift || 0) : 1);
+  }
+
+  // темп стрельбы дронов: трофей «Связка» ускоряет их, но не быстрее чем на 40%
+  function droneCool() {
+    return 0.22 * Math.max(0.6, 1 - 0.12 * (G.boons.link || 0));
   }
 
   function syncLives() {
@@ -3089,9 +3123,17 @@
     return "drone";
   }
 
+  // Обычные враги толстеют с волной. Без этого к 25–30-й волне их косит
+  // быстрее, чем игра успевает спавнить, и поздняя игра становится длинной,
+  // а не злой. Потолок 3.2 — чтобы забег не превращался в простыню.
+  function enemyHpScale(wave) {
+    return Math.min(3.2, 1 + 0.045 * Math.max(0, wave - 1));
+  }
+
   function spawnEnemy(atX, atY, forcedType) {
     const type = forcedType || pickType();
     const def = TYPES[type];
+    const hp = Math.max(1, Math.round(def.hp * enemyHpScale(G.wave)));
     const margin = 44;
     const x = atX != null ? atX : rand(margin, G.w - margin);
     const e = {
@@ -3100,8 +3142,8 @@
       x,
       y: atY != null ? atY : -40,
       r: def.r * OBJ_SCALE,
-      hp: def.hp,
-      maxHp: def.hp,
+      hp,
+      maxHp: hp,
       score: def.score,
       color: def.color,
       gen: Math.min(FLEET_GENS.length - 1, 1 + Math.floor(G.wave / 10)),
@@ -3325,6 +3367,30 @@
         e.y = g.sy;
       }
     }
+  }
+
+  // Чемпионы идут в случайном порядке: забег не должен начинаться
+  // с одного и того же бастиона каждый раз. Мешок гарантирует, что за круг
+  // все пятеро встретятся по разу, и не повторяет подряд одного и того же.
+  function nextEliteDef() {
+    if (!G.eliteBag || !G.eliteBag.length) {
+      const bag = ENCOUNTERS.elites.slice();
+      for (let i = bag.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        const t = bag[i];
+        bag[i] = bag[j];
+        bag[j] = t;
+      }
+      if (bag.length > 1 && G.lastEliteKey && bag[0].key === G.lastEliteKey) {
+        const t = bag[0];
+        bag[0] = bag[1];
+        bag[1] = t;
+      }
+      G.eliteBag = bag;
+    }
+    const def = G.eliteBag.shift();
+    G.lastEliteKey = def.key;
+    return def;
   }
 
   function spawnElite() {
@@ -3867,6 +3933,7 @@
   }
 
   function gameOver() {
+    resetPointer();
     G.ship.alive = false;
     G.mode = "over";
     G.newRecord = G.score > 0 && G.score > (G.bestStart || 0);
@@ -3920,9 +3987,12 @@
         (G.eliteGap - ENCOUNTERS.eliteStart) % ENCOUNTERS.eliteEvery === 0;
     }
     G.eliteSpawned = false;
-    G.eliteDef = G.eliteWave
-      ? ENCOUNTERS.elites[G.elitesSeen++ % ENCOUNTERS.elites.length]
-      : null;
+    if (G.eliteWave) {
+      G.elitesSeen++;
+      G.eliteDef = nextEliteDef();
+    } else {
+      G.eliteDef = null;
+    }
     G.waveDelay = 0;
 
     // режиссёр волн: обычные и элитные волны получают шаблон состава
@@ -3954,7 +4024,10 @@
       G.waveTarget = escorts + Math.round(7 + G.wave * 1.1);
       buzz(40);
     } else {
-      G.waveTarget = 9 + G.wave * 3;
+      // цель растёт только до 18-й волны: 99 убийств на 30-й — это марафон,
+      // а не давление, поэтому дальше только символический прирост
+      const ramp = Math.min(G.wave, 18);
+      G.waveTarget = 9 + ramp * 3 + Math.round(0.6 * Math.max(0, G.wave - 18));
     }
 
     // смена фракции: раз в 10 уровней, но не поверх босса и налёта
@@ -3975,8 +4048,21 @@
 
   let activePointer = null;
 
+  // Сброс указателя. Модалка, пауза, game over и смена экрана не должны
+  // оставлять «зажатый» палец: потерянный pointerup иначе блокирует корабль
+  // до конца забега (на телефоне это выглядит как полный отказ управления).
+  function resetPointer() {
+    activePointer = null;
+    G.pointer.active = false;
+    G.pointer.down = false;
+    G.pointer.moved = 0;
+  }
+
   canvas.addEventListener("pointermove", (e) => {
-    if (activePointer !== null && e.pointerId !== activePointer) return;
+    // второй палец не перехватывает управление у первого, но отпущенный
+    // указатель больше не блокирует движение
+    if (G.pointer.down && activePointer !== null && e.pointerId !== activePointer) return;
+    activePointer = e.pointerId;
     const p = toLocal(e);
     G.pointer.x = p.x;
     G.pointer.y = p.y;
@@ -3990,7 +4076,8 @@
       if (activatePlasma()) e.preventDefault();
       return;
     }
-    if (activePointer !== null) return;
+    // новое касание всегда забирает управление: если предыдущий pointerup
+    // потерялся (модалка перекрыла canvas, жест съел систему), игра оживает
     activePointer = e.pointerId;
     Audio.unlock();
     const p = toLocal(e);
@@ -4010,8 +4097,10 @@
     activePointer = null;
     G.pointer.down = false;
   };
-  canvas.addEventListener("pointerup", endPointer);
-  canvas.addEventListener("pointercancel", endPointer);
+  // слушаем на window: палец может отпуститься над модалкой или за краем
+  // canvas, и тогда canvas pointerup уже не получит
+  window.addEventListener("pointerup", endPointer);
+  window.addEventListener("pointercancel", endPointer);
   canvas.addEventListener("pointerleave", (e) => {
     if (e.pointerType !== "mouse") return;
     if (activePointer === e.pointerId) activePointer = null;
@@ -4064,15 +4153,19 @@
   window.addEventListener("blur", () => {
     if (G.mode === "play" && !G.paused) togglePause();
     G.keys = Object.create(null);
-    G.pointer.down = false;
+    resetPointer();
   });
 
   document.addEventListener("visibilitychange", () => {
-    if (document.hidden && G.mode === "play" && !G.paused) togglePause();
+    if (document.hidden) {
+      resetPointer();
+      if (G.mode === "play" && !G.paused) togglePause();
+    }
   });
 
   function togglePause() {
     G.paused = !G.paused;
+    if (G.paused) resetPointer();
     document.body.classList.toggle("is-paused", G.paused);
     el.pause.classList.toggle("on", G.paused);
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", String(G.paused));
@@ -4126,6 +4219,8 @@
     G.eliteWave = false;
     G.eliteSpawned = false;
     G.eliteDef = null;
+    G.eliteBag = null;
+    G.lastEliteKey = null;
     G.eliteGap = 1;
     G.bossLevel = 0;
     G.galagaWave = false;
@@ -4164,6 +4259,7 @@
       engine: 0
     });
     G.paused = false;
+    resetPointer();
     document.body.classList.remove("is-paused");
     el.pause.classList.remove("on");
     syncLives();
@@ -4302,6 +4398,8 @@
   function rollDraftCards() {
     const eligible = BOONS.filter((b) => {
       if (b.need === "plasma" && !G.mods.plasma) return false;
+      if (b.need === "shield" && !G.mods.shield) return false;
+      if (b.need === "drones" && !G.drones.some((d) => d.permanent)) return false;
       // взятый до предела трофей второй раз ничего не даёт
       if (isFinite(b.max) && (G.boons[b.id] || 0) >= b.max) return false;
       // заряд уже полный — «Импульс» был бы пустой карточкой
@@ -4404,7 +4502,7 @@
     if (G.pendingPick !== "elite") G.pendingPick = "boss";
     G.upgradeChoice = G.pendingPick === "elite" ? rollDraftCards() : rollUpgradeCards();
     renderUpgrade();
-    G.pointer.down = false;
+    resetPointer();
     for (const k in G.keys) G.keys[k] = false;
     el.pause.classList.remove("on");
     if (el.pauseBtn) el.pauseBtn.setAttribute("aria-pressed", "false");
@@ -4430,6 +4528,7 @@
     el.upgradeGrid.innerHTML = "";
     el.upgrade.classList.add("hidden");
     G.mode = "play";
+    resetPointer();
     dropModalHistory();
     setHudHidden(false);
     syncLives();
@@ -4509,6 +4608,12 @@
       s.shield = true;
       s.shieldFx = 1;
       banner("БАРЬЕР", "щит держит один удар");
+    } else if (id === "link") {
+      banner("СВЯЗКА", F("дроны стреляют чаще: +{0}%", 12 * G.boons.link));
+    } else if (id === "feed") {
+      banner("ПОДПИТКА", F("заряд плазмагана +{0}%", 20 * G.boons.feed));
+    } else if (id === "drift") {
+      banner("ДРЕЙФ", F("под щитом скорость +{0}%", 8 * G.boons.drift));
     } else if (id === "score") {
       G.score += 750;
       banner("ДАНЬ", "+750 очков");
@@ -4585,7 +4690,9 @@
       killBoss, spawnBoss, advanceLevel, maxLives, upgradePool,
       playerShoot, hurtPlayer, activatePlasma, addPlasmaCharge, syncLives,
       spawnElite, killElite, rollDraftCards, applyBoon, damageEnemy, spawnEnemy,
-      killEnemy, updateHud, CONFIG, update
+      killEnemy, updateHud, CONFIG, update,
+      resetPointer, pointerState: () => ({ active: activePointer, down: G.pointer.down }),
+      enemyHpScale, droneCool, plasmaStep, shipSpeedMul, nextEliteDef
     };
   }
   if (el.plasmaBtn) {
@@ -4686,7 +4793,7 @@
         (G.keys["arrowup"] || G.keys["w"] ? -1 : 0) +
         (G.keys["arrowdown"] || G.keys["s"] ? 1 : 0);
 
-      const spd = (1 + 0.12 * (G.mods.thrust || 0)) * (1 + 0.06 * (G.boons.agility || 0));
+      const spd = shipSpeedMul();
 
       if (G.pointer.active && G.pointer.moved > 0) {
         const offY = G.pointer.touch ? 58 : 0;
@@ -4992,7 +5099,7 @@
             angle: a, spread: 0.4
           });
           Audio.droneShoot();
-          d.cool = 0.22;
+          d.cool = droneCool();
         } else {
           d.cool = 0.12;
         }
