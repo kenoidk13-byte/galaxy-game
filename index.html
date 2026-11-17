@@ -1470,12 +1470,13 @@
       radiusMaxLevels: 4
     },
 
-    // поток врагов: на десктопе поздние волны ограничены,
-    // на мобиле оставлен прежний баланс
+    // поток врагов: жёсткий потолок одновременно живых врагов и пуль —
+    // после первого босса экран должен оставаться читаемым
     flow: {
       desktop: {
-        maxEnemies: 16,        // одновременно живых врагов (кроме босса и налёта)
-        maxEBullets: 34,       // потолок вражеских пуль на экране
+        maxEnemies: 11,        // одновременно живых врагов (кроме босса и налёта)
+        maxEBullets: 22,       // потолок вражеских пуль на экране
+        maxShooters: 4,        // сколько стреляющих (шар, танк, снайпер) можно держать одновременно
         spawnBase: 1.35,       // стартовый интервал спавна
         spawnStep: 0.07,       // насколько ускоряется спавн за волну
         spawnFloor: 0.5,       // минимальный интервал спавна
@@ -1485,8 +1486,9 @@
         doubleChance: 0.16     // шанс второго врага за тик
       },
       mobile: {
-        maxEnemies: 34,        // потолок страховочный: на длинном забеге рост не ограничен
-        maxEBullets: 70,       // потолок вражеских пуль на экране
+        maxEnemies: 12,        // экран узкий — 34 врага одновременно были нечитаемы
+        maxEBullets: 26,
+        maxShooters: 4,
         spawnBase: 1.25,
         spawnStep: 0.075,
         spawnFloor: 0.32,
@@ -1494,7 +1496,9 @@
         spawnJitterMax: 1.3,
         formationChance: 0.16,
         doubleChance: 0.28
-      }
+      },
+      // передышка после каждого босса: первые волны реже и без скоплений
+      postBoss: { waves: 3, spawnMul: 1.55, enemyMul: 0.75 }
     },
 
     /* Рогалик-лайт: режиссёр волн и элиты.
@@ -1762,8 +1766,25 @@
     window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches
   );
 
-  // мобильный поток остаётся прежним, десктопный — облегчённым
+  // мобильный и десктопный потоки ограничены по числу врагов и пуль
   const FLOW = IS_TOUCH ? CONFIG.flow.mobile : CONFIG.flow.desktop;
+  const POST_BOSS = CONFIG.flow.postBoss;
+  const SHOOTER_TYPES = new Set(["orb", "tank", "sniper"]);
+
+  // Во врагах, у которых есть fire, стреляют только эти три типа (см. spawnEnemy).
+  // Считаем их живыми, чтобы шаблоны «Осада»/«Охота» не заполняли экран стрелками.
+  function shootersAlive() {
+    let n = 0;
+    for (const e of G.enemies) if (!e.dead && SHOOTER_TYPES.has(e.type)) n++;
+    return n;
+  }
+
+  // Первые волны после каждого босса (в том числе сразу после плазмагана).
+  // Боссы идут на 7, 14, 21-й волне — после победы передышка на 3 волны.
+  function isPostBossRelief() {
+    return G.bossesDefeated > 0 &&
+      G.wave <= G.bossesDefeated * CONFIG.bossTuning.waveStep + POST_BOSS.waves;
+  }
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
 
@@ -3097,22 +3118,29 @@
   }
 
   function pickType() {
+    const capped = shootersAlive() >= FLOW.maxShooters;
     const tplTypes = templateTypes();
     if (tplTypes) {
+      const list = capped
+        ? tplTypes.filter(([type]) => !SHOOTER_TYPES.has(type))
+        : tplTypes;
+      const pool = list.length ? list : tplTypes;
       let total = 0;
-      for (const [, w] of tplTypes) total += w;
+      for (const [, w] of pool) total += w;
       let roll = Math.random() * total;
-      for (const [type, w] of tplTypes) {
+      for (const [type, w] of pool) {
         roll -= w;
         if (roll <= 0) return type;
       }
-      return tplTypes[0][0];
+      return pool[0][0];
     }
     const w = G.wave;
-    const pool = CONFIG.enemySpawn.map(({ type, weight }) => ({
-      t: type,
-      w: enemyWeight(weight, w)
-    }));
+    const pool = CONFIG.enemySpawn
+      .filter(({ type }) => !capped || !SHOOTER_TYPES.has(type))
+      .map(({ type, weight }) => ({
+        t: type,
+        w: enemyWeight(weight, w)
+      }));
     let total = 0;
     for (const p of pool) total += p.w;
     let roll = Math.random() * total;
@@ -4879,21 +4907,27 @@
     } else if (G.eliteWave && !G.eliteSpawned) {
       if (G.spawnTimer <= 0) spawnElite();
     } else if (G.spawnTimer <= 0 && G.waveKills < G.waveTarget) {
-      const maxEnemies = FLOW.maxEnemies;
+      const relief = isPostBossRelief();
+      const maxEnemies = relief
+        ? Math.max(4, Math.round(FLOW.maxEnemies * POST_BOSS.enemyMul))
+        : FLOW.maxEnemies;
       const alive = G.enemies.length;
       if (alive < maxEnemies) {
         const formation =
+          !relief &&
           G.wave >= 4 &&
+          shootersAlive() < FLOW.maxShooters &&
           Math.random() < FLOW.formationChance &&
           alive + 5 <= maxEnemies;
         if (formation) spawnFormation();
         else spawnEnemy();
-        if (G.wave >= 5 && G.enemies.length < maxEnemies && Math.random() < FLOW.doubleChance) {
+        if (!relief && G.wave >= 5 && G.enemies.length < maxEnemies && Math.random() < FLOW.doubleChance) {
           spawnEnemy();
         }
       }
       const base = clamp(FLOW.spawnBase - G.wave * FLOW.spawnStep, FLOW.spawnFloor, FLOW.spawnBase);
-      G.spawnTimer = base * rand(FLOW.spawnJitterMin, FLOW.spawnJitterMax);
+      const interval = relief ? base * POST_BOSS.spawnMul : base;
+      G.spawnTimer = interval * rand(FLOW.spawnJitterMin, FLOW.spawnJitterMax);
     }
     if (G.galagaWave && G.galagaSpawned) updateGalagaWave(dt);
 
