@@ -1166,7 +1166,7 @@
   <section class="screen hidden" id="over" role="dialog" aria-modal="true" aria-label="Полёт окончен" tabindex="-1">
     <div class="panel">
       <p class="over__label" id="overModule">Модуль</p>
-      <h2 class="over__title">Корабль уничтожен</h2>
+      <h2 class="over__title" id="overTitle">Корабль уничтожен</h2>
       <div class="score-grid">
         <div><span>Очки</span><strong id="overScore">0</strong></div>
         <div><span>Рекорд</span><strong id="overBest">0</strong></div>
@@ -1239,6 +1239,7 @@
     retryBtn: document.getElementById("retryBtn"),
     menuBtn: document.getElementById("menuBtn"),
     menuBest: document.getElementById("menuBest"),
+    overTitle: document.getElementById("overTitle"),
     overScore: document.getElementById("overScore"),
     overBest: document.getElementById("overBest"),
     newBest: document.getElementById("newBest"),
@@ -1358,9 +1359,9 @@
 
     bosses: [
       {
-        key: "warden", name: "СТРАЖ", tag: "класс 1, дредноут",
-        color: COLORS.pink, style: "eye", r: 62, hpMul: 1,
-        move: { amp: 0.3, speed: 0.55, yAmp: 12, ySpeed: 1.15 },
+        key: "titan", name: "ТИТАН", tag: "класс 1, дредноут",
+        color: "#ff5c8a", style: "titan", ai: "patrol", r: 62, hpMul: 1,
+        move: { amp: 0.3, speed: 0.5, yAmp: 12, ySpeed: 1.1 },
         atk: [
           { kind: "aim", cd: [1.5, 2.1], n: 3, spread: 0.2, speed: 270, r: 5 },
           { kind: "ring", cd: [3.4, 4.4], speed: 140, grow: 8, r: 4.2 },
@@ -1368,97 +1369,128 @@
         ]
       },
       {
-        key: "vortex", name: "ВИХРЬ", tag: "класс 2, воронка",
-        color: COLORS.violet, style: "vortex", r: 58, hpMul: 1.05,
-        move: { amp: 0.28, speed: 0.55, yAmp: 16, ySpeed: 1.3 },
+        key: "sickle", name: "СЕРП", tag: "класс 2, косы",
+        color: "#7c5cff", style: "sickle", ai: "pendulum", r: 60, hpMul: 1,
+        move: { amp: 0.3, speed: 0.66, yAmp: 20, ySpeed: 0.9 },
         atk: [
-          { kind: "spiral", cd: [0.22, 0.3], arms: 2, step: 0.55, speed: 235, r: 3.8 },
-          { kind: "ring", cd: [4.4, 5.4], speed: 128, grow: 7, r: 4 }
+          { kind: "sweep", cd: [2.1, 2.9], n: 7, arc: 1.45, speed: 245, r: 4.2 },
+          { kind: "cross", cd: [3.6, 4.6], arms: 4, speed: 250, r: 4 },
+          { kind: "aim", cd: [1.4, 1.9], n: 2, spread: 0.1, speed: 330, r: 4 }
         ]
       },
       {
-        key: "bomber", name: "БОМБАРДИР", tag: "класс 3, осадный",
-        color: COLORS.amber, style: "bomber", r: 70, hpMul: 1.2,
-        move: { amp: 0.22, speed: 0.4, yAmp: 10, ySpeed: 0.9 },
+        key: "leviathan", name: "ЛЕВИАФАН", tag: "класс 3, змей",
+        color: "#63ffc4", style: "leviathan", ai: "serpent", r: 62, hpMul: 1.1,
+        move: { amp: 0.32, speed: 0.6, yAmp: 22, ySpeed: 1.5 },
         atk: [
-          { kind: "burst", cd: [3.0, 3.8], n: 12, speed: 135, r: 5 },
-          { kind: "minion", cd: [4.6, 6.2], n: 2, pool: ["bomber", "charger"] },
-          { kind: "aim", cd: [3.4, 4.6], n: 5, spread: 0.3, speed: 220, r: 4.4 }
+          { kind: "spokes", cd: [0.5, 0.7], arms: 3, step: 0.26, speed: 210, r: 3.8 },
+          { kind: "homing", cd: [4.0, 5.2], n: 2, speed: 190, turn: 1.3, r: 4.4 },
+          { kind: "minion", cd: [6, 8], n: 2, pool: ["drone"] }
         ]
       },
       {
-        key: "marksman", name: "СНАЙПЕР", tag: "класс 4, прицельный",
-        color: COLORS.ice, style: "marksman", r: 54, hpMul: 0.95,
-        move: { amp: 0.4, speed: 0.95, yAmp: 22, ySpeed: 1.9 },
+        key: "spider", name: "ПАУК", tag: "класс 4, ткач",
+        color: "#ffc46b", style: "spider", ai: "creep", r: 62, hpMul: 1.05,
+        move: { amp: 0.32, speed: 0.8, yAmp: 16, ySpeed: 0.8 },
         atk: [
-          { kind: "aim", cd: [0.85, 1.2], n: 2, spread: 0.1, speed: 340, r: 4.2 },
-          { kind: "ring", cd: [5.2, 6.4], speed: 118, grow: 6, r: 3.8 },
-          { kind: "minion", cd: [9, 12], n: 1, pool: ["sniper"] }
+          { kind: "rain", cd: [2.6, 3.4], n: 6, speed: 150, r: 3.6 },
+          { kind: "minion", cd: [3.5, 4.6], n: 3, pool: ["drone", "runner", "weaver"] },
+          { kind: "aim", cd: [2.2, 3.0], n: 3, spread: 0.3, speed: 210, r: 4 }
         ]
       },
       {
-        key: "swarm", name: "РОЙ", tag: "класс 5, улей",
-        color: COLORS.mint, style: "swarm", r: 50, hpMul: 1.1,
-        move: { amp: 0.44, speed: 1.05, yAmp: 26, ySpeed: 2.1 },
+        key: "carrier", name: "АВИАНОСЕЦ", tag: "класс 5, ангар",
+        color: "#9fe8ff", style: "carrier", ai: "dock", r: 62, hpMul: 1.15,
+        move: { amp: 0.28, speed: 0.38, yAmp: 14, ySpeed: 0.6 },
         atk: [
-          { kind: "minion", cd: [2.4, 3.2], n: 3, pool: ["drone", "runner", "weaver"] },
-          { kind: "spiral", cd: [0.5, 0.75], arms: 3, step: 0.3, speed: 205, r: 3.4 },
-          { kind: "aim", cd: [2.0, 2.8], n: 3, spread: 0.26, speed: 230, r: 4 }
+          { kind: "minion", cd: [2.6, 3.4], n: 3, pool: ["drone", "runner"] },
+          { kind: "wall", cd: [5.0, 6.5], speed: 185, gap: 130, r: 4 },
+          { kind: "burst", cd: [4.0, 5.0], n: 10, speed: 140, r: 4.6 }
         ]
       },
       {
-        key: "pulsar", name: "ПУЛЬСАР", tag: "класс 6, волновой",
-        color: "#ff7a4d", style: "pulsar", r: 60, hpMul: 1.05,
-        move: { amp: 0.26, speed: 0.62, yAmp: 16, ySpeed: 1.3 },
+        key: "lotus", name: "ЛОТОС", tag: "класс 6, бутон",
+        color: "#ff7ad9", style: "lotus", ai: "bloom", r: 66, hpMul: 1,
+        move: { amp: 0.3, speed: 0.58, yAmp: 18, ySpeed: 1.1 },
         atk: [
-          { kind: "wall", cd: [3.2, 4.2], speed: 195, gap: 120, r: 4.4 },
-          { kind: "ring", cd: [5.0, 6.2], speed: 150, grow: 9, r: 4 },
-          { kind: "aim", cd: [1.8, 2.5], n: 3, spread: 0.24, speed: 250, r: 4.2 }
+          { kind: "ring", cd: [3.4, 4.4], speed: 125, grow: 7, r: 3.8 },
+          { kind: "spokes", cd: [0.65, 0.9], arms: 6, step: 0.2, speed: 195, r: 3.6 },
+          { kind: "burst", cd: [5.0, 6.5], n: 14, speed: 130, r: 4 }
         ]
       },
       {
-        key: "lancer", name: "ЛАНСЕР", tag: "класс 7, копейщик",
-        color: "#b58cff", style: "lancer", r: 52, hpMul: 0.92,
-        move: { amp: 0.42, speed: 1.25, yAmp: 24, ySpeed: 2.2, figure8: true },
+        key: "trident", name: "ТРИДЕНТ", tag: "класс 7, гарпун",
+        color: "#4de1ff", style: "trident", ai: "lunge", r: 60, hpMul: 1.05,
+        move: { amp: 0.32, speed: 0.7, yAmp: 16, ySpeed: 1.1 },
         atk: [
-          { kind: "cross", cd: [1.6, 2.2], arms: 4, speed: 265, r: 4 },
-          { kind: "homing", cd: [4.2, 5.4], n: 2, speed: 190, turn: 1.5, r: 4.6 },
-          { kind: "aim", cd: [2.2, 3.0], n: 4, spread: 0.14, speed: 330, r: 3.6 }
+          { kind: "laser", cd: [3.6, 4.8], warn: 0.85, live: 0.42, width: 22 },
+          { kind: "aim", cd: [1.4, 1.9], n: 3, spread: 0.08, speed: 360, r: 3.8 },
+          { kind: "cross", cd: [4.5, 5.5], arms: 3, speed: 250, r: 4 }
         ]
       },
       {
-        key: "miner", name: "МИНЕР", tag: "класс 8, минное поле",
-        color: "#ffd166", style: "miner", r: 66, hpMul: 1.18,
-        move: { amp: 0.2, speed: 0.45, yAmp: 12, ySpeed: 0.8 },
+        key: "crab", name: "КРАБ", tag: "класс 8, клешни",
+        color: "#ff7a4d", style: "crab", ai: "sidestep", r: 62, hpMul: 1.1,
+        move: { amp: 0.34, speed: 0.9, yAmp: 14, ySpeed: 1.2 },
         atk: [
-          { kind: "mine", cd: [2.2, 3.0], n: 3, speed: 95, fuse: 2.8, r: 7 },
-          { kind: "burst", cd: [3.8, 4.8], n: 10, speed: 150, r: 4.6 },
-          { kind: "wall", cd: [6.0, 7.5], speed: 170, gap: 140, r: 4 }
+          { kind: "sweep", cd: [2.4, 3.2], n: 5, arc: 0.95, speed: 280, r: 4.6 },
+          { kind: "mine", cd: [5.0, 6.5], n: 2, speed: 110, fuse: 2.4, r: 6 },
+          { kind: "aim", cd: [2.0, 2.8], n: 4, spread: 0.18, speed: 300, r: 4 }
         ]
       },
       {
-        key: "mirror", name: "ЗЕРКАЛО", tag: "класс 9, отражатель",
-        color: "#9fe8ff", style: "mirror", r: 56, hpMul: 1,
-        move: { amp: 0.36, speed: 0.9, yAmp: 30, ySpeed: 1.7, figure8: true },
+        key: "gear", name: "ШЕСТЕРНЯ", tag: "класс 9, механизм",
+        color: "#ffd166", style: "gear", ai: "orbit", r: 58, hpMul: 1.05,
+        move: { amp: 0.3, speed: 0.62, yAmp: 20, ySpeed: 1.0 },
         atk: [
-          { kind: "cross", cd: [2.6, 3.4], arms: 6, speed: 210, r: 3.8 },
-          { kind: "ring", cd: [4.6, 5.8], speed: 135, grow: 7, r: 3.8 },
-          { kind: "mine", cd: [5.0, 6.4], n: 2, speed: 120, fuse: 2.2, r: 6 }
+          { kind: "spokes", cd: [0.55, 0.8], arms: 5, step: 0.29, speed: 225, r: 4 },
+          { kind: "ring", cd: [4.4, 5.6], speed: 145, grow: 9, r: 4 },
+          { kind: "minion", cd: [7, 9], n: 2, pool: ["drone"] }
         ]
       },
       {
-        key: "core", name: "ЯДРО", tag: "класс 10, финал",
-        color: "#ff4d5e", style: "core", r: 72, hpMul: 1.3,
-        move: { amp: 0.3, speed: 0.72, yAmp: 20, ySpeed: 1.45 },
+        key: "scarab", name: "СКАРАБЕЙ", tag: "класс 10, панцирь",
+        color: "#7dff7a", style: "scarab", ai: "burrow", r: 62, hpMul: 1.15,
+        move: { amp: 0.3, speed: 0.55, yAmp: 26, ySpeed: 0.9 },
         atk: [
-          { kind: "spiral", cd: [0.2, 0.28], arms: 3, step: 0.42, speed: 220, r: 3.6 },
-          { kind: "homing", cd: [3.2, 4.2], n: 3, speed: 210, turn: 1.7, r: 4.6 },
-          { kind: "wall", cd: [4.6, 6.0], speed: 190, gap: 110, r: 4.2 },
-          { kind: "mine", cd: [6.0, 8.0], n: 2, speed: 110, fuse: 2.4, r: 6.5 }
+          { kind: "spiral", cd: [0.35, 0.5], arms: 4, step: 0.34, speed: 205, r: 3.8 },
+          { kind: "mine", cd: [4.5, 6.0], n: 3, speed: 100, fuse: 2.6, r: 6.5 },
+          { kind: "wall", cd: [6.0, 8.0], speed: 180, gap: 125, r: 4 }
+        ]
+      },
+      {
+        key: "octo", name: "ОСЬМИНОГ", tag: "класс 11, щупальца",
+        color: "#b58cff", style: "octo", ai: "drift", r: 62, hpMul: 1.1,
+        move: { amp: 0.32, speed: 0.65, yAmp: 20, ySpeed: 0.9 },
+        atk: [
+          { kind: "homing", cd: [3.2, 4.2], n: 4, speed: 170, turn: 1.2, r: 4 },
+          { kind: "rain", cd: [3.6, 4.8], n: 8, speed: 135, r: 3.8 },
+          { kind: "spiral", cd: [0.55, 0.75], arms: 3, step: 0.22, speed: 190, r: 3.6 }
+        ]
+      },
+      {
+        key: "monolith", name: "МОНОЛИТ", tag: "класс 12, кристалл",
+        color: "#a6e6ff", style: "monolith", ai: "phase", r: 62, hpMul: 1.2,
+        move: { amp: 0.34, speed: 0.5, yAmp: 18, ySpeed: 0.8 },
+        atk: [
+          { kind: "laser", cd: [5.0, 6.5], warn: 1.0, live: 0.5, width: 26 },
+          { kind: "spokes", cd: [0.8, 1.05], arms: 6, step: 0.19, speed: 200, r: 3.8 },
+          { kind: "burst", cd: [4.5, 5.8], n: 16, speed: 150, r: 4 }
+        ]
+      },
+      {
+        key: "emperor", name: "ИМПЕРАТОР", tag: "класс 13, финал",
+        color: "#ff4d5e", style: "emperor", ai: "emperor", r: 66, hpMul: 4.0,
+        move: { amp: 0.34, speed: 0.62, yAmp: 20, ySpeed: 1.1 },
+        atk: [
+          { kind: "laser", cd: [3.8, 5.0], warn: 0.9, live: 0.55, width: 28 },
+          { kind: "sweep", cd: [2.6, 3.4], n: 9, arc: 1.8, speed: 260, r: 4.2 },
+          { kind: "rain", cd: [3.2, 4.2], n: 10, speed: 155, r: 4 },
+          { kind: "spiral", cd: [0.32, 0.45], arms: 4, step: 0.3, speed: 215, r: 3.8 },
+          { kind: "minion", cd: [7, 9], n: 2, pool: ["sniper", "charger"] }
         ]
       }
     ],
-
     bossTuning: {
       waveStep: 7,           // босс каждые N волн
       hpBase: 80,
@@ -1855,6 +1887,14 @@
     "Коснись карточки": "Tap a card",
     "Модуль": "Module",
     "Корабль уничтожен": "Ship destroyed",
+    "ГАЛАКТИКА ПОКОРЕНА": "GALAXY CONQUERED",
+    "ИМПЕРАТОР": "EMPEROR",
+    "ИМПЕРАТОР · ФАЗА II": "EMPEROR · PHASE II",
+    "{0} · ФАЗА II": "{0} · PHASE II",
+    "Броня трескается": "Armor cracking",
+    "Император повержен": "Emperor defeated",
+    "Все 13 боссов повержены · улучшений: {0}": "All 13 bosses defeated · upgrades: {0}",
+    "Победа! Очки {0}, рекорд {1}.": "Victory! Score {0}, record {1}.",
     "Новый рекорд": "New record",
     "Новый полёт": "New flight",
     "В меню": "Main menu",
@@ -2132,7 +2172,8 @@
     "заряд {0}%": "charge {0}%",
     "щит держит один удар": "shield absorbs one hit",
     "+750 очков": "+750 points",
-    "Боссов: {0} · элит: {1} · улучшений: {2}": "Bosses: {0} · elites: {1} · upgrades: {2}"
+    "Боссов: {0} · элит: {1} · улучшений: {2}": "Bosses: {0} · elites: {1} · upgrades: {2}",
+    "Боссов: {0}/{1} · элит: {2} · улучшений: {3}": "Bosses: {0}/{1} · elites: {2} · upgrades: {3}"
   };
   const EN_REV = Object.fromEntries(Object.entries(EN).map(([ru, en]) => [en, ru]));
   let LANG = "ru";
@@ -2543,6 +2584,7 @@
     mods: {},    // id модернизации → уровень
     boons: {},   // трофеи элиты → количество
     bossesDefeated: 0,
+    victory: false,
     elitesKilled: 0,
     elitesSeen: 0,
     upgradeQueue: 0,   // секунд до открытия экрана модернизации
@@ -3865,6 +3907,7 @@
   function killBoss(e) {
     const cx = e.x;
     const cy = e.y;
+    e.laser = null;
 
     explode(cx, cy, {
       size: 90, color: e.color, secondary: COLORS.white,
@@ -3903,6 +3946,13 @@
     grantBossWeapon();
     G.bulletSpeed *= 1.07;
     G.bossesDefeated++;
+    if (e.level >= BOSS_DEFS.length) {
+      // 13-й босс — ИМПЕРАТОР: после него полёт завершается победой
+      G.victory = true;
+      banner("ГАЛАКТИКА ПОКОРЕНА", "Император повержен");
+      gameOver();
+      return;
+    }
     G.pendingPick = "boss";
     G.upgradeQueue = 1.6;
     G.waveDelay = 2.6;
@@ -3954,17 +4004,23 @@
   }
 
   function renderOverStats(withStatus = true) {
+    if (el.overTitle) {
+      el.overTitle.textContent = L(G.victory ? "ГАЛАКТИКА ПОКОРЕНА" : "Корабль уничтожен");
+    }
     if (el.overModule) {
       const modsCount = Object.keys(G.mods).length + Object.keys(G.boons).length;
-      el.overModule.textContent = G.bossesDefeated || G.elitesKilled
-        ? F("Боссов: {0} · элит: {1} · улучшений: {2}", G.bossesDefeated, G.elitesKilled, modsCount)
-        : L("Без модернизаций");
+      el.overModule.textContent = G.victory
+        ? F("Все 13 боссов повержены · улучшений: {0}", modsCount)
+        : G.bossesDefeated || G.elitesKilled
+          ? F("Боссов: {0}/{1} · элит: {2} · улучшений: {3}", G.bossesDefeated, BOSS_DEFS.length, G.elitesKilled, modsCount)
+          : L("Без модернизаций");
     }
     el.overScore.textContent = num(G.score);
     el.overBest.textContent = num(G.best);
     if (withStatus) {
-      el.statusLine.textContent =
-        F("Полёт окончен. Очки {0}, рекорд {1}.", num(G.score), num(G.best));
+      el.statusLine.textContent = G.victory
+        ? F("Победа! Очки {0}, рекорд {1}.", num(G.score), num(G.best))
+        : F("Полёт окончен. Очки {0}, рекорд {1}.", num(G.score), num(G.best));
     }
   }
 
@@ -3972,24 +4028,36 @@
     resetPointer();
     G.ship.alive = false;
     G.mode = "over";
+    if (el.overTitle) el.overTitle.textContent = L(G.victory ? "ГАЛАКТИКА ПОКОРЕНА" : "Корабль уничтожен");
     G.newRecord = G.score > 0 && G.score > (G.bestStart || 0);
     G.plasma.active = 0;
     G.plasma.ready = false;
     G.plasma.charge = 0;
     updatePlasmaHud();
-    explode(G.ship.x, G.ship.y, {
-      size: 70, color: COLORS.amber, secondary: COLORS.white, big: true, rings: 3, shake: 30, sound: true
-    });
-    for (let i = 0; i < 10; i++) {
-      queueExplosion(
-        G.ship.x + rand(-40, 40),
-        G.ship.y + rand(-40, 40),
-        0.1 + i * 0.1,
-        { size: rand(14, 30), color: i % 2 ? COLORS.amber : COLORS.pink, smoke: true }
-      );
+    if (G.victory) {
+      // при победе корабль не взрывается — вместо этого салют вокруг него
+      for (let i = 0; i < 22; i++) {
+        addParticles(G.ship.x + rand(-70, 70), G.ship.y + rand(-40, 40), 2, {
+          color: i % 3 === 0 ? COLORS.white : i % 3 === 1 ? COLORS.amber : COLORS.pink,
+          speed: rand(90, 220), size: rand(2, 4), life: rand(0.7, 1.3), kind: "spark",
+          angle: -Math.PI / 2 + rand(-1.1, 1.1), spread: 0.7
+        });
+      }
+    } else {
+      explode(G.ship.x, G.ship.y, {
+        size: 70, color: COLORS.amber, secondary: COLORS.white, big: true, rings: 3, shake: 30, sound: true
+      });
+      for (let i = 0; i < 10; i++) {
+        queueExplosion(
+          G.ship.x + rand(-40, 40),
+          G.ship.y + rand(-40, 40),
+          0.1 + i * 0.1,
+          { size: rand(14, 30), color: i % 2 ? COLORS.amber : COLORS.pink, smoke: true }
+        );
+      }
     }
     G.flash = 1;
-    Audio.gameover();
+    if (G.victory) Audio.unique(); else Audio.gameover();
     buzz(70);
     setTimeout(() => {
       renderOverStats();
@@ -4236,6 +4304,7 @@
     G.mods = {};
     G.boons = {};
     G.bossesDefeated = 0;
+    G.victory = false;
     G.elitesKilled = 0;
     G.elitesSeen = 0;
     G.upgradeQueue = 0;
@@ -5530,6 +5599,52 @@
         b.life = 12;
       }
       Audio.bossShot();
+    } else if (a.kind === "sweep") {
+      // веер, который качается вдоль линии к игроку — режет зону, а не точку
+      const s = G.ship;
+      const n = a.n + (enr ? 2 : 0);
+      const base = Math.atan2(s.y - e.y, s.x - e.x);
+      const arc = a.arc || 1.2;
+      for (let i = 0; i < n; i++) {
+        const u = n > 1 ? i / (n - 1) - 0.5 : 0;
+        const wobble = Math.sin(e.t * 1.7 + u * 2.4) * 0.11;
+        bossBullet(e, base + u * arc + wobble, a.speed + (enr ? 40 : 0), a.r, col);
+      }
+      Audio.bossShot();
+    } else if (a.kind === "rain") {
+      // дождь сверху в случайных точках — заставляет игрока всё время двигаться
+      const n = a.n + (enr ? 3 : 0);
+      for (let i = 0; i < n; i++) {
+        pushEBullet({
+          x: rand(24, G.w - 24),
+          y: -14 - rand(0, 46),
+          vx: rand(-26, 26),
+          vy: a.speed * (IS_TOUCH ? 0.82 : 1),
+          r: a.r, color: col, trail: true
+        });
+      }
+      Audio.bossShot();
+    } else if (a.kind === "spokes") {
+      // спицы с разной скоростью: узор постоянно перестраивается
+      e.spinB = (e.spinB || 0) + a.step * (enr ? 1.35 : 1);
+      const arms = a.arms + (enr ? 1 : 0);
+      for (let i = 0; i < arms; i++) {
+        const ang = e.spinB + (i / arms) * TAU;
+        const sp = a.speed * (1 + 0.16 * Math.sin(i * 2.1 + e.t * 2.2));
+        bossBullet(e, ang, sp, a.r, col);
+      }
+    } else if (a.kind === "laser") {
+      // предупреждение → луч: уход в сторону — единственный способ увернуться
+      const s = G.ship;
+      e.laser = {
+        x: clamp(s.x + rand(-16, 16), 26, G.w - 26),
+        w: (a.width || 24) * (IS_TOUCH ? 0.9 : 1),
+        warn: a.warn || 0.85,
+        live: a.live || 0.45,
+        t: 0, color: col, hit: false
+      };
+      Audio.bossShot();
+      buzz(12);
     }
   }
 
@@ -5549,21 +5664,133 @@
       return;
     }
 
+    // ИМПЕРАТОР: на половине HP уходит во вторую фазу — атаки учащаются
+    if (e.def.key === "emperor" && !e.phaseTwo && e.hp <= e.maxHp * 0.5) {
+      e.phaseTwo = true;
+      e.flash = 0.3;
+      banner("ИМПЕРАТОР · ФАЗА II", "Броня трескается");
+      Audio.bossWarn();
+      buzz(45);
+    }
+
     const mv = e.move;
-    const swing = Math.max(G.w * mv.amp - e.r * 0.5, 40);
+    const enr = e.enraged;
+    const rawSwing = Math.max(G.w * mv.amp - e.r * 0.5, 40);
+    // на широком экране без ограничения босс ходит в несколько раз быстрее,
+    // чем на телефоне; мобильную ветку не трогаем
+    const swing = IS_TOUCH ? rawSwing : Math.min(rawSwing, 210);
     // плавный разгон после входа в бой: без скачка и дёрганья
     e.mt = (e.mt || 0) + dt;
     const ramp = clamp(e.mt / 0.9, 0, 1);
     const ease = ramp * ramp * (3 - 2 * ramp);
     const dir = Math.sin(e.seed) >= 0 ? 1 : -1;
-    e.x = G.w / 2 + Math.sin(e.mt * mv.speed) * swing * dir * ease;
-    if (mv.figure8) {
-      // восьмёрка: по вертикали частота вдвое выше горизонтальной
-      e.y = targetY + Math.sin(e.mt * mv.speed * 2) * mv.yAmp * ease;
-    } else {
-      e.y = targetY + Math.sin(e.mt * mv.ySpeed) * mv.yAmp * ease;
+    const t = e.mt * (enr ? 1.2 : 1);
+    const smooth = (v) => { const q = clamp(v, 0, 1); return q * q * (3 - 2 * q); };
+    let x = G.w / 2;
+    let y = targetY;
+
+    // у каждого босса своя походка: маятник, орбита, рывок, скачок, нырок…
+    switch (e.def.ai) {
+      case "pendulum": // СЕРП — маятник с глубокими просадками
+        x = G.w / 2 + Math.sin(t * mv.speed * 1.15) * swing * dir;
+        y = targetY + Math.abs(Math.sin(t * mv.ySpeed * 0.7)) * mv.yAmp * 1.3;
+        break;
+      case "serpent": // ЛЕВИАФАН — змеиный ход, корпус волной
+        x = G.w / 2 + (Math.sin(t * mv.speed * 0.8) * 0.8 + Math.sin(t * 1.9) * 0.2) * swing * dir;
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp * 1.4;
+        break;
+      case "creep": // ПАУК — шагает рывками с остановками
+      case "sidestep": { // КРАБ — боковые прыжки с возвратом
+        const rate = e.def.ai === "creep" ? 0.85 : 0.95;
+        const cyc = (t * rate) % 1;
+        const hop = cyc < 0.38 ? smooth(cyc / 0.38) : 1 - smooth((cyc - 0.38) / 0.62);
+        const sign = Math.floor(t * rate) % 2 ? 1 : -1;
+        x = G.w / 2 + hop * swing * sign * dir;
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp + (e.def.ai === "creep" ? Math.sin(t * 5) * 3 : 0);
+        break;
+      }
+      case "dock": // АВИАНОСЕЦ — держится выше всех, медленный дрейф
+        x = G.w / 2 + Math.sin(t * mv.speed) * swing * 0.75 * dir;
+        y = targetY - 14 + Math.sin(t * mv.ySpeed) * mv.yAmp * 0.5;
+        break;
+      case "bloom": // ЛОТОС — мягкое вращение бутона
+        x = G.w / 2 + Math.sin(t * mv.speed) * swing * dir;
+        y = targetY + Math.sin(t * mv.ySpeed * 1.2) * mv.yAmp * 0.85;
+        break;
+      case "lunge": { // ТРИДЕНТ — пауза, рывок к игроку, пауза
+        e.aiT = (e.aiT || 0) + dt;
+        if (!e.lunge && e.aiT > 3.2) {
+          e.aiT = 0;
+          e.lunge = { from: e.x, to: clamp(s.x + rand(-30, 30), 60, G.w - 60), t: 0 };
+        }
+        if (e.lunge) {
+          e.lunge.t += dt;
+          x = e.lunge.from + (e.lunge.to - e.lunge.from) * smooth(e.lunge.t / 0.55);
+          if (e.lunge.t > 0.8) e.lunge = null;
+        } else {
+          x = G.w / 2 + Math.sin(t * mv.speed * 0.5) * swing * 0.55 * dir;
+        }
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp;
+        break;
+      }
+      case "orbit": // ШЕСТЕРНЯ — ровная орбита, корпус крутится быстрее
+        x = G.w / 2 + Math.cos(t * mv.speed) * swing * 0.85;
+        y = targetY + Math.sin(t * mv.speed) * mv.yAmp * 1.15;
+        break;
+      case "burrow": { // СКАРАБЕЙ — ныряет вниз и возвращается наверх
+        const cyc = (t * 0.42) % 1;
+        const dive = cyc < 0.3 ? smooth(cyc / 0.3) : cyc > 0.72 ? 1 - smooth((cyc - 0.72) / 0.28) : 1;
+        x = G.w / 2 + Math.sin(t * mv.speed) * swing * 0.9 * dir;
+        y = targetY + dive * mv.yAmp * 2.1;
+        break;
+      }
+      case "drift": // ОСЬМИНОГ — медленный дрейф с биениями щупалец
+        x = G.w / 2 + (Math.sin(t * mv.speed * 0.7) * 0.85 + Math.sin(t * 1.7) * 0.15) * swing * dir;
+        y = targetY + Math.sin(t * mv.ySpeed * 0.7) * mv.yAmp * 1.2;
+        break;
+      case "phase": { // МОНОЛИТ — скачок в новую точку с коротким мерцанием
+        e.aiT = (e.aiT || 0) + dt;
+        if (!e.phase && e.aiT > 3.4) {
+          e.aiT = 0;
+          e.phase = { from: e.x, to: clamp(G.w / 2 + rand(-swing, swing), 60, G.w - 60), t: 0 };
+          e.flash = Math.max(e.flash, 0.1);
+        }
+        if (e.phase) {
+          e.phase.t += dt;
+          x = e.phase.from + (e.phase.to - e.phase.from) * smooth(e.phase.t / 0.38);
+          if (e.phase.t > 0.5) e.phase = null;
+        } else {
+          x = G.w / 2 + Math.sin(t * mv.speed) * swing * 0.6 * dir;
+        }
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp;
+        break;
+      }
+      case "emperor": // ИМПЕРАТОР — две частоты, при ярости обе ускоряются
+        x = G.w / 2 + (Math.sin(t * mv.speed * 0.85) * 0.8 + Math.sin(t * 1.3) * 0.2) * swing * dir;
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp;
+        break;
+      case "patrol":
+      default:
+        x = G.w / 2 + Math.sin(t * mv.speed) * swing * dir;
+        y = targetY + Math.sin(t * mv.ySpeed) * mv.yAmp;
     }
-    e.angle += dt * (e.enraged ? 0.9 : 0.5);
+
+    // разгон после входа в бой: амплитуда нарастает плавно, без рывка
+    x = G.w / 2 + (x - G.w / 2) * ease;
+    y = targetY + (y - targetY) * ease;
+    e.x = clamp(x, e.r * 0.75, G.w - e.r * 0.75);
+    e.y = clamp(y, 46, Math.min(G.h * 0.46, targetY + mv.yAmp * 2.2 + 40));
+    e.angle += dt * (enr ? 0.9 : 0.5) * (e.def.ai === "orbit" ? 2 : 1);
+
+    if (e.laser) {
+      const L = e.laser;
+      L.t += dt;
+      if (L.t >= L.warn && !L.hit) {
+        L.hit = true;
+        if (Math.abs(s.x - L.x) <= L.w * 0.5 + 9) hurtPlayer();
+      }
+      if (L.t >= L.warn + L.live) e.laser = null;
+    }
 
     if (!s.alive) return;
 
@@ -5572,7 +5799,8 @@
       e.cds[i] -= dt;
       if (e.cds[i] <= 0) {
         fireBossAttack(e, atk[i]);
-        e.cds[i] = rand(atk[i].cd[0], atk[i].cd[1]) * (e.enraged ? 0.68 : 1);
+        e.cds[i] = rand(atk[i].cd[0], atk[i].cd[1]) *
+          (e.enraged ? 0.68 : 1) * (e.phaseTwo ? 0.72 : 1);
       }
     }
   }
@@ -5731,6 +5959,7 @@
     drawStars();
     drawPowerups();
     drawEnemies();
+    drawBossBeams();
     drawBullets();
     drawEBullets();
     if (G.ship.alive && G.mode === "play") drawShip();
@@ -7632,887 +7861,496 @@
   }
 
 
-  function drawBossWarden(e, fill, hot, r, t) {
-    // антенны
-    ctx.strokeStyle = rgba(fill, 0.5);
-    ctx.lineWidth = 1.4;
+  /* ---- 13 боссов: графика из galaxy-13-bosses (1).html, без упрощений ---- */
+  let NOW = 0;
+  /* ======== Новые хелперы ======== */
+  const STEEL = ["#3f4c78", "#1c2442", "#090d19"];
+  function stk(fill, a, lw) { ctx.strokeStyle = rgba(fill, a); ctx.lineWidth = lw; ctx.stroke(); }
+  /* симметричный корпус: pts — правая половина от носа (x=0) до кормы (x=0), единицы r, нос +y */
+  /* объём: свет сверху-слева, тень на кромке, блик на ребре (вызывать сразу после fill, путь ещё активен) */
+  function vol(r, hot) {
+    if (hot) return;
+    ctx.save(); ctx.clip();
+    const g = ctx.createLinearGradient(-r, -r * .6, r, r * .6);
+    g.addColorStop(0, "rgba(190,215,255,.24)"); g.addColorStop(.45, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(0,0,10,.5)");
+    ctx.fillStyle = g; ctx.fillRect(-r * 2.5, -r * 2.5, r * 5, r * 5);
+    ctx.strokeStyle = "rgba(0,0,10,.55)"; ctx.lineWidth = r * .16; ctx.stroke();
+    const h = ctx.createLinearGradient(-r, -r * .8, r * .3, r * .2);
+    h.addColorStop(0, "rgba(255,255,255,.6)"); h.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.strokeStyle = h; ctx.lineWidth = r * .07; ctx.stroke();
+    ctx.restore();
+  }
+  function symPath(r, pts, k = 1, dx = 0, dy = 0) {
     ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.42, -r * 0.6);
-      ctx.lineTo(side * r * 0.74, -r * 1.16);
+    const P = (x, y) => [x * r * k + dx, y * r * k + dy];
+    pts.forEach(([x, y], i) => ctx[i ? "lineTo" : "moveTo"](...P(x, y)));
+    for (let i = pts.length - 2; i >= 1; i--) ctx.lineTo(...P(-pts[i][0], pts[i][1]));
+    ctx.closePath();
+  }
+  /* симметричный корпус: pts — правая половина от носа (x=0) до кормы (x=0), единицы r, нос +y */
+  function sym(r, pts, fill, hot, c = STEEL, lw = 2) {
+    symPath(r, pts, 1, r * .035, r * .05);               // нижний слой — толщина корпуса
+    ctx.fillStyle = hot ? "#ffd6e8" : "#04060c"; ctx.fill(); stk(fill, .35, 1.4);
+    symPath(r, pts);
+    ctx.fillStyle = hullFill(r, hot, ...c);
+    ctx.fill(); vol(r, hot); stk(fill, hot ? 1 : .9, lw);
+    if (hot) return;
+    const cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    for (const [k, col, w] of [[.8, "rgba(255,255,255,.11)", 1], [.58, rgba(fill, .2), 1]]) {   // бронепластины
+      symPath(r, pts, k, 0, cy * r * (1 - k)); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
     }
-    ctx.stroke();
-    for (const side of [-1, 1]) lightDot(side * r * 0.74, -r * 1.16, r * 0.03, "#ffffff", 0.65);
-
-    // бортовые орудийные надстройки
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 1.0, r * 0.02);
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.2, -r * 0.4);
-      ctx.lineTo(r * 0.2, -r * 0.34);
-      ctx.lineTo(r * 0.17, r * 0.4);
-      ctx.lineTo(0, r * 0.55);
-      ctx.lineTo(-r * 0.17, r * 0.4);
-      ctx.closePath();
-      ctx.fillStyle = hullFill(r * 0.9, hot, "#354266", "#17203c", "#070a13");
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.7);
-      ctx.lineWidth = 1.3;
-      ctx.stroke();
-
-      for (const bx of [-0.07, 0.07]) {
-        ctx.fillStyle = "#0a0e1c";
-        ctx.fillRect(bx * r - r * 0.035, r * 0.4, r * 0.07, r * 0.52);
-        ctx.fillStyle = rgba(fill, 0.85);
-        ctx.fillRect(bx * r - r * 0.045, r * 0.86, r * 0.09, r * 0.07);
+    ctx.fillStyle = "rgba(255,255,255,.32)";                                                       // заклёпки
+    for (let i = 1; i < pts.length - 1; i++) for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.arc(s * pts[i][0] * r * .88, pts[i][1] * r * .9, Math.max(1, r * .013), 0, TAU); ctx.fill();
+    }
+    ctx.save(); symPath(r, pts); ctx.clip();
+    const R = rnd(Math.round(pts[1][0] * 997 + pts[2][1] * 313 + r));
+    for (let i = 0; i < 16; i++) {                                                                 // люки, блоки, огоньки (зеркально)
+      const x = R() * r * 1.1, y = (R() * 2 - 1) * r, w = r * (.04 + R() * .09), h = r * (.025 + R() * .05), led = R() < .3;
+      for (const sd of [1, -1]) {
+        const X = sd > 0 ? x : -x - w;
+        ctx.fillStyle = "rgba(0,0,12,.38)"; ctx.fillRect(X, y, w, h); ctx.fillStyle = "rgba(255,255,255,.13)"; ctx.fillRect(X, y, w, 1);
+        if (led) lightDot(X + w / 2, y + h / 2, r * .014, fill, .75);
       }
-      lightDot(0, -r * 0.12, r * 0.045, fill, 0.8);
-      ctx.restore();
     }
-
-    // корпус дредноута
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.18);
-    ctx.lineTo(r * 0.34, r * 0.98);
-    ctx.lineTo(r * 0.72, r * 0.62);
-    ctx.lineTo(r * 1.02, r * 0.2);
-    ctx.lineTo(r * 0.94, -r * 0.32);
-    ctx.lineTo(r * 0.6, -r * 0.7);
-    ctx.lineTo(r * 0.26, -r * 0.58);
-    ctx.lineTo(0, -r * 0.98);
-    ctx.lineTo(-r * 0.26, -r * 0.58);
-    ctx.lineTo(-r * 0.6, -r * 0.7);
-    ctx.lineTo(-r * 0.94, -r * 0.32);
-    ctx.lineTo(-r * 1.02, r * 0.2);
-    ctx.lineTo(-r * 0.72, r * 0.62);
-    ctx.lineTo(-r * 0.34, r * 0.98);
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#3f4c78", "#1c2442", "#090d19");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, hot ? 1 : 0.9);
-    ctx.lineWidth = 2.2;
+    ctx.strokeStyle = "rgba(255,255,255,.06)"; ctx.lineWidth = 1; ctx.beginPath();
+    for (let y = -r; y < r; y += r * .3) { ctx.moveTo(-r * 1.6, y); ctx.lineTo(r * 1.6, y); }
     ctx.stroke();
-
-    // бронеплиты и палубные линии
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.2, r * 0.82);
-      ctx.lineTo(side * r * 0.5, r * 0.3);
-      ctx.lineTo(side * r * 0.42, -r * 0.4);
-      ctx.moveTo(side * r * 0.62, r * 0.5);
-      ctx.lineTo(side * r * 0.82, r * 0.05);
-      ctx.lineTo(side * r * 0.7, -r * 0.45);
-      ctx.moveTo(side * r * 0.72, r * 0.58);
-      ctx.lineTo(side * r * 0.88, r * 0.5);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = rgba(fill, 0.55);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.34, r * 0.7);
-      ctx.lineTo(side * r * 0.62, r * 0.36);
-      ctx.moveTo(side * r * 0.76, r * 0.06);
-      ctx.lineTo(side * r * 0.9, r * 0.06);
-      ctx.moveTo(side * r * 0.3, -r * 0.5);
-      ctx.lineTo(side * r * 0.5, -r * 0.42);
-    }
-    ctx.stroke();
-
-    // кормовая надстройка
-    ctx.fillStyle = hot ? "#ffffff" : "#121a32";
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 0.55);
-    ctx.lineTo(r * 0.34, -r * 0.68);
-    ctx.lineTo(r * 0.28, -r * 0.98);
-    ctx.lineTo(-r * 0.28, -r * 0.98);
-    ctx.lineTo(-r * 0.34, -r * 0.68);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.55);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // двигатели
-    for (const x of [-0.36, -0.12, 0.12, 0.36]) {
-      ctx.fillStyle = "#080b16";
-      roundRectPath(x * r - r * 0.07, -r * 0.74, r * 0.14, r * 0.14, r * 0.04);
-      ctx.fill();
-      thruster(x * r, -r * 0.72, r * 0.13, r * 0.85, fill, hot, t * 13 + x * 11);
-    }
-
-    // сенсорный "глаз"
-    const eyeY = r * 0.04;
-    const rim = r * 0.44;
-    ctx.fillStyle = "#070a14";
-    ctx.beginPath();
-    ctx.arc(0, eyeY, rim * 1.16, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.85);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(0, eyeY);
-    ctx.rotate(e.angle * 0.9);
-    ctx.strokeStyle = rgba(fill, 0.5);
-    ctx.lineWidth = 1.4;
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * rim * 0.82, Math.sin(a) * rim * 0.82);
-      ctx.lineTo(Math.cos(a + 0.24) * rim * 0.38, Math.sin(a + 0.24) * rim * 0.38);
-      ctx.stroke();
-    }
+    ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = rgba(fill, .22 + .12 * Math.sin(NOW * 2 + r)); ctx.lineWidth = 1.6;   // пульсирующий шов
+    ctx.beginPath(); ctx.moveTo(0, pts[0][1] * r * .92); ctx.lineTo(0, pts[pts.length - 1][1] * r * .92); ctx.stroke();
     ctx.restore();
-
-    const eg = ctx.createRadialGradient(0, eyeY - rim * 0.12, 0, 0, eyeY, rim);
-    eg.addColorStop(0, "#ffffff");
-    eg.addColorStop(0.18, rgba(fill, 0.95));
-    eg.addColorStop(0.55, rgba(fill, 0.4));
-    eg.addColorStop(1, rgba(fill, 0));
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = eg;
-    ctx.beginPath();
-    ctx.arc(0, eyeY, rim, 0, TAU);
-    ctx.fill();
+    for (let i = 1; i < pts.length - 1; i++) for (const sd of [-1, 1]) {                           // бегущие огни по контуру
+      const on = Math.sin(NOW * 5 + i * 1.3 + (sd > 0 ? 0 : Math.PI)) > .2;
+      lightDot(sd * pts[i][0] * r, pts[i][1] * r, r * .03, on ? "#ffffff" : fill, on ? .85 : .25);
+    }
+  }
+  function turret(x, y, rad, fill, hot, ang = Math.PI / 2) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = "#04060c"; ctx.beginPath(); ctx.arc(rad * .18, rad * .24, rad * 1.05, 0, TAU); ctx.fill();
+    const g = ctx.createRadialGradient(-rad * .4, -rad * .4, 0, 0, 0, rad);
+    g.addColorStop(0, hot ? "#ffffff" : "#6a7aaa"); g.addColorStop(1, hot ? "#ffe9f5" : "#0e1428");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill(); stk(fill, .8, 1.2);
+    ctx.rotate(ang - Math.PI / 2);
+    ctx.fillStyle = "#080b16"; ctx.fillRect(-rad * .28, 0, rad * .56, rad * 1.9);
+    ctx.fillStyle = rgba(fill, .9); ctx.fillRect(-rad * .34, rad * 1.75, rad * .68, rad * .2);
+    lightDot(0, 0, rad * .22, fill, .7); ctx.restore();
+  }
+  function vent(x, y, w, h, fill) {
+    ctx.fillStyle = "#05070f"; roundRectPath(x - w / 2, y - h / 2, w, h, h * .2); ctx.fill(); stk(fill, .4, 1);
+    ctx.fillStyle = rgba(fill, .6); for (let i = 0; i < 3; i++) ctx.fillRect(x - w * .4, y - h * .33 + i * h * .3, w * .8, h * .1);
+  }
+  function gloss(x, y, rx, ry, rot = -.4) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    const g = ctx.createLinearGradient(0, -ry, 0, ry); g.addColorStop(0, "rgba(255,255,255,.5)"); g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, rx, ry, 0, 0, TAU); ctx.fill(); ctx.restore();
+  }
+  function rnd(seed) { let a = seed | 0; return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function bz(a, b, c, d, t) { const u = 1 - t; return [u*u*u*a[0] + 3*u*u*t*b[0] + 3*u*t*t*c[0] + t*t*t*d[0], u*u*u*a[1] + 3*u*u*t*b[1] + 3*u*t*t*c[1] + t*t*t*d[1]]; }
+  function trace(pts) { ctx.beginPath(); pts.forEach(([x, y], i) => ctx[i ? "lineTo" : "moveTo"](x, y)); ctx.stroke(); }
+  function conduit(pts, fill, w = 1.6) {   // светящаяся труба / энергоканал
+    ctx.save(); ctx.lineJoin = "round"; ctx.strokeStyle = "rgba(0,0,10,.6)"; ctx.lineWidth = w + 2; trace(pts);
+    ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = rgba(fill, .5 + .25 * Math.sin(NOW * 3 + pts[0][0])); ctx.lineWidth = w; trace(pts); ctx.restore();
+  }
+  function antenna(x, y, dx, dy, fill, ph = 0) {
+    ctx.strokeStyle = "rgba(200,215,255,.55)"; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+    lightDot(x + dx, y + dy, 2.4, fill, .4 + .6 * Math.max(0, Math.sin(NOW * 4 + ph)));
+  }
+  function pod(x, y, w, h, fill, hot) {      // ракетный блок
+    ctx.fillStyle = hot ? "#ffffff" : "#0c1224"; roundRectPath(x - w / 2, y - h / 2, w, h, w * .15); ctx.fill(); stk(fill, .7, 1.1);
+    for (let i = 0; i < 4; i++) { ctx.fillStyle = "#03040a"; ctx.beginPath(); ctx.arc(x - w * .375 + i * w * .25, y + h * .28, w * .09, 0, TAU); ctx.fill(); stk(fill, .6, .8); }
+  }
+  function radar(x, y, rad, fill, t) {
+    ctx.save(); ctx.translate(x, y); ctx.fillStyle = "#0a0e1c"; ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill(); stk(fill, .7, 1.2);
+    ctx.rotate(t * 1.6); ctx.strokeStyle = rgba(fill, .8); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(-rad * .8, 0); ctx.lineTo(rad * .8, 0); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, rad * .55, -1, 1); ctx.stroke(); lightDot(rad * .8, 0, rad * .14, fill, .9); ctx.restore();
+  }
+  function limb(a, b, c, w, fill, hot) {
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const [lw, col, o] of [[w + 3, rgba(fill, .8), 0], [w, hot ? "#ffffff" : "#1d2750", 0], [Math.max(1, w * .22), "rgba(255,255,255,.28)", -w * .2]]) {
+      ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a[0] + o, a[1] + o); ctx.lineTo(b[0] + o, b[1] + o); ctx.lineTo(c[0] + o, c[1] + o); ctx.stroke();
+    }
+    lightDot(b[0], b[1], w * .55, fill, .6); ctx.lineCap = "butt";
+  }
+  function eye(x, y, rad, fill, rot) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.fillStyle = "#070a14"; ctx.beginPath(); ctx.arc(0, 0, rad * 1.15, 0, TAU); ctx.fill(); stk(fill, .85, 2);
+    ctx.save(); ctx.rotate(rot); ctx.strokeStyle = rgba(fill, .5); ctx.lineWidth = 1.3;
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.beginPath(); ctx.moveTo(Math.cos(a) * rad * .8, Math.sin(a) * rad * .8); ctx.lineTo(Math.cos(a + .24) * rad * .38, Math.sin(a + .24) * rad * .38); ctx.stroke(); }
     ctx.restore();
-
-    ctx.fillStyle = "#08050e";
-    ctx.beginPath();
-    ctx.arc(0, eyeY, rim * 0.24, 0, TAU);
-    ctx.fill();
-    lightDot(-rim * 0.1, eyeY - rim * 0.12, rim * 0.07, "#ffffff", 0.95);
-
-    // турели
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 0.56, r * 0.52);
-      ctx.fillStyle = hot ? "#ffffff" : "#141c38";
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.1, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.6);
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-      ctx.fillStyle = "#080b16";
-      roundRectPath(-r * 0.03, r * 0.05, r * 0.06, r * 0.3, r * 0.03);
-      ctx.fill();
-      ctx.restore();
+    const g = ctx.createRadialGradient(0, -rad * .1, 0, 0, 0, rad);
+    g.addColorStop(0, "#ffffff"); g.addColorStop(.2, rgba(fill, .95)); g.addColorStop(.55, rgba(fill, .4)); g.addColorStop(1, rgba(fill, 0));
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, rad, 0, TAU); ctx.fill(); ctx.restore();
+    ctx.fillStyle = "#08050e"; ctx.beginPath(); ctx.arc(0, 0, rad * .22, 0, TAU); ctx.fill();
+    lightDot(-rad * .1, -rad * .12, rad * .07, "#ffffff", .95); ctx.restore();
+  }
+  function thr(xs, y, r, fill, hot, t) {
+    for (const x of xs) {
+      ctx.save(); ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createRadialGradient(x * r, y * r, 0, x * r, y * r, r * .38);
+      g.addColorStop(0, rgba(fill, .4)); g.addColorStop(1, rgba(fill, 0)); ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(x * r, y * r, r * .38, 0, TAU); ctx.fill(); ctx.restore();
+      ctx.fillStyle = "#080b16"; roundRectPath(x * r - r * .07, y * r - r * .02, r * .14, r * .1, r * .03); ctx.fill(); stk(fill, .5, 1);
+      thruster(x * r, y * r, r * .13, r * .85, fill, hot, t * 13 + x * 11);
     }
   }
 
-  function drawBossVortex(e, fill, hot, r, t) {
-    // внешнее поле
-    ctx.strokeStyle = rgba(fill, 0.16);
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 1.34, 0, TAU);
+  /* ======== 13 боссов ======== */
+
+  // 1. ТИТАН — дредноут с широкими крыльями-батареями
+  function drawBossTitan(e, fill, hot, r, t) {
+    sym(r, [[0, .25], [1.35, .05], [1.55, -.35], [1.2, -.7], [.5, -.55], [0, -.5]], fill, hot, ["#35416a", "#18203c", "#080b14"], 1.8);
+    for (const s of [-1, 1]) {
+      ctx.fillStyle = "#0a0e1c"; ctx.fillRect(s * r * 1.42 - r * .06, r * .05, r * .12, r * .55);
+      ctx.fillStyle = rgba(fill, .85); ctx.fillRect(s * r * 1.42 - r * .07, r * .55, r * .14, r * .07);
+      lightDot(s * r * 1.1, -r * .3, r * .05, fill, .8);
+    }
+    sym(r, [[0, 1.2], [.32, .95], [.62, .45], [.72, -.2], [.55, -.62], [.25, -.8], [0, -.9]], fill, hot, STEEL, 2.2);
+    ctx.strokeStyle = "rgba(255,255,255,.12)"; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const s of [-1, 1]) { ctx.moveTo(s * r * .2, r * .9); ctx.lineTo(s * r * .45, r * .3); ctx.lineTo(s * r * .4, -r * .5); }
     ctx.stroke();
+    for (const s of [-1, 1]) {
+      turret(s * r * .5, r * .55, r * .1, fill, hot, Math.PI / 2 + Math.sin(t * 1.5 + s) * .2);
+      turret(s * r * 1.05, -r * .05, r * .085, fill, hot); vent(s * r * .3, -r * .45, r * .2, r * .14, fill);
+    }
+    ctx.fillStyle = "rgba(255,255,255,.09)"; for (let i = 0; i < 3; i++) ctx.fillRect(-r * .12, r * (.75 - i * .1), r * .24, r * .035);
+    eye(0, r * .1, r * .3, fill, e.angle);
+    for (const s of [-1, 1]) {
+      pod(s * r * .62, -r * .55, r * .26, r * .2, fill, hot);
+      conduit([[s * r * .75, -r * .1], [s * r * 1.2, -r * .15], [s * r * 1.4, -r * .42]], fill);
+      antenna(s * r * .2, r * 1.0, s * r * .1, r * .35, fill, s);
+      ctx.fillStyle = rgba(fill, .3); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(s * r * (1.15 + i * .08), -r * .62 + i * r * .02); ctx.lineTo(s * r * (1.23 + i * .08), -r * .62); ctx.lineTo(s * r * (1.19 + i * .08), -r * .5); ctx.closePath(); ctx.fill(); }
+    }
+    radar(0, r * .75, r * .09, fill, t);
+    thr([-.4, -.15, .15, .4], -.88, r, fill, hot, t);
+  }
 
-    // спиральные лопасти
-    ctx.save();
-    ctx.rotate(e.angle * 1.6);
-    for (let arm = 0; arm < 3; arm++) {
-      ctx.save();
-      ctx.rotate((arm / 3) * TAU);
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 0.18);
-      ctx.bezierCurveTo(r * 0.9, -r * 0.62, r * 1.3, -r * 0.1, r * 1.15, r * 0.12);
-      ctx.bezierCurveTo(r * 0.78, r * 0.3, r * 0.32, r * 0.22, r * 0.16, r * 0.08);
-      ctx.closePath();
-      ctx.fillStyle = hullFill(r, hot, "#4a3d7a", "#211a44", "#0a0818");
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, hot ? 1 : 0.7);
-      ctx.lineWidth = 1.4;
-      ctx.stroke();
-
-      ctx.strokeStyle = rgba(fill, 0.7);
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.2, r * 0.02);
-      ctx.quadraticCurveTo(r * 0.7, -r * 0.28, r * 1.06, r * 0.02);
-      ctx.stroke();
-
-      lightDot(r * 1.1, r * 0.06, r * 0.04, fill, 0.8);
+  // 2. СЕРП — две качающиеся косы
+  function drawBossSickle(e, fill, hot, r, t) {
+    const sw = Math.sin(t * 1.6) * .06;
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.rotate(s * sw);
+      ctx.beginPath(); ctx.moveTo(s * r * .2, -r * .6);
+      ctx.bezierCurveTo(s * r * 1.6, -r * .9, s * r * 1.9, r * .5, s * r * .95, r * 1.25);
+      ctx.bezierCurveTo(s * r * 1.25, r * .4, s * r * .9, -r * .1, s * r * .3, r * .15);
+      ctx.closePath(); ctx.fillStyle = hullFill(r, hot, "#4a3d7a", "#211a44", "#0a0818"); ctx.fill(); vol(r, hot); stk(fill, .95, 2.2);
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.beginPath(); ctx.moveTo(s * r * .2, -r * .6);
+      ctx.bezierCurveTo(s * r * 1.6, -r * .9, s * r * 1.9, r * .5, s * r * .95, r * 1.25); stk(fill, .5, 4); ctx.restore();
+      ctx.beginPath(); ctx.moveTo(s * r * .3, -r * .5); ctx.bezierCurveTo(s * r * 1.4, -r * .7, s * r * 1.6, r * .4, s * r * .95, r * 1.1);
+      ctx.strokeStyle = "rgba(255,255,255,.2)"; ctx.lineWidth = 1.2; ctx.stroke();
+      for (let i = 1; i < 9; i++) {
+        const q = i / 9, A = bz([s * r * .2, -r * .6], [s * r * 1.6, -r * .9], [s * r * 1.9, r * .5], [s * r * .95, r * 1.25], q);
+        const B = bz([s * r * .95, r * 1.25], [s * r * 1.25, r * .4], [s * r * .9, -r * .1], [s * r * .3, r * .15], 1 - q);
+        ctx.strokeStyle = "rgba(255,255,255,.13)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(...A); ctx.lineTo(...B); ctx.stroke();
+        lightDot((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, r * .022, i % 2 ? fill : "#ffffff", .7);
+      }
+      lightDot(s * r * .95, r * 1.25, r * .06, "#ffffff", .8);
       ctx.restore();
     }
-    ctx.restore();
+    sym(r, [[0, 1.0], [.2, .55], [.3, -.2], [.22, -.75], [0, -.85]], fill, hot, ["#4a3d7a", "#211a44", "#0a0818"], 2);
+    ctx.fillStyle = glassFill(0, r * .35, r * .12, r * .22, fill); ctx.beginPath(); ctx.ellipse(0, r * .35, r * .1, r * .22, 0, 0, TAU); ctx.fill(); gloss(-r * .03, r * .28, r * .04, r * .12);
+    pod(0, -r * .35, r * .2, r * .16, fill, hot); conduit([[0, r * .1], [0, -r * .25]], fill);
+    for (const s of [-1, 1]) antenna(s * r * .12, r * .9, s * r * .15, r * .3, fill, s);
+    thr([-.12, .12], -.82, r, fill, hot, t);
+  }
 
-    // сегментированный тор
-    ctx.save();
-    ctx.rotate(-e.angle * 1.1);
-    ctx.lineWidth = r * 0.1;
+  // 3. ЛЕВИАФАН — сегментированный змей
+  function drawBossLeviathan(e, fill, hot, r, t) {
+    const N = 7;
+    for (let i = 0; i < N; i++) {
+      const k = i / (N - 1), y = -r * 1.2 + k * r * 1.5, x = Math.sin(t * 2.2 + i * .8) * r * .1 * (1 - k), w = r * (.3 + k * .28);
+      for (const s of [-1, 1]) {
+        ctx.beginPath(); ctx.moveTo(x + s * w * .9, y + r * .1); ctx.lineTo(x + s * (w + r * (.28 - k * .1)), y - r * .12); ctx.lineTo(x + s * w * .9, y - r * .14); ctx.closePath();
+        ctx.fillStyle = rgba(fill, .3); ctx.fill(); stk(fill, .8, 1.2);
+      }
+      roundRectPath(x - w, y - r * .12, w * 2, r * .26, r * .08);
+      ctx.fillStyle = hullFill(r, hot, "#2d5a58", "#122b2c", "#05100f"); ctx.fill(); vol(r, hot); stk(fill, .85, 1.8);
+      lightDot(x, y, r * .04, fill, .7);
+      ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - w * .78, y); ctx.lineTo(x + w * .78, y); ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.18)"; ctx.fillRect(x - w * .8, y - r * .1, w * 1.6, r * .03);
+      lightDot(x - w * .6, y, r * .025, fill, .6); lightDot(x + w * .6, y, r * .025, fill, .6);
+    }
+    ctx.save(); ctx.translate(0, r * .3);
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(s * r * .3, r * .45); ctx.lineTo(s * r * .66, r * 1.0); ctx.lineTo(s * r * .5, r * .5); ctx.lineTo(s * r * .22, r * .8); ctx.closePath();
+      ctx.fillStyle = rgba(fill, .9); ctx.fill();
+    }
+    sym(r, [[0, .8], [.25, .62], [.55, .15], [.5, -.2], [0, -.28]], fill, hot, ["#2d5a58", "#122b2c", "#05100f"], 2.2);
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(s * r * (.04 + i * .07), r * .7); ctx.lineTo(s * r * (.07 + i * .07), r * .88); ctx.lineTo(s * r * (.1 + i * .07), r * .68); ctx.closePath(); ctx.fillStyle = "rgba(255,255,255,.8)"; ctx.fill(); }
+      vent(s * r * .38, -r * .05, r * .12, r * .2, fill);
+    }
+    eye(0, r * .08, r * .22, fill, e.angle);
+    ctx.restore();
+    thr([0], -1.3, r, fill, hot, t);
+  }
+
+  // 4. ПАУК — шесть шагающих лап
+  function drawBossSpider(e, fill, hot, r, t) {
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
+      const y = -r * .3 + i * r * .28, ph = Math.sin(t * 3 + i * 1.3 + (s > 0 ? 1.5 : 0)) * r * .1;
+      limb([s * r * .3, y], [s * r * (1.0 + i * .05), y - r * .25 + ph], [s * r * (1.4 - i * .08), y + r * .45 + ph], r * .09, fill, hot);
+    }
+    ctx.beginPath(); ctx.ellipse(0, -r * .55, r * .42, r * .5, 0, 0, TAU);
+    ctx.fillStyle = hullFill(r, hot, "#5a4426", "#2a1d12", "#0d0804"); ctx.fill(); vol(r, hot); stk(fill, .9, 2);
+    ctx.strokeStyle = rgba(fill, .35); ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let i = -1; i <= 1; i++) { ctx.moveTo(i * r * .14, -r * .15); ctx.lineTo(i * r * .2, -r * .95); } ctx.stroke();
+    gloss(-r * .12, -r * .7, r * .16, r * .3, .2);
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = rgba(fill, .55); ctx.beginPath();
+    ctx.moveTo(-r * .1, -r * .5); ctx.lineTo(r * .1, -r * .5); ctx.lineTo(0, -r * .66); ctx.lineTo(r * .1, -r * .82); ctx.lineTo(-r * .1, -r * .82); ctx.lineTo(0, -r * .66); ctx.closePath(); ctx.fill(); ctx.restore();
+    for (const s of [-1, 1]) { ctx.fillStyle = "#0a0e1c"; roundRectPath(s * r * .1 - r * .035, -r * 1.08, r * .07, r * .16, r * .03); ctx.fill(); stk(fill, .7, 1); lightDot(s * r * .1, -r * 1.08, r * .035, fill, .8); }
+
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(s * r * .12, r * .7); ctx.lineTo(s * r * .2, r * 1.1); ctx.lineTo(s * r * .04, r * .8); ctx.closePath(); ctx.fillStyle = rgba(fill, .9); ctx.fill();
+    }
+    sym(r, [[0, .8], [.3, .55], [.42, .05], [.3, -.3], [0, -.35]], fill, hot, ["#5a4426", "#2a1d12", "#0d0804"], 2.2);
+    eye(0, r * .22, r * .16, fill, e.angle);
+    for (const [x, y] of [[-.22, .35], [.22, .35], [-.12, .55], [.12, .55]]) lightDot(x * r, y * r, r * .035, fill, .9);
+    thr([0], -1.0, r, fill, hot, t);
+  }
+
+  // 5. АВИАНОСЕЦ — длинная палуба с ангарами
+  function drawBossCarrier(e, fill, hot, r, t) {
+    sym(r, [[0, 1.0], [.45, .9], [1.1, .45], [1.15, -.75], [.6, -.95], [0, -.95]], fill, hot, ["#40507c", "#1b2544", "#080b16"], 2.2);
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++) {
+      const x = s * r * .78, y = -r * .5 + i * r * .32;
+      ctx.fillStyle = "#05070f"; roundRectPath(x - r * .14, y - r * .1, r * .28, r * .2, r * .03); ctx.fill(); stk(fill, .6, 1);
+      lightDot(x, y, r * .05, fill, .4 + .4 * Math.sin(t * 3 + i * 1.3 + s));
+    }
+    ctx.save(); ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = 1.4; ctx.setLineDash([r * .08, r * .1]); ctx.lineDashOffset = -t * r * .5;
+    ctx.beginPath(); ctx.moveTo(0, r * .85); ctx.lineTo(0, -r * .85); ctx.stroke(); ctx.restore();
+    ctx.fillStyle = hot ? "#ffffff" : "#121a32"; roundRectPath(-r * .2, -r * .15, r * .4, r * .5, r * .05); ctx.fill(); stk(fill, .7, 1.3);
+    for (let i = 0; i < 3; i++) lightDot(0, r * .25 - i * r * .12, r * .03, "#ffffff", .7);
+    for (const s of [-1, 1]) {
+      turret(s * r * .45, r * .6, r * .09, fill, hot, Math.PI / 2 + Math.sin(t * 1.4 + s) * .25);
+      turret(s * r * .45, -r * .7, r * .09, fill, hot); vent(s * r * .22, -r * .78, r * .22, r * .12, fill);
+    }
+    ctx.fillStyle = "rgba(255,255,255,.07)"; for (let i = 0; i < 4; i++) ctx.fillRect(-r * .9, r * (.25 - i * .3), r * 1.8, r * .02);
+    for (let i = 0; i < 9; i++) for (const s of [-1, 1]) lightDot(s * r * .07, r * (.8 - i * .2), r * .02, fill, ((NOW * 6 | 0) + i) % 5 === 0 ? 1 : .2);
+    radar(r * .38, r * .05, r * .09, fill, t); radar(-r * .38, -r * .15, r * .07, fill, -t);
+    for (const s of [-1, 1]) antenna(s * r * 1.05, r * .45, s * r * .14, r * .3, fill, s);
+
+    thr([-.7, -.25, .25, .7], -.95, r, fill, hot, t);
+  }
+
+  // 6. ЛОТОС — двойное кольцо лепестков
+  function drawBossLotus(e, fill, hot, r, t) {
+    for (let L = 0; L < 2; L++) {
+      const n = L ? 6 : 8, m = L ? .6 : 1;
+      ctx.save(); ctx.rotate(e.angle * (L ? -.5 : .35) + (L ? .3 : 0));
+      for (let i = 0; i < n; i++) {
+        ctx.save(); ctx.rotate(i / n * TAU);
+        const o = 1 + Math.sin(t * 1.8 + i) * .06 * m;
+        ctx.beginPath(); ctx.moveTo(0, r * .15);
+        ctx.bezierCurveTo(r * .55 * m, r * .4 * m, r * .45 * m, r * 1.0 * m * o, 0, r * 1.3 * m * o);
+        ctx.bezierCurveTo(-r * .45 * m, r * 1.0 * m * o, -r * .55 * m, r * .4 * m, 0, r * .15);
+        ctx.fillStyle = hullFill(r, hot, L ? "#6a3a70" : "#4a2d6a", L ? "#2b1736" : "#1f1236", "#0a0614"); ctx.fill(); vol(r, hot); stk(fill, .9, 1.8);
+        ctx.strokeStyle = rgba(fill, .4); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, r * .3); ctx.lineTo(0, r * 1.1 * m); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, r * .25); ctx.bezierCurveTo(r * .25 * m, r * .5 * m, r * .2 * m, r * .9 * m * o, 0, r * 1.1 * m * o);
+        ctx.bezierCurveTo(-r * .2 * m, r * .9 * m * o, -r * .25 * m, r * .5 * m, 0, r * .25); ctx.fillStyle = "rgba(255,255,255,.08)"; ctx.fill();
+        lightDot(0, r * 1.28 * m * o, r * .04, "#ffffff", .8);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    ctx.save(); ctx.rotate(-e.angle * .8); ctx.strokeStyle = rgba(fill, .5); ctx.lineWidth = 1.2;
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.arc(0, 0, r * (.38 + i * .07), i * 1.1, i * 1.1 + 3.6); ctx.stroke(); } ctx.restore();
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU + e.angle * .6; lightDot(Math.cos(a) * r * .58, Math.sin(a) * r * .58, r * .025, "#ffffff", .5 + .4 * Math.sin(t * 4 + i)); }
+    eye(0, 0, r * .3, fill, e.angle * 1.4);
+  }
+
+  // 7. ТРИДЕНТ — трезубец с электрическими дугами
+  function drawBossTrident(e, fill, hot, r, t) {
+    const c = ["#2f5278", "#142842", "#060e19"];
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(s * r * .3, -r * .55); ctx.lineTo(s * r * .95, -r * .35); ctx.lineTo(s * r * 1.0, r * .85); ctx.lineTo(s * r * .9, r * 1.25);
+      ctx.lineTo(s * r * .74, r * .85); ctx.lineTo(s * r * .7, -r * .05); ctx.lineTo(s * r * .3, -r * .1); ctx.closePath();
+      ctx.fillStyle = hullFill(r, hot, ...c); ctx.fill(); vol(r, hot); stk(fill, .9, 2);
+      lightDot(s * r * .9, r * 1.2, r * .07, fill, .9);
+    }
+    ctx.fillStyle = "#0a1220"; roundRectPath(-r * .5, -r * .5, r, r * .22, r * .05); ctx.fill(); stk(fill, .6, 1.2);
+    sym(r, [[0, 1.45], [.13, .8], [.22, -.2], [.3, -.7], [0, -.85]], fill, hot, c, 2.2);
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.strokeStyle = rgba(fill, .8); ctx.lineWidth = 1.5;
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(s * r * .86, r * .85);
+      for (let i = 1; i <= 6; i++) ctx.lineTo(s * r * (.86 - i * .12), r * .85 + Math.sin(t * 30 + i * 5 + s) * r * .05);
+      ctx.stroke();
+    }
+    ctx.restore();
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(s * r * .74, r * (.2 + i * .17)); ctx.lineTo(s * r * .56, r * (.28 + i * .17)); ctx.lineTo(s * r * .74, r * (.36 + i * .17)); ctx.closePath(); ctx.fillStyle = hot ? "#ffffff" : "#0e1c30"; ctx.fill(); stk(fill, .7, 1); }
+      conduit([[s * r * .88, -r * .3], [s * r * .88, r * .8]], fill);
+    }
+    conduit([[0, -r * .6], [0, r * 1.3]], fill, 1.4);
+    for (let i = 0; i < 5; i++) { ctx.strokeStyle = rgba(fill, .6); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(0, r * (.1 + i * .2), r * .17, r * .04, 0, 0, TAU); ctx.stroke(); }
+    for (const s of [-1, 1]) { vent(s * r * .85, r * .25, r * .14, r * .4, fill); turret(s * r * .85, -r * .2, r * .07, fill, hot); }
+    eye(0, r * .15, r * .2, fill, e.angle);
+    thr([0], -.85, r, fill, hot, t); thr([-.6, .6], -.55, r, fill, hot, t);
+  }
+
+  // 8. КРАБ — клешни, которые открываются и закрываются
+  function drawBossCrab(e, fill, hot, r, t) {
+    const op = .35 + .25 * Math.sin(t * 2.4);
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 3; i++)
+        limb([s * r * .45, -r * .2 + i * r * .22], [s * r * (.9 + i * .05), -r * .45 + i * r * .2 + Math.sin(t * 3 + i + s) * r * .05], [s * r * 1.1, -r * .2 + i * r * .4], r * .07, fill, hot);
+      limb([s * r * .5, r * .3], [s * r * 1.0, r * .55], [s * r * 1.1, r * .95], r * .14, fill, hot);
+      ctx.save(); ctx.translate(s * r * 1.1, r * .95);
+      for (const q of [-1, 1]) {
+        ctx.save(); ctx.rotate(q * op);
+        ctx.beginPath(); ctx.moveTo(-r * .07, 0); ctx.lineTo(-r * .12, r * .4); ctx.lineTo(0, r * .62); ctx.lineTo(r * .12, r * .3); ctx.lineTo(r * .07, 0); ctx.closePath();
+        ctx.fillStyle = hullFill(r * .6, hot, "#7a3a22", "#3a1a12", "#120805"); ctx.fill(); vol(r * .6, hot); stk(fill, .95, 1.8);
+        for (let i = 0; i < 3; i++) lightDot(0, r * (.15 + i * .14), r * .025, fill, .7);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    for (const s of [-1, 1]) {
+      ctx.strokeStyle = rgba(fill, .8); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s * r * .18, r * .6); ctx.lineTo(s * r * .26, r * .95); ctx.stroke();
+      lightDot(s * r * .26, r * .95, r * .07, fill, .95);
+    }
+    sym(r, [[0, .7], [.5, .55], [.75, .1], [.6, -.5], [0, -.7]], fill, hot, ["#7a3a22", "#3a1a12", "#120805"], 2.2);
+    gloss(-r * .28, r * .12, r * .3, r * .18, .4);
+    for (let i = 0; i < 5; i++) for (const s of [-1, 1]) lightDot(s * r * (.2 + i * .09), -r * (.3 - i * .08), r * .022, fill, .5);
+    vent(0, -r * .45, r * .3, r * .12, fill);
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.ellipse(0, -r * .1, r * (.3 + i * .12), r * (.25 + i * .08), 0, Math.PI * .1, Math.PI * .9); ctx.stroke(); }
+    for (const s of [-1, 1]) conduit([[s * r * .5, r * .3], [s * r * .75, r * .42], [s * r * .95, r * .52]], fill, 1.4);
+
+    eye(0, 0, r * .2, fill, e.angle);
+    thr([-.25, .25], -.68, r, fill, hot, t);
+  }
+
+  // 9. ШЕСТЕРНЯ — вращающийся зубчатый диск с орудиями
+  function drawBossGear(e, fill, hot, r, t) {
+    for (const x of [-.3, 0, .3]) {
+      ctx.fillStyle = "#0a0e1c"; ctx.fillRect(x * r - r * .05, r * .7, r * .1, r * .55);
+      ctx.fillStyle = rgba(fill, .85); ctx.fillRect(x * r - r * .06, r * 1.2, r * .12, r * .06);
+    }
+    ctx.save(); ctx.rotate(e.angle * .5);
+    const n = 12, w = TAU / n; ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const a = i * w; const p = [[a - w * .36, .95], [a - w * .2, 1.2], [a + w * .2, 1.2], [a + w * .36, .95]];
+      p.forEach(([aa, rr], j) => { const X = Math.cos(aa) * rr * r, Y = Math.sin(aa) * rr * r; (i || j) ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
+    }
+    ctx.closePath(); ctx.fillStyle = hullFill(r * 1.2, hot, "#6a5a2a", "#2e2512", "#0e0a04"); ctx.fill(); vol(r * 1.2, hot); stk(fill, .9, 2.2);
+    ctx.strokeStyle = rgba(fill, .45); ctx.lineWidth = 1.4; ctx.beginPath(); ctx.arc(0, 0, r * .66, 0, TAU);
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU; ctx.moveTo(Math.cos(a) * r * .22, Math.sin(a) * r * .22); ctx.lineTo(Math.cos(a) * r * .66, Math.sin(a) * r * .66); }
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(0, 0, r * .9, 0, TAU); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.35)"; for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + .5; ctx.beginPath(); ctx.arc(Math.cos(a) * r * .78, Math.sin(a) * r * .78, r * .022, 0, TAU); ctx.fill(); }
+    for (let i = 0; i < n; i++) lightDot(Math.cos(i * w) * r * 1.1, Math.sin(i * w) * r * 1.1, r * .03, fill, .8);
+    ctx.restore();
+    ctx.save(); ctx.rotate(-e.angle * 1.2); ctx.beginPath();
+    for (let i = 0; i < 16; i++) { const a = i / 16 * TAU, rr = (i % 2 ? .42 : .5) * r; ctx[i ? "lineTo" : "moveTo"](Math.cos(a) * rr, Math.sin(a) * rr); }
+    ctx.closePath(); ctx.fillStyle = hullFill(r * .5, hot, "#8a7438", "#3a2f14", "#120d05"); ctx.fill(); vol(r * .5, hot); stk(fill, .8, 1.4); ctx.restore();
+    eye(0, 0, r * .34, fill, -e.angle * 1.4);
+    thr([-.35, .35], -1.15, r, fill, hot, t);
+  }
+
+  // 10. СКАРАБЕЙ — панцирь, жвалы, лапы
+  function drawBossScarab(e, fill, hot, r, t) {
+    const op = Math.max(0, Math.sin(t * 1.3)) * .12;
+    for (const s of [-1, 1]) for (let i = 0; i < 3; i++)
+      limb([s * r * .5, -r * .3 + i * r * .3], [s * r * 1.0, -r * .35 + i * r * .3 + Math.sin(t * 4 + i) * r * .04], [s * r * 1.3, -r * .1 + i * r * .35], r * .07, fill, hot);
+    for (const s of [-1, 1]) {
+      ctx.save(); ctx.rotate(-s * op);
+      ctx.beginPath(); ctx.moveTo(s * r * .03, r * .35); ctx.bezierCurveTo(s * r * .9, r * .4, s * r * 1.05, -r * .5, s * r * .55, -r * .95); ctx.lineTo(s * r * .03, -r * .95); ctx.closePath();
+      ctx.fillStyle = hullFill(r, hot, "#2c6a4a", "#0f2f22", "#04110b"); ctx.fill(); vol(r, hot); stk(fill, .9, 2.2);
+      ctx.strokeStyle = rgba(fill, .3); ctx.lineWidth = 1.2; ctx.beginPath();
+      for (let i = 1; i < 4; i++) { ctx.moveTo(s * r * .1, r * .3 - i * r * .3); ctx.quadraticCurveTo(s * r * .55, r * .35 - i * r * .28, s * r * (.95 - i * .22), -i * r * .25); }
+      ctx.stroke(); gloss(s * r * .4, -r * .05, r * .1, r * .45, s * .35); ctx.restore();
+    }
+    ctx.save(); ctx.translate(0, r * .35);
+    for (const s of [-1, 1]) {
+      ctx.beginPath(); ctx.moveTo(s * r * .2, r * .3); ctx.lineTo(s * r * .55, r * .8); ctx.lineTo(s * r * .32, r * .65); ctx.lineTo(s * r * .12, r * .55); ctx.closePath();
+      ctx.fillStyle = rgba(fill, .9); ctx.fill();
+    }
+    sym(r, [[0, .55], [.2, .4], [.38, .1], [.3, -.1], [0, -.12]], fill, hot, ["#2c6a4a", "#0f2f22", "#04110b"], 2);
+    for (const s of [-1, 1]) lightDot(s * r * .2, r * .15, r * .05, fill, .95);
+    ctx.restore();
+    for (const s of [-1, 1]) { antenna(s * r * .15, r * .95, s * r * .3, r * .35, fill, s); for (let i = 0; i < 5; i++) lightDot(s * r * (.25 + (i % 3) * .18), -r * (.1 + i * .15), r * .03, fill, .45); }
+    conduit([[0, r * .3], [0, -r * .9]], fill, 1.4);
+    thr([-.3, .3], -.95, r, fill, hot, t);
+  }
+
+  // 11. ОСЬМИНОГ — купол и извивающиеся щупальца
+  function drawBossOcto(e, fill, hot, r, t) {
+    ctx.lineCap = "round";
+    for (let i = 0; i < 6; i++) {
+      const sx = (-.5 + i * .2) * r; let px = sx, py = -r * .25;
+      for (let j = 1; j <= 10; j++) {
+        const u = j / 10, x = sx * (1 + u * 1.2) + Math.sin(t * 3 - u * 5 + i) * r * .18 * u, y = -r * .25 - u * r;
+        const w = r * .13 * (1 - u * .85);
+        ctx.strokeStyle = rgba(fill, .8); ctx.lineWidth = w + 3; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+        ctx.strokeStyle = hot ? "#ffffff" : "#241a4a"; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
+        if (j % 2 === 0) { lightDot(x - w * .4, y, r * .022, fill, .7); lightDot(x + w * .4, y, r * .022, "#ffffff", .5); }
+        px = x; py = y;
+      }
+    }
     ctx.lineCap = "butt";
-    for (let i = 0; i < 5; i++) {
-      const a0 = (i / 5) * TAU + 0.12;
-      ctx.strokeStyle = rgba(fill, i % 2 ? 0.38 : 0.62);
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.74, a0, a0 + TAU / 5 - 0.24);
-      ctx.stroke();
-    }
-    ctx.restore();
+    sym(r, [[0, 1.0], [.4, .9], [.72, .45], [.78, -.1], [.55, -.4], [0, -.5]], fill, hot, ["#4a3d7a", "#211a44", "#0a0818"], 2.2);
+    ctx.strokeStyle = rgba(fill, .3); ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, r * .9); ctx.lineTo(0, -r * .4); ctx.stroke();
+    gloss(-r * .3, r * .05, r * .22, r * .4, .35);
+    for (let i = 0; i < 7; i++) lightDot(Math.sin(i * 2.1) * r * .42, r * (-.3 + (i * .37 % 1) * .5), r * .03, fill, .5);
+    ctx.beginPath(); ctx.moveTo(-r * .08, r * .78); ctx.lineTo(0, r * 1.02); ctx.lineTo(r * .08, r * .78); ctx.closePath(); ctx.fillStyle = hot ? "#ffffff" : "#1a1230"; ctx.fill(); stk(fill, .8, 1.2);
+    ctx.strokeStyle = "rgba(255,255,255,.1)"; ctx.lineWidth = 1; for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(0, r * .2, r * (.3 + i * .12), .5, Math.PI - .5); ctx.stroke(); }
 
-    // спицы
-    ctx.strokeStyle = rgba(fill, 0.3);
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 6; i++) {
-      const a = e.angle * 0.6 + (i / 6) * TAU;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.42, Math.sin(a) * r * 0.42);
-      ctx.lineTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
-      ctx.stroke();
-    }
-
-    // узлы на кольце
-    for (let i = 0; i < 6; i++) {
-      const a = -e.angle * 1.1 + (i / 6) * TAU;
-      const px = Math.cos(a) * r * 0.74;
-      const py = Math.sin(a) * r * 0.74;
-      ctx.fillStyle = hot ? "#ffffff" : "#131a34";
-      ctx.beginPath();
-      ctx.arc(px, py, r * 0.075, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.8);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      lightDot(px, py, r * 0.035, fill, 0.85);
-    }
-
-    // сингулярность
-    const pulse = 0.9 + Math.sin(t * 3.4) * 0.1;
-    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.72);
-    halo.addColorStop(0, rgba(fill, 0.55));
-    halo.addColorStop(0.45, rgba(fill, 0.18));
-    halo.addColorStop(1, rgba(fill, 0));
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = halo;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.72 * pulse, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.fillStyle = "#06040c";
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.4, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.9);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const core = ctx.createRadialGradient(-r * 0.05, -r * 0.05, 0, 0, 0, r * 0.2);
-    core.addColorStop(0, "#ffffff");
-    core.addColorStop(0.5, rgba(fill, 0.8));
-    core.addColorStop(1, rgba(fill, 0));
-    ctx.fillStyle = core;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.2, 0, TAU);
-    ctx.fill();
-    ctx.restore();
+    for (const s of [-1, 1]) eye(s * r * .28, r * .35, r * .2, fill, e.angle * s);
   }
 
-  function drawBossBomber(e, fill, hot, r, t) {
-    // мотогондолы и выхлоп
-    for (const side of [-1, 1]) {
-      for (const k of [0.62, 1.02]) {
-        const ex = side * r * k;
-        ctx.fillStyle = hot ? "#ffffff" : "#1c2444";
-        roundRectPath(ex - r * 0.11, -r * 0.44, r * 0.22, r * 0.34, r * 0.09);
-        ctx.fill();
-        ctx.strokeStyle = rgba(fill, 0.55);
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        thruster(ex, -r * 0.4, r * 0.16, r * 0.9, fill, hot, t * 15 + ex);
+  // 12. МОНОЛИТ — кристалл с орбитальными осколками
+  function drawBossMonolith(e, fill, hot, r, t) {
+    const shards = (front) => {
+      for (let i = 0; i < 4; i++) {
+        const a = e.angle * 1.3 + i / 4 * TAU; if ((Math.sin(a) > 0) !== front) continue;
+        ctx.save(); ctx.translate(Math.cos(a) * r * 1.15, Math.sin(a) * r * .35 + r * .1); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(0, -r * .2); ctx.lineTo(r * .1, 0); ctx.lineTo(0, r * .2); ctx.lineTo(-r * .1, 0); ctx.closePath();
+        ctx.fillStyle = hullFill(r * .3, hot, "#7fa0c8", "#2a3f66", "#0a1220"); ctx.fill(); vol(r * .3, hot); stk(fill, .9, 1.4); ctx.restore();
       }
-    }
-
-    // широкое крыло
-    ctx.beginPath();
-    ctx.moveTo(0, r * 0.86);
-    ctx.lineTo(r * 0.48, r * 0.64);
-    ctx.lineTo(r * 1.16, r * 0.26);
-    ctx.lineTo(r * 1.36, -r * 0.28);
-    ctx.lineTo(r * 0.84, -r * 0.48);
-    ctx.lineTo(r * 0.34, -r * 0.34);
-    ctx.lineTo(0, -r * 0.8);
-    ctx.lineTo(-r * 0.34, -r * 0.34);
-    ctx.lineTo(-r * 0.84, -r * 0.48);
-    ctx.lineTo(-r * 1.36, -r * 0.28);
-    ctx.lineTo(-r * 1.16, r * 0.26);
-    ctx.lineTo(-r * 0.48, r * 0.64);
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#4a3a2c", "#221b2e", "#0b0813");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, hot ? 1 : 0.9);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // панели и предупреждающие полосы
-    ctx.strokeStyle = "rgba(255,255,255,0.1)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.3, r * 0.5);
-      ctx.lineTo(side * r * 0.98, r * 0.12);
-      ctx.moveTo(side * r * 0.56, r * 0.56);
-      ctx.lineTo(side * r * 1.2, r * 0.14);
-      ctx.moveTo(side * r * 0.4, -r * 0.2);
-      ctx.lineTo(side * r * 1.02, -r * 0.34);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = rgba(fill, 0.5);
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        ctx.moveTo(side * r * (0.55 + i * 0.18), r * (0.34 - i * 0.12));
-        ctx.lineTo(side * r * (0.64 + i * 0.18), r * (0.24 - i * 0.12));
-      }
-    }
-    ctx.stroke();
-
-    // фюзеляж
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.02);
-    ctx.lineTo(r * 0.3, r * 0.52);
-    ctx.lineTo(r * 0.34, -r * 0.5);
-    ctx.lineTo(r * 0.18, -r * 0.86);
-    ctx.lineTo(-r * 0.18, -r * 0.86);
-    ctx.lineTo(-r * 0.34, -r * 0.5);
-    ctx.lineTo(-r * 0.3, r * 0.52);
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r * 0.9, hot, "#4f3f2f", "#241c2c", "#0a0711");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.65);
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    // кабина
-    ctx.fillStyle = glassFill(0, r * 0.52, r * 0.16, r * 0.24, "#ffd08a");
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.52, r * 0.16, r * 0.24, 0, 0, TAU);
-    ctx.fill();
-
-    // бомболюки
-    const blink = 0.45 + Math.sin(t * 8) * 0.35;
-    for (let i = 0; i < 2; i++) {
-      const by = -r * 0.18 + i * r * 0.34;
-      for (const side of [-1, 1]) {
-        ctx.fillStyle = "rgba(6,9,18,0.95)";
-        roundRectPath(side * r * 0.14 - r * 0.09, by, r * 0.18, r * 0.24, r * 0.05);
-        ctx.fill();
-        ctx.strokeStyle = rgba(fill, 0.45);
-        ctx.lineWidth = 0.8;
-        ctx.stroke();
-        lightDot(side * r * 0.14, by + r * 0.12, r * 0.035, fill, blink);
-      }
-    }
-
-    // турели
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 0.42, r * 0.06);
-      ctx.fillStyle = hot ? "#ffffff" : "#15182c";
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.12, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.65);
-      ctx.lineWidth = 0.9;
-      ctx.stroke();
-      for (const bx of [-0.035, 0.035]) {
-        ctx.fillStyle = "#080b16";
-        ctx.fillRect(bx * r - r * 0.018, r * 0.08, r * 0.036, r * 0.3);
-      }
-      ctx.restore();
-    }
+    };
+    shards(false);
+    sym(r, [[0, 1.3], [.5, .25], [.38, -.55], [0, -1.0]], fill, hot, ["#5a77a0", "#25375a", "#0a1220"], 2.2);
+    ctx.strokeStyle = "rgba(255,255,255,.14)"; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (const s of [-1, 1]) { ctx.moveTo(0, r * 1.3); ctx.lineTo(s * r * .2, -r * .1); ctx.lineTo(s * r * .38, -r * .55); ctx.moveTo(s * r * .5, r * .25); ctx.lineTo(s * r * .2, -r * .1); }
+    ctx.moveTo(0, -r); ctx.lineTo(0, -r * .1); ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,.13)"; ctx.beginPath(); ctx.moveTo(0, r * 1.3); ctx.lineTo(-r * .5, r * .25); ctx.lineTo(-r * .38, -r * .55); ctx.lineTo(0, -r); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(0,0,12,.3)"; ctx.beginPath(); ctx.moveTo(0, r * 1.3); ctx.lineTo(r * .5, r * .25); ctx.lineTo(r * .38, -r * .55); ctx.lineTo(0, -r); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "rgba(255,255,255,.1)"; ctx.beginPath(); ctx.moveTo(0, r * 1.3); ctx.lineTo(-r * .2, -r * .1); ctx.lineTo(r * .2, -r * .1); ctx.closePath(); ctx.fill();
+    eye(0, r * .15, r * .25, fill, e.angle);
+    conduit([[0, r * 1.2], [-r * .15, r * .3], [r * .1, -r * .4], [0, -r * .9]], fill, 1.4);
+    ctx.strokeStyle = rgba(fill, .3); ctx.lineWidth = 1; ctx.setLineDash([3, 6]); ctx.beginPath(); ctx.ellipse(0, r * .1, r * 1.15, r * .35, 0, 0, TAU); ctx.stroke(); ctx.setLineDash([]);
+    for (const [x, y] of [[0, 1.3], [.5, .25], [-.5, .25], [.38, -.55], [-.38, -.55], [0, -1]]) lightDot(x * r, y * r, r * .035, "#ffffff", .5 + .4 * Math.sin(NOW * 3 + x * 9));
+    shards(true);
+    thr([0], -.98, r, fill, hot, t);
   }
 
-  function drawBossMarksman(e, fill, hot, r, t) {
-    // двигатели
-    for (const x of [-0.26, 0.26]) {
-      thruster(x * r, -r * 0.94, r * 0.15, r * 1.1, fill, hot, t * 18 + x * 9);
+  // 13. ИМПЕРАТОР — финальный босс: золотые перья, корона, нимб
+  function drawBossEmperor(e, fill, hot, r, t) {
+    const gold = hot ? "#ffffff" : "#ffd166", c = ["#7a3a2a", "#34141a", "#10050a"];
+    for (const s of [-1, 1]) for (let i = 0; i < 4; i++) {
+      const y = r * .3 - i * r * .28, L = r * (1.55 - i * .13);
+      ctx.beginPath(); ctx.moveTo(s * r * .35, y + r * .15); ctx.lineTo(s * L, y - r * .35); ctx.lineTo(s * r * .35, y - r * .12); ctx.closePath();
+      ctx.fillStyle = hullFill(r, hot, ...c); ctx.fill(); vol(r, hot); stk(gold, .75, 1.6);
+      lightDot(s * L, y - r * .35, r * .04, gold, .9);
     }
-
-    // рельсовый ствол
-    for (const side of [-1, 1]) {
-      ctx.fillStyle = hot ? "#ffffff" : "#2b3658";
-      ctx.fillRect(side * r * 0.1 - r * 0.04, r * 0.9, r * 0.08, r * 1.45);
-      ctx.strokeStyle = rgba(fill, 0.45);
-      ctx.lineWidth = 0.7;
-      ctx.strokeRect(side * r * 0.1 - r * 0.04, r * 0.9, r * 0.08, r * 1.45);
+    ctx.save(); ctx.rotate(e.angle * .6); ctx.strokeStyle = rgba(fill, .5); ctx.lineWidth = 1.4; ctx.setLineDash([r * .1, r * .08]);
+    ctx.beginPath(); ctx.arc(0, 0, r * 1.25, 0, TAU); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+    for (let k = -2; k <= 2; k++) {
+      ctx.beginPath(); ctx.moveTo(k * r * .16 - r * .07, -r * .78); ctx.lineTo(k * r * .16, -r * (1.05 + (2 - Math.abs(k)) * .08)); ctx.lineTo(k * r * .16 + r * .07, -r * .78); ctx.closePath();
+      ctx.fillStyle = gold; ctx.fill();
     }
-
-    const charge = 0.35 + Math.sin(t * 4.2) * 0.2;
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const eg = ctx.createLinearGradient(0, r * 0.9, 0, r * 2.5);
-    eg.addColorStop(0, rgba(fill, 0.15 + charge * 0.35));
-    eg.addColorStop(1, rgba(fill, 0.1 + charge * 0.5));
-    ctx.fillStyle = eg;
-    ctx.fillRect(-r * 0.06, r * 0.9, r * 0.12, r * 1.5);
-    ctx.restore();
-
-    for (let i = 0; i < 4; i++) {
-      const y = r * (1.12 + i * 0.34);
-      ctx.fillStyle = hot ? "#ffffff" : "#39456c";
-      roundRectPath(-r * 0.19, y, r * 0.38, r * 0.09, r * 0.03);
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.5 + charge * 0.4);
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
+    sym(r, [[0, 1.25], [.3, 1.0], [.55, .4], [.62, -.35], [.4, -.8], [0, -.9]], gold, hot, c, 2.4);
+    for (const s of [-1, 1]) { ctx.fillStyle = "#0a0408"; ctx.fillRect(s * r * .42 - r * .05, r * .5, r * .1, r * .6); ctx.fillStyle = rgba(fill, .9); ctx.fillRect(s * r * .42 - r * .06, r * 1.05, r * .12, r * .07); }
+    for (const s of [-1, 1]) { turret(s * r * .5, r * .28, r * .08, gold, hot, Math.PI / 2 + Math.sin(t * 1.6 + s) * .2); lightDot(s * r * .3, r * .8, r * .045, fill, .9); lightDot(s * r * .55, -r * .2, r * .035, gold, .8); }
+    eye(0, r * .2, r * .34, fill, e.angle * 1.2);
+    for (const s of [-1, 1]) {
+      conduit([[s * r * .4, r * .9], [s * r * .5, r * .4], [s * r * .45, -r * .3], [s * r * .3, -r * .7]], fill, 1.4);
+      for (let i = 0; i < 4; i++) { const y = r * .3 - i * r * .28, L = r * (1.55 - i * .13); ctx.strokeStyle = "rgba(255,220,140,.35)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(s * r * .5, y + r * .04); ctx.lineTo(s * L * .9, y - r * .3); ctx.stroke(); }
+      antenna(s * r * .2, r * 1.1, s * r * .12, r * .3, gold, s);
     }
-
-    ctx.fillStyle = hot ? "#ffffff" : "#0a0e1c";
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.17, r * 2.34);
-    ctx.lineTo(r * 0.17, r * 2.34);
-    ctx.lineTo(r * 0.1, r * 2.52);
-    ctx.lineTo(-r * 0.1, r * 2.52);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.85);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    lightDot(0, r * 2.44, r * 0.07 + charge * r * 0.04, fill, 0.9);
-
-    // корпус эсминца
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.32);
-    ctx.lineTo(r * 0.42, r * 0.86);
-    ctx.lineTo(r * 0.58, r * 0.24);
-    ctx.lineTo(r * 0.94, -r * 0.02);
-    ctx.lineTo(r * 0.5, -r * 0.34);
-    ctx.lineTo(r * 0.56, -r * 0.92);
-    ctx.lineTo(r * 0.2, -r * 1.08);
-    ctx.lineTo(0, -r * 0.78);
-    ctx.lineTo(-r * 0.2, -r * 1.08);
-    ctx.lineTo(-r * 0.56, -r * 0.92);
-    ctx.lineTo(-r * 0.5, -r * 0.34);
-    ctx.lineTo(-r * 0.94, -r * 0.02);
-    ctx.lineTo(-r * 0.58, r * 0.24);
-    ctx.lineTo(-r * 0.42, r * 0.86);
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#3d5274", "#192741", "#070c14");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, hot ? 1 : 0.9);
-    ctx.lineWidth = 1.8;
-    ctx.stroke();
-
-    // сенсорные панели
-    ctx.strokeStyle = "rgba(255,255,255,0.14)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.22, r * 0.7);
-      ctx.lineTo(side * r * 0.72, r * 0.16);
-      ctx.moveTo(side * r * 0.3, -r * 0.3);
-      ctx.lineTo(side * r * 0.48, -r * 0.82);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = rgba(fill, 0.45);
-    ctx.lineWidth = 1.1;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.34, r * 0.5);
-      ctx.lineTo(side * r * 0.88, -r * 0.02);
-    }
-    ctx.stroke();
-
-    // кабина и сенсорный купол
-    ctx.fillStyle = glassFill(0, r * 0.46, r * 0.17, r * 0.28);
-    ctx.beginPath();
-    ctx.ellipse(0, r * 0.46, r * 0.17, r * 0.28, 0, 0, TAU);
-    ctx.fill();
-
-    ctx.fillStyle = hot ? "#ffffff" : "#111a32";
-    ctx.beginPath();
-    ctx.arc(0, -r * 0.12, r * 0.19, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.85);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    lightDot(0, -r * 0.12, r * 0.07, fill, 0.9);
-
-    // боковые сенсоры
-    for (const side of [-1, 1]) {
-      lightDot(side * r * 0.66, r * 0.18, r * 0.04, fill, 0.75);
-      lightDot(side * r * 0.6, -r * 0.56, r * 0.035, "#ffffff", 0.5);
-    }
-  }
-
-  function drawBossSwarm(e, fill, hot, r, t) {
-    // щупальца
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU + Math.PI / 2 + Math.sin(t * 0.7 + i) * 0.1;
-      ctx.save();
-      ctx.rotate(a);
-
-      ctx.strokeStyle = hot ? "#ffffff" : "#293255";
-      ctx.lineWidth = r * 0.11;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.moveTo(0, r * 0.28);
-      ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.94, r * 0.56);
-      ctx.stroke();
-
-      ctx.strokeStyle = rgba(fill, 0.55);
-      ctx.lineWidth = r * 0.035;
-      ctx.beginPath();
-      ctx.moveTo(0, r * 0.28);
-      ctx.quadraticCurveTo(r * 0.4, r * 0.8, r * 0.94, r * 0.56);
-      ctx.stroke();
-
-      // клешня
-      ctx.strokeStyle = rgba(fill, 0.8);
-      ctx.lineWidth = r * 0.045;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.94, r * 0.56);
-      ctx.lineTo(r * 1.06, r * 0.4);
-      ctx.moveTo(r * 0.94, r * 0.56);
-      ctx.lineTo(r * 1.08, r * 0.7);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // яйцевые капсулы
-    for (let i = 0; i < 3; i++) {
-      const a = (i / 3) * TAU + Math.PI / 6 + Math.sin(t * 0.8 + i) * 0.08;
-      const px = Math.cos(a) * r * 0.58;
-      const py = Math.sin(a) * r * 0.58;
-      const pg = ctx.createRadialGradient(px, py, 0, px, py, r * 0.3);
-      pg.addColorStop(0, rgba(fill, 0.75));
-      pg.addColorStop(1, rgba(fill, 0));
-      ctx.save();
-      ctx.globalCompositeOperation = "lighter";
-      ctx.fillStyle = pg;
-      ctx.beginPath();
-      ctx.arc(px, py, r * 0.3, 0, TAU);
-      ctx.fill();
-      ctx.restore();
-
-      ctx.fillStyle = hot ? "#ffffff" : "#12281f";
-      ctx.beginPath();
-      ctx.ellipse(px, py, r * 0.17, r * 0.22, a, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.75);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      lightDot(px, py, r * 0.05, fill, 0.85);
-    }
-
-    // сегментированный панцирь
-    ctx.beginPath();
-    const verts = 16;
-    for (let i = 0; i < verts; i++) {
-      const a = (i / verts) * TAU;
-      const rad = r * (0.72 + Math.sin(i * 2.4) * 0.07 + Math.sin(t * 1.6 + i) * 0.02);
-      const px = Math.cos(a) * rad;
-      const py = Math.sin(a) * rad;
-      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
-    }
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#35544a", "#172c2b", "#07110f");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, hot ? 1 : 0.85);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // сегментные линии
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 4; i++) {
-      ctx.beginPath();
-      ctx.arc(0, 0, r * (0.26 + i * 0.12), 0, TAU);
-      ctx.stroke();
-    }
-    ctx.strokeStyle = rgba(fill, 0.3);
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * TAU;
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * r * 0.24, Math.sin(a) * r * 0.24);
-      ctx.lineTo(Math.cos(a) * r * 0.7, Math.sin(a) * r * 0.7);
-      ctx.stroke();
-    }
-
-    // светящееся ядро
-    const pulse = 0.85 + Math.sin(t * 2.6) * 0.15;
-    const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.42 * pulse);
-    cg.addColorStop(0, "#ffffff");
-    cg.addColorStop(0.3, rgba(fill, 0.9));
-    cg.addColorStop(0.7, rgba(fill, 0.25));
-    cg.addColorStop(1, rgba(fill, 0));
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = cg;
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.42 * pulse, 0, TAU);
-    ctx.fill();
-    ctx.restore();
-
-    ctx.fillStyle = "#06100c";
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.16, 0, TAU);
-    ctx.fill();
-    lightDot(-r * 0.04, -r * 0.05, r * 0.05, "#ffffff", 0.9);
-
-    // глаза
-    for (const side of [-1, 1]) {
-      lightDot(side * r * 0.2, r * 0.34, r * 0.05, fill, 0.9);
-      lightDot(side * r * 0.1, r * 0.46, r * 0.035, fill, 0.75);
-    }
-
-    // усики
-    ctx.strokeStyle = rgba(fill, 0.55);
-    ctx.lineWidth = r * 0.03;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.16, -r * 0.62);
-      ctx.quadraticCurveTo(side * r * 0.4, -r * 0.98, side * r * 0.58, -r * 1.14);
-    }
-    ctx.stroke();
-    for (const side of [-1, 1]) lightDot(side * r * 0.58, -r * 1.14, r * 0.035, fill, 0.8);
-  }
-
-  function drawBossPulsar(e, fill, hot, r, t) {
-    // расходящиеся волновые дуги
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    for (let k = 0; k < 3; k++) {
-      const rr = r * (1.08 + k * 0.16) + Math.sin(t * 2.4 - k * 0.8) * r * 0.06;
-      ctx.strokeStyle = rgba(fill, 0.22 - k * 0.05);
-      ctx.lineWidth = 2.2 - k * 0.4;
-      ctx.beginPath();
-      ctx.arc(0, 0, rr, t * 0.6 + k, t * 0.6 + k + TAU * 0.72);
-      ctx.stroke();
-    }
-    ctx.restore();
-
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU - Math.PI / 2;
-      const x = Math.cos(a) * r * 0.95;
-      const y = Math.sin(a) * r * 0.82;
-      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#582f36", "#2c1625", "#0b0712");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.9);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    for (const side of [-1, 1]) {
-      const yy = side * r * 0.9;
-      roundRectPath(-r * 0.18, yy - r * 0.1, r * 0.36, r * 0.2, r * 0.06);
-      ctx.fillStyle = hot ? "#ffffff" : "#170d18";
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.8);
-      ctx.lineWidth = 1.2;
-      ctx.stroke();
-      lightDot(0, yy, r * 0.06, fill, 0.9);
-    }
-
-    const pulse = 0.52 + Math.sin(t * 3.2) * 0.06;
-    ctx.fillStyle = "#080610";
-    ctx.beginPath();
-    ctx.arc(0, 0, r * pulse, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.9);
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-    lightDot(Math.cos(t * 1.7) * r * 0.2, Math.sin(t * 1.7) * r * 0.2, r * 0.09, fill, 0.95);
-  }
-
-  function drawBossLancer(e, fill, hot, r, t) {
-    // боковые копья
-    ctx.strokeStyle = rgba(fill, 0.8);
-    ctx.lineWidth = r * 0.07;
-    ctx.beginPath();
-    for (const side of [-1, 1]) {
-      ctx.moveTo(side * r * 0.55, r * 0.1);
-      ctx.lineTo(side * r * 1.15, r * 0.62);
-      ctx.lineTo(side * r * 1.34, r * 0.94);
-    }
-    ctx.stroke();
-    for (const side of [-1, 1]) lightDot(side * r * 1.34, r * 0.94, r * 0.05, fill, 0.95);
-
-    ctx.beginPath();
-    ctx.moveTo(0, r * 1.12);
-    ctx.lineTo(r * 0.42, r * 0.35);
-    ctx.lineTo(r * 0.72, -r * 0.45);
-    ctx.lineTo(r * 0.3, -r * 0.32);
-    ctx.lineTo(0, -r * 1.02);
-    ctx.lineTo(-r * 0.3, -r * 0.32);
-    ctx.lineTo(-r * 0.72, -r * 0.45);
-    ctx.lineTo(-r * 0.42, r * 0.35);
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#3b3057", "#1d1835", "#080614");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.95);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    ctx.strokeStyle = rgba(fill, 0.6);
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 0.9);
-    ctx.lineTo(0, r * 0.85);
-    ctx.stroke();
-    for (const side of [-1, 1]) {
-      ctx.beginPath();
-      ctx.moveTo(side * r * 0.18, r * 0.62);
-      ctx.lineTo(side * r * 0.52, r * 0.92);
-      ctx.stroke();
-    }
-    lightDot(0, r * 0.1, r * (0.16 + Math.sin(t * 5) * 0.012), fill, 0.95);
-  }
-
-  function drawBossMiner(e, fill, hot, r, t) {
-    ctx.beginPath();
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * TAU + Math.PI / 6;
-      const x = Math.cos(a) * r * 0.92;
-      const y = Math.sin(a) * r * 0.82;
-      if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = hullFill(r, hot, "#5c4220", "#30230f", "#0a0805");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.9);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // бур и рудные отсеки
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.28, r * 0.7);
-    ctx.lineTo(0, r * 1.18);
-    ctx.lineTo(r * 0.28, r * 0.7);
-    ctx.closePath();
-    ctx.fillStyle = hot ? "#ffffff" : "#1c1408";
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.85);
-    ctx.lineWidth = 1.4;
-    ctx.stroke();
-
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.translate(side * r * 0.94, r * 0.14);
-      ctx.rotate(t * (side > 0 ? 1 : -1) * 0.9);
-      ctx.strokeStyle = rgba(fill, 0.85);
-      ctx.lineWidth = r * 0.035;
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.23, 0, TAU);
-      for (let k = 0; k < 4; k++) {
-        const a = (k / 4) * TAU;
-        ctx.moveTo(Math.cos(a) * r * 0.08, Math.sin(a) * r * 0.08);
-        ctx.lineTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    for (const x of [-0.32, 0, 0.32]) {
-      roundRectPath(x * r - r * 0.09, -r * 0.3, r * 0.18, r * 0.36, r * 0.03);
-      ctx.fillStyle = "#0d0a06";
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.7);
-      ctx.lineWidth = 1;
-      ctx.stroke();
-      lightDot(x * r, -r * 0.12, r * 0.045, fill, 0.9);
-    }
-  }
-
-  function drawBossMirror(e, fill, hot, r, t) {
-    for (const side of [-1, 1]) {
-      ctx.save();
-      ctx.scale(side, 1);
-      ctx.beginPath();
-      ctx.moveTo(r * 0.08, -r * 1.02);
-      ctx.lineTo(r * 0.98, -r * 0.24);
-      ctx.lineTo(r * 0.64, r * 0.86);
-      ctx.lineTo(r * 0.1, r * 1.0);
-      ctx.closePath();
-      ctx.fillStyle = hullFill(r, hot, "#23485c", "#122b3a", "#060d14");
-      ctx.fill();
-      ctx.strokeStyle = rgba(fill, 0.9);
-      ctx.lineWidth = 1.8;
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255,255,255,0.22)";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.22, -r * 0.8);
-      ctx.lineTo(r * 0.78, -r * 0.22);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    ctx.strokeStyle = rgba(fill, 0.8);
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 1.14);
-    ctx.lineTo(0, r * 1.14);
-    ctx.stroke();
-    for (const y of [-0.6, 0.6]) lightDot(0, y * r, r * 0.05, fill, 0.9);
-
-    ctx.fillStyle = "#060d14";
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.3, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.95);
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    lightDot(Math.sin(t * 2) * r * 0.08, 0, r * (0.1 + Math.sin(t * 3.5) * 0.015), fill, 0.95);
-  }
-
-  function drawBossCore(e, fill, hot, r, t) {
-    ctx.strokeStyle = rgba(fill, 0.7);
-    ctx.lineWidth = r * 0.05;
-    ctx.beginPath();
-    for (let k = 0; k < 8; k++) {
-      const a = (k / 8) * TAU + t * 0.15;
-      ctx.moveTo(Math.cos(a) * r * 0.72, Math.sin(a) * r * 0.72);
-      ctx.lineTo(Math.cos(a) * r * 1.16, Math.sin(a) * r * 1.16);
-    }
-    ctx.stroke();
-
-    for (let k = 0; k < 3; k++) {
-      ctx.save();
-      ctx.rotate(t * (k % 2 ? -0.5 : 0.7) + k);
-      ctx.strokeStyle = rgba(fill, 0.42 - k * 0.08);
-      ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.ellipse(0, 0, r * (0.9 + k * 0.12), r * (0.6 + k * 0.1), 0, 0, TAU);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.78, 0, TAU);
-    ctx.fillStyle = hullFill(r, hot, "#591724", "#2c0a14", "#090205");
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 0.95);
-    ctx.lineWidth = 2.4;
-    ctx.stroke();
-
-    const pulse = 1 + Math.sin(t * 4) * 0.09;
-    ctx.fillStyle = hot ? "#ffffff" : "#1a0309";
-    ctx.beginPath();
-    ctx.arc(0, 0, r * 0.3 * pulse, 0, TAU);
-    ctx.fill();
-    ctx.strokeStyle = rgba(fill, 1);
-    ctx.lineWidth = 2.5;
-    ctx.stroke();
-    lightDot(0, 0, r * 0.1, fill, 0.95);
+    ctx.save(); ctx.rotate(-e.angle * .6); for (let i = 0; i < 16; i++) { const a = i / 16 * TAU; lightDot(Math.cos(a) * r * 1.25, Math.sin(a) * r * 1.25, r * .028, i % 4 ? fill : gold, .8); } ctx.restore();
+    ctx.fillStyle = gold; ctx.beginPath(); ctx.moveTo(0, r * .98); ctx.lineTo(r * .08, r * .88); ctx.lineTo(0, r * .78); ctx.lineTo(-r * .08, r * .88); ctx.closePath(); ctx.fill();
+    thr([-.5, .5], -.72, r, fill, hot, t);
   }
 
   function drawBoss(e) {
@@ -8524,16 +8362,19 @@
     ctx.rotate(Math.sin(t * 0.9 + e.seed) * 0.03);
 
     switch (e.style) {
-      case "vortex": drawBossVortex(e, fill, hot, r, t); break;
-      case "bomber": drawBossBomber(e, fill, hot, r, t); break;
-      case "marksman": drawBossMarksman(e, fill, hot, r, t); break;
-      case "swarm": drawBossSwarm(e, fill, hot, r, t); break;
-      case "pulsar": drawBossPulsar(e, fill, hot, r, t); break;
-      case "lancer": drawBossLancer(e, fill, hot, r, t); break;
-      case "miner": drawBossMiner(e, fill, hot, r, t); break;
-      case "mirror": drawBossMirror(e, fill, hot, r, t); break;
-      case "core": drawBossCore(e, fill, hot, r, t); break;
-      default: drawBossWarden(e, fill, hot, r, t);
+      case "sickle": drawBossSickle(e, fill, hot, r, t); break;
+      case "leviathan": drawBossLeviathan(e, fill, hot, r, t); break;
+      case "spider": drawBossSpider(e, fill, hot, r, t); break;
+      case "carrier": drawBossCarrier(e, fill, hot, r, t); break;
+      case "lotus": drawBossLotus(e, fill, hot, r, t); break;
+      case "trident": drawBossTrident(e, fill, hot, r, t); break;
+      case "crab": drawBossCrab(e, fill, hot, r, t); break;
+      case "gear": drawBossGear(e, fill, hot, r, t); break;
+      case "scarab": drawBossScarab(e, fill, hot, r, t); break;
+      case "octo": drawBossOcto(e, fill, hot, r, t); break;
+      case "monolith": drawBossMonolith(e, fill, hot, r, t); break;
+      case "emperor": drawBossEmperor(e, fill, hot, r, t); break;
+      default: drawBossTitan(e, fill, hot, r, t);
     }
   }
 
@@ -8805,6 +8646,29 @@
     }
   }
 
+  // лазерная атака: сначала тонкая линия-предупреждение, потом полоса луча
+  function drawBossBeams() {
+    for (const e of G.enemies) {
+      const L = e.laser;
+      if (!L || e.dead) continue;
+      const warn = L.t < L.warn;
+      const core = warn ? 0.5 : 0.85;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const g = ctx.createLinearGradient(L.x - L.w, 0, L.x + L.w, 0);
+      g.addColorStop(0, rgba(L.color, 0));
+      g.addColorStop(0.5, rgba(L.color, warn ? 0.3 : 0.8));
+      g.addColorStop(1, rgba(L.color, 0));
+      ctx.fillStyle = g;
+      ctx.fillRect(L.x - L.w, 0, L.w * 2, G.h);
+      ctx.fillStyle = warn
+        ? rgba(L.color, 0.35 + 0.25 * Math.sin(L.t * 26))
+        : `rgba(255,255,255,${core})`;
+      ctx.fillRect(L.x - (warn ? 1 : 2), 0, warn ? 2 : 4, G.h);
+      ctx.restore();
+    }
+  }
+
   function drawBossBar() {
     if (G.mode !== "play") return;
     const boss = G.enemies.find((e) => e.type === "boss" && !e.dead);
@@ -8820,7 +8684,9 @@
     ctx.textBaseline = "middle";
     ctx.font = "700 11px 'Google Sans Flex', sans-serif";
     ctx.fillStyle = rgba(boss.color, 0.95);
-    ctx.fillText(boss.enraged ? F("{0}: ЯРОСТЬ", L(boss.name)) : L(boss.name), w / 2, by + 7);
+    const bossLabel = boss.phaseTwo ? F("{0} · ФАЗА II", L(boss.name))
+      : boss.enraged ? F("{0}: ЯРОСТЬ", L(boss.name)) : L(boss.name);
+    ctx.fillText(bossLabel, w / 2, by + 7);
 
     ctx.fillStyle = "rgba(255,255,255,0.1)";
     ctx.fillRect(bx, by + 16, bw, 7);
@@ -8831,6 +8697,15 @@
     g.addColorStop(1, rgba(boss.color, 0.95));
     ctx.fillStyle = g;
     ctx.fillRect(bx, by + 16, bw * k, 7);
+
+    if (boss.phaseTwo) {
+      ctx.strokeStyle = "rgba(255,255,255,0.6)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx + bw * 0.5, by + 16);
+      ctx.lineTo(bx + bw * 0.5, by + 23);
+      ctx.stroke();
+    }
 
     ctx.strokeStyle = rgba(boss.color, 0.5);
     ctx.lineWidth = 1;
@@ -8871,6 +8746,7 @@
     if (!G.last) G.last = ts;
     let dt = (ts - G.last) / 1000;
     G.last = ts;
+    NOW = ts / 1000;
     dt = Math.min(dt, 1 / 30);
 
     update(dt);
