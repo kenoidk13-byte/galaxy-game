@@ -5810,8 +5810,9 @@
   // крупные снаряды с len 46 раздувались вместе со шлейфом.
   const SHOT_TEX = { w: 62, h: 20, head: 42, cy: 10, q: 4 };
   const shotTextures = new Map();
-  function shotTexture(color) {
-    let tex = shotTextures.get(color);
+  function shotTexture(color, soft) {
+    const key = soft ? color + "|soft" : color;
+    let tex = shotTextures.get(key);
     if (tex) return tex;
     const { w, h, head, cy, q } = SHOT_TEX;
     tex = document.createElement("canvas");
@@ -5831,40 +5832,48 @@
 
     const tail = c.createLinearGradient(0, cy, head, cy);
     tail.addColorStop(0, rgba(color, 0));
-    tail.addColorStop(0.5, rgba(color, 0.3));
-    tail.addColorStop(1, rgba(color, 0.95));
+    tail.addColorStop(0.5, rgba(color, soft ? 0.2 : 0.3));
+    tail.addColorStop(1, rgba(color, soft ? 0.75 : 0.95));
     c.fillStyle = tail;
     c.beginPath();
-    c.moveTo(0, cy);
-    c.quadraticCurveTo(head * 0.5, cy - 2.4, head, cy - 3.4);
-    c.lineTo(head, cy + 3.4);
-    c.quadraticCurveTo(head * 0.5, cy + 2.4, 0, cy);
+    if (soft) {
+      // на телефоне острый клин читается как треугольник — мягкий овал
+      c.ellipse(head * 0.52, cy, head * 0.48, 3.6, 0, 0, TAU);
+    } else {
+      c.moveTo(0, cy);
+      c.quadraticCurveTo(head * 0.5, cy - 2.4, head, cy - 3.4);
+      c.lineTo(head, cy + 3.4);
+      c.quadraticCurveTo(head * 0.5, cy + 2.4, 0, cy);
+    }
     c.fill();
 
-    // тонкая светящаяся жила внутри шлейфа — читается как скорость
-    const filament = c.createLinearGradient(0, cy, head, cy);
-    filament.addColorStop(0, rgba(color, 0));
-    filament.addColorStop(0.55, rgba(color, 0.22));
-    filament.addColorStop(1, "rgba(255,255,255,0.6)");
-    c.fillStyle = filament;
-    c.beginPath();
-    c.moveTo(0, cy);
-    c.quadraticCurveTo(head * 0.5, cy - 1, head, cy - 1.4);
-    c.lineTo(head, cy + 1.4);
-    c.quadraticCurveTo(head * 0.5, cy + 1, 0, cy);
-    c.fill();
+    if (!soft) {
+      // тонкая светящаяся жила внутри шлейфа — читается как скорость
+      const filament = c.createLinearGradient(0, cy, head, cy);
+      filament.addColorStop(0, rgba(color, 0));
+      filament.addColorStop(0.55, rgba(color, 0.22));
+      filament.addColorStop(1, "rgba(255,255,255,0.6)");
+      c.fillStyle = filament;
+      c.beginPath();
+      c.moveTo(0, cy);
+      c.quadraticCurveTo(head * 0.5, cy - 1, head, cy - 1.4);
+      c.lineTo(head, cy + 1.4);
+      c.quadraticCurveTo(head * 0.5, cy + 1, 0, cy);
+      c.fill();
+    }
 
-    const core = c.createRadialGradient(head, cy, 0, head, cy, 4.6);
+    const core = c.createRadialGradient(head, cy, 0, head, cy, soft ? 7 : 4.6);
     core.addColorStop(0, "rgba(255,255,255,1)");
-    core.addColorStop(0.35, "rgba(255,255,255,0.88)");
-    core.addColorStop(0.7, rgba(color, 0.9));
+    core.addColorStop(soft ? 0.45 : 0.35, soft ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.88)");
+    core.addColorStop(soft ? 0.75 : 0.7, rgba(color, 0.9));
     core.addColorStop(1, rgba(color, 0));
     c.fillStyle = core;
     c.beginPath();
-    c.ellipse(head, cy, 5.2, 3.6, 0, 0, TAU);
+    // на телефоне ядро вытянуто вдоль полёта, а не поперёк
+    c.ellipse(head, cy, soft ? 9 : 5.2, 3.6, 0, 0, TAU);
     c.fill();
 
-    shotTextures.set(color, tex);
+    shotTextures.set(key, tex);
     return tex;
   }
 
@@ -5898,27 +5907,33 @@
     for (const b of G.bullets) {
       const c = b.color || COLORS.cyan;
       if (b.orb) {
-        const R = b.r * 1.5;
+        const R = b.r * (IS_TOUCH ? 0.95 : 1.5);
         ctx.drawImage(orbTexture(c), b.x - R, b.y - R, R * 2, R * 2);
       } else {
-        // len из конфига оружия — длина шлейфа, r — размер раскалённой головки
+        // len из конфига оружия — длина шлейфа, r — размер раскалённой головки.
+        // На телефоне тот же снаряд чуть мельче относительно узкого экрана.
+        const k = IS_TOUCH ? 0.72 : 1;
         const stretch = b.heavy ? 0.45 : 0.65;
-        const sx = Math.max(0.22, (b.len || 20) * stretch / SHOT_TEX.head);
-        const sy = (0.5 + 0.34 * (b.r / 3.4)) * (b.thin ? 0.62 : 1);
+        const sx = Math.max(0.22, (b.len || 20) * stretch / SHOT_TEX.head) * k;
+        const sy = (0.5 + 0.34 * (b.r / 3.4)) * (b.thin ? 0.62 : 1) * k;
         ctx.save();
         ctx.translate(b.x, b.y);
         ctx.rotate(Math.atan2(b.vy, b.vx));
-        ctx.drawImage(shotTexture(c),
+        ctx.drawImage(shotTexture(c, IS_TOUCH),
           -SHOT_TEX.head * sx, -SHOT_TEX.cy * sy,
           SHOT_TEX.w * sx, SHOT_TEX.h * sy);
         ctx.restore();
       }
 
       if (b.heavy || b.orb) {
-        ctx.strokeStyle = rgba(c, b.heavy ? 0.6 : 0.45);
-        ctx.lineWidth = b.heavy ? 1.2 : 0.9;
+        // ударное кольцо на телефоне не больше прежней пули
+        const ring = IS_TOUCH
+          ? (b.heavy ? 0.95 : 1.0)
+          : (b.heavy ? 1.45 : 1.35);
+        ctx.strokeStyle = rgba(c, IS_TOUCH ? 0.5 : b.heavy ? 0.6 : 0.45);
+        ctx.lineWidth = IS_TOUCH ? 0.8 : b.heavy ? 1.2 : 0.9;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * (b.heavy ? 1.45 : 1.35), 0, TAU);
+        ctx.arc(b.x, b.y, b.r * ring, 0, TAU);
         ctx.stroke();
       }
     }
@@ -6297,7 +6312,7 @@
     // дульная вспышка: связывает выстрел с носом корабля и даёт ему вес
     if (!REDUCED_MOTION && s.muzzle > 0) {
       const k = clamp(s.muzzle / MUZZLE_TIME, 0, 1);
-      const R = 10 + 9 * (1 - k);
+      const R = (10 + 9 * (1 - k)) * (IS_TOUCH ? 0.8 : 1);
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       const flash = ctx.createRadialGradient(0, -16, 0, 0, -16, R);
@@ -6308,13 +6323,15 @@
       ctx.beginPath();
       ctx.arc(0, -16, R, 0, TAU);
       ctx.fill();
-      ctx.fillStyle = `rgba(255,255,255,${0.5 * k})`;
-      ctx.beginPath();
-      ctx.moveTo(-1.7, -16);
-      ctx.lineTo(0, -16 - 12 * k);
-      ctx.lineTo(1.7, -16);
-      ctx.closePath();
-      ctx.fill();
+      if (!IS_TOUCH) {
+        ctx.fillStyle = `rgba(255,255,255,${0.5 * k})`;
+        ctx.beginPath();
+        ctx.moveTo(-1.7, -16);
+        ctx.lineTo(0, -16 - 12 * k);
+        ctx.lineTo(1.7, -16);
+        ctx.closePath();
+        ctx.fill();
+      }
       ctx.restore();
     }
 
