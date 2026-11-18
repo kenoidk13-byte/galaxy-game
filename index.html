@@ -1787,6 +1787,7 @@
   }
 
   const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
+  const MUZZLE_TIME = 0.075; // как долго видна вспышка у дула после выстрела
 
   // корабль игрока — пререндер 3D-модели (SM_Humans_Fighter02.glb)
   const SHIP_W = 52;
@@ -2584,7 +2585,8 @@
       rapid: 0,
       triple: 0,
       weapon: null,
-      engine: 0
+      engine: 0,
+      muzzle: 0
     },
     pointer: { x: 0, y: 0, active: false, moved: 0, down: false, touch: false },
     keys: Object.create(null)
@@ -3076,6 +3078,7 @@
 
   function shootPlasma(s) {
     s.cool = 0.1 * boonCoolMul();
+    s.muzzle = MUZZLE_TIME;
     pushBullet({
       x: s.x, y: s.y - 22,
       vx: 0, vy: -1450,
@@ -3591,6 +3594,7 @@
     const overdrive = mods.overdrive ? 0.7 : 1;
 
     s.cool = [0.15, 0.12, 0.105, 0.09][rapidLvl] * overdrive * (rapid ? 0.567 : 1) * boonCoolMul();
+    s.muzzle = MUZZLE_TIME;
 
     const per = [1, 1.6, 2.2, 2.8][Math.min(caliber, 3)] * (twin === 1 ? 0.8 : twin > 1 ? 0.7 : 1);
     const radius = 3.4 + 0.27 * caliber;
@@ -3627,6 +3631,7 @@
   function shootWeapon(s, def) {
     const fast = s.rapid > 0;
     s.cool = def.cool * (fast ? 0.72 : 1) * boonCoolMul();
+    s.muzzle = MUZZLE_TIME;
     const cy = s.y - 18;
 
     if (def.id === "plasma") {
@@ -4287,7 +4292,8 @@
       triple: 0,
       weapon: null,
       cool: 0,
-      engine: 0
+      engine: 0,
+      muzzle: 0
     });
     G.paused = false;
     resetPointer();
@@ -4849,6 +4855,7 @@
       if (s.y > G.h - 26) { s.y = G.h - 26; s.vy = Math.min(0, s.vy); }
 
       s.engine += dt;
+      s.muzzle = Math.max(0, (s.muzzle || 0) - dt);
       s.invuln = Math.max(0, s.invuln - dt);
       s.shieldFx = Math.max(0, (s.shieldFx || 0) - dt * 1.7);
       // щит из модернизации возвращается сам
@@ -5796,52 +5803,122 @@
     }
   }
 
+  // Снаряд — не круглый блик, а раскалённая головка со сходящим на нет шлейфом.
+  // Текстура рисуется один раз на цвет и дальше только поворачивается: на каждый
+  // кадр/пулю создавать градиенты дороже, чем сама стрельба.
+  // Длинный хвост задаётся шириной текстуры, а не размером головки: иначе
+  // крупные снаряды с len 46 раздувались вместе со шлейфом.
+  const SHOT_TEX = { w: 62, h: 20, head: 42, cy: 10, q: 4 };
+  const shotTextures = new Map();
+  function shotTexture(color) {
+    let tex = shotTextures.get(color);
+    if (tex) return tex;
+    const { w, h, head, cy, q } = SHOT_TEX;
+    tex = document.createElement("canvas");
+    tex.width = w * q;
+    tex.height = h * q;
+    const c = tex.getContext("2d");
+    c.scale(q, q);
+
+    const halo = c.createRadialGradient(head, cy, 0, head, cy, 7.5);
+    halo.addColorStop(0, rgba(color, 0.58));
+    halo.addColorStop(0.42, rgba(color, 0.24));
+    halo.addColorStop(1, rgba(color, 0));
+    c.fillStyle = halo;
+    c.beginPath();
+    c.ellipse(head, cy, 13, 7.5, 0, 0, TAU);
+    c.fill();
+
+    const tail = c.createLinearGradient(0, cy, head, cy);
+    tail.addColorStop(0, rgba(color, 0));
+    tail.addColorStop(0.5, rgba(color, 0.3));
+    tail.addColorStop(1, rgba(color, 0.95));
+    c.fillStyle = tail;
+    c.beginPath();
+    c.moveTo(0, cy);
+    c.quadraticCurveTo(head * 0.5, cy - 2.4, head, cy - 3.4);
+    c.lineTo(head, cy + 3.4);
+    c.quadraticCurveTo(head * 0.5, cy + 2.4, 0, cy);
+    c.fill();
+
+    // тонкая светящаяся жила внутри шлейфа — читается как скорость
+    const filament = c.createLinearGradient(0, cy, head, cy);
+    filament.addColorStop(0, rgba(color, 0));
+    filament.addColorStop(0.55, rgba(color, 0.22));
+    filament.addColorStop(1, "rgba(255,255,255,0.6)");
+    c.fillStyle = filament;
+    c.beginPath();
+    c.moveTo(0, cy);
+    c.quadraticCurveTo(head * 0.5, cy - 1, head, cy - 1.4);
+    c.lineTo(head, cy + 1.4);
+    c.quadraticCurveTo(head * 0.5, cy + 1, 0, cy);
+    c.fill();
+
+    const core = c.createRadialGradient(head, cy, 0, head, cy, 4.6);
+    core.addColorStop(0, "rgba(255,255,255,1)");
+    core.addColorStop(0.35, "rgba(255,255,255,0.88)");
+    core.addColorStop(0.7, rgba(color, 0.9));
+    core.addColorStop(1, rgba(color, 0));
+    c.fillStyle = core;
+    c.beginPath();
+    c.ellipse(head, cy, 5.2, 3.6, 0, 0, TAU);
+    c.fill();
+
+    shotTextures.set(color, tex);
+    return tex;
+  }
+
+  // Сферы («Нова») не должны превращаться в кометы — для них отдельный круглый
+  // спрайт с тем же белым ядром.
+  const orbTextures = new Map();
+  function orbTexture(color) {
+    let tex = orbTextures.get(color);
+    if (tex) return tex;
+    tex = document.createElement("canvas");
+    tex.width = 128;
+    tex.height = 128;
+    const c = tex.getContext("2d");
+    const glow = c.createRadialGradient(64, 64, 0, 64, 64, 62);
+    glow.addColorStop(0, "rgba(255,255,255,1)");
+    glow.addColorStop(0.35, "rgba(255,255,255,0.9)");
+    glow.addColorStop(0.62, rgba(color, 0.9));
+    glow.addColorStop(0.82, rgba(color, 0.3));
+    glow.addColorStop(1, rgba(color, 0));
+    c.fillStyle = glow;
+    c.beginPath();
+    c.arc(64, 64, 62, 0, TAU);
+    c.fill();
+    orbTextures.set(color, tex);
+    return tex;
+  }
+
   function drawBullets() {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     for (const b of G.bullets) {
       const c = b.color || COLORS.cyan;
-      const rad = (b.thin ? 2.4 : b.heavy ? b.r * 1.3 : b.orb ? b.r * 1.35 : b.r * 1.15) * 0.5;
-      const glow = rad * 2.7;
-      // на тач-устройствах сгусток мельче и слегка вытянут по курсу
-      const rx = IS_TOUCH ? rad * 0.88 : rad;
-      const ry = IS_TOUCH ? rad * 0.68 : rad;
-      const ang = IS_TOUCH ? Math.atan2(b.vy, b.vx) : 0;
-
-      if (IS_TOUCH) {
-        // на тач-устройствах — простые эллипсы без градиентов (дешевле)
-        ctx.fillStyle = rgba(c, 0.85);
-        ctx.beginPath();
-        ctx.ellipse(b.x, b.y, rx * 1.45, ry * 1.45, ang, 0, TAU);
-        ctx.fill();
+      if (b.orb) {
+        const R = b.r * 1.5;
+        ctx.drawImage(orbTexture(c), b.x - R, b.y - R, R * 2, R * 2);
       } else {
-        const halo = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, glow);
-        halo.addColorStop(0, rgba(c, 0.9));
-        halo.addColorStop(0.4, rgba(c, 0.34));
-        halo.addColorStop(1, rgba(c, 0));
-        ctx.fillStyle = halo;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, glow, 0, TAU);
-        ctx.fill();
+        // len из конфига оружия — длина шлейфа, r — размер раскалённой головки
+        const stretch = b.heavy ? 0.45 : 0.65;
+        const sx = Math.max(0.22, (b.len || 20) * stretch / SHOT_TEX.head);
+        const sy = (0.5 + 0.34 * (b.r / 3.4)) * (b.thin ? 0.62 : 1);
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(Math.atan2(b.vy, b.vx));
+        ctx.drawImage(shotTexture(c),
+          -SHOT_TEX.head * sx, -SHOT_TEX.cy * sy,
+          SHOT_TEX.w * sx, SHOT_TEX.h * sy);
+        ctx.restore();
       }
 
-      // тело пули — сгусток
-      const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, Math.max(rx, ry));
-      body.addColorStop(0, "rgba(255,255,255,0.95)");
-      body.addColorStop(0.5, rgba(c, 0.95));
-      body.addColorStop(1, rgba(c, 0.5));
-      ctx.fillStyle = body;
-      ctx.beginPath();
-      if (IS_TOUCH) ctx.ellipse(b.x, b.y, rx, ry, ang, 0, TAU);
-      else ctx.arc(b.x, b.y, rad, 0, TAU);
-      ctx.fill();
-
       if (b.heavy || b.orb) {
-        ctx.strokeStyle = rgba(c, 0.75);
-        ctx.lineWidth = b.heavy ? 1.1 : 0.8;
+        ctx.strokeStyle = rgba(c, b.heavy ? 0.6 : 0.45);
+        ctx.lineWidth = b.heavy ? 1.2 : 0.9;
         ctx.beginPath();
-        if (IS_TOUCH) ctx.ellipse(b.x, b.y, rx * 1.45, ry * 1.45, ang, 0, TAU);
-        else ctx.arc(b.x, b.y, rad * 1.45, 0, TAU);
+        ctx.arc(b.x, b.y, b.r * (b.heavy ? 1.45 : 1.35), 0, TAU);
         ctx.stroke();
       }
     }
@@ -6215,6 +6292,30 @@
       ctx.lineTo(-9, 13);
       ctx.closePath();
       ctx.fill();
+    }
+
+    // дульная вспышка: связывает выстрел с носом корабля и даёт ему вес
+    if (!REDUCED_MOTION && s.muzzle > 0) {
+      const k = clamp(s.muzzle / MUZZLE_TIME, 0, 1);
+      const R = 10 + 9 * (1 - k);
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const flash = ctx.createRadialGradient(0, -16, 0, 0, -16, R);
+      flash.addColorStop(0, `rgba(255,255,255,${0.95 * k})`);
+      flash.addColorStop(0.35, rgba(wcol, 0.7 * k));
+      flash.addColorStop(1, rgba(wcol, 0));
+      ctx.fillStyle = flash;
+      ctx.beginPath();
+      ctx.arc(0, -16, R, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = `rgba(255,255,255,${0.5 * k})`;
+      ctx.beginPath();
+      ctx.moveTo(-1.7, -16);
+      ctx.lineTo(0, -16 - 12 * k);
+      ctx.lineTo(1.7, -16);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
 
     // wingtip nav lights
