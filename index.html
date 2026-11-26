@@ -1956,16 +1956,19 @@
     "плазменные сферы с разлётом": "scattering plasma orbs",
 
     // боссы
-    "СТРАЖ": "WARDEN", "класс 1, дредноут": "class 1, dreadnought",
-    "ВИХРЬ": "VORTEX", "класс 2, воронка": "class 2, vortex",
-    "БОМБАРДИР": "BOMBER", "класс 3, осадный": "class 3, siege",
-    "СНАЙПЕР": "MARKSMAN", "класс 4, прицельный": "class 4, precision",
-    "РОЙ": "SWARM", "класс 5, улей": "class 5, hive",
-    "ПУЛЬСАР": "PULSAR", "класс 6, волновой": "class 6, wave",
-    "ЛАНСЕР": "LANCER", "класс 7, копейщик": "class 7, lancer",
-    "МИНЕР": "MINER", "класс 8, минное поле": "class 8, mine layer",
-    "ЗЕРКАЛО": "MIRROR", "класс 9, отражатель": "class 9, reflector",
-    "ЯДРО": "CORE", "класс 10, финал": "class 10, finale",
+    "ТИТАН": "TITAN", "класс 1, дредноут": "class 1, dreadnought",
+    "СЕРП": "SICKLE", "класс 2, косы": "class 2, scythes",
+    "ЛЕВИАФАН": "LEVIATHAN", "класс 3, змей": "class 3, serpent",
+    "ПАУК": "SPIDER", "класс 4, ткач": "class 4, weaver",
+    "АВИАНОСЕЦ": "CARRIER", "класс 5, ангар": "class 5, hangar",
+    "ЛОТОС": "LOTUS", "класс 6, бутон": "class 6, bud",
+    "ТРИДЕНТ": "TRIDENT", "класс 7, гарпун": "class 7, harpoon",
+    "КРАБ": "CRAB", "класс 8, клешни": "class 8, claws",
+    "ШЕСТЕРНЯ": "GEAR", "класс 9, механизм": "class 9, mechanism",
+    "СКАРАБЕЙ": "SCARAB", "класс 10, панцирь": "class 10, carapace",
+    "ОСЬМИНОГ": "OCTOPUS", "класс 11, щупальца": "class 11, tentacles",
+    "МОНОЛИТ": "MONOLITH", "класс 12, кристалл": "class 12, crystal",
+    "ИМПЕРАТОР": "EMPEROR", "класс 13, финал": "class 13, finale",
 
     // фракции
     "ФРАКЦИЯ · МОЛОТ": "FACTION · HAMMER",
@@ -2368,7 +2371,8 @@
       const a = ensure();
       if (!a) return;
       if (!noiseBuf) {
-        noiseBuf = a.createBuffer(1, a.sampleRate * 0.6, a.sampleRate);
+        // самый длинный noise-эффект ~1.4 с — короткий буфер обрезал затухание
+        noiseBuf = a.createBuffer(1, Math.ceil(a.sampleRate * 1.5), a.sampleRate);
         const d = noiseBuf.getChannelData(0);
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
@@ -2713,7 +2717,7 @@
     G.ship.x = clamp(G.ship.x, 27, G.w - 27);
     G.ship.y = clamp(G.ship.y, 40, G.h - 40);
 
-    if (!G.stars.length) initStars();
+    if (!G.stars.length || G.w <= 1 || G.h <= 1) initStars();
     else for (const s of G.stars) { s.x %= G.w; s.y %= G.h; }
   }
 
@@ -3047,6 +3051,16 @@
     return 1 + 0.5 * (G.mods.risk || 0);
   }
 
+  // единая точка начисления очков: рекорд сохраняется сразу, а не только
+  // после убийства — иначе бонус +750 или +250 за полный корпус теряется
+  function addScore(n) {
+    G.score += n;
+    if (G.score > G.best) {
+      G.best = G.score;
+      store.best = G.best;
+    }
+  }
+
   function boonCoolMul() {
     return Math.max(0.55, 1 - 0.04 * (G.boons.haste || 0));
   }
@@ -3125,13 +3139,16 @@
   function addPlasmaCharge() {
     const p = G.plasma;
     if (!G.mods.plasma || p.active > 0) return;
+    const wasReady = p.ready || p.charge >= 100;
     p.charge = Math.min(100, p.charge + plasmaStep());
-    if (p.charge >= 100) {
-      p.ready = true;
-      banner("ПЛАЗМА ГОТОВА", F(IS_TOUCH ? "жми «Пуск плазмы»: урон ×{0}" : "ПКМ: урон ×{0} насквозь", plasmaMul()));
-      Audio.unique();
-      buzz(55);
-      G.flash = Math.max(G.flash, 0.22);
+    p.ready = p.charge >= 100;
+    if (p.ready) {
+      if (!wasReady) {
+        banner("ПЛАЗМА ГОТОВА", F(IS_TOUCH ? "жми «Пуск плазмы»: урон ×{0}" : "ПКМ: урон ×{0} насквозь", plasmaMul()));
+        Audio.unique();
+        buzz(55);
+        G.flash = Math.max(G.flash, 0.22);
+      }
     } else {
       buzz(12);
     }
@@ -3460,7 +3477,20 @@
       e.angle = Math.PI + g.side * 0.35;
       if (!g.shot && t > 0.42) {
         g.shot = true;
-        bossBullet(e, Math.atan2(G.ship.y - e.y, G.ship.x - e.x), 235, 4, e.color);
+        // пикирующий Galaga — не босс: его выстрел идёт по общему лимиту
+        const ang = Math.atan2(G.ship.y - e.y, G.ship.x - e.x);
+        const sp = 235 * (IS_TOUCH ? 0.82 : 1);
+        pushEBullet({
+          x: e.x + Math.cos(ang) * e.r * 0.55,
+          y: e.y + Math.sin(ang) * e.r * 0.55,
+          vx: Math.cos(ang) * sp,
+          vy: Math.sin(ang) * sp,
+          r: 4,
+          life: bulletLifeFor(sp, 10),
+          color: e.color,
+          trail: true,
+          boss: false
+        });
       }
     } else {
       const k = (t - 0.62) / 0.38;
@@ -3707,7 +3737,8 @@
 
   function shootWeapon(s, def) {
     const fast = s.rapid > 0;
-    s.cool = def.cool * (fast ? 0.72 : 1) * boonCoolMul();
+    const overdrive = G.mods.overdrive ? 0.7 : 1;
+    s.cool = def.cool * overdrive * (fast ? 0.72 : 1) * boonCoolMul();
     s.muzzle = MUZZLE_TIME;
     const cy = s.y - 18;
 
@@ -3815,7 +3846,9 @@
   }
 
   function applySplash(x, y, radius, dmg, color, exclude) {
-    for (const e of G.enemies) {
+    // снимок: killEnemy может добавить в G.enemies новых миньонов,
+    // их не должен задеть тот же самый взрыв
+    for (const e of G.enemies.slice()) {
       if (e.dead || e === exclude) continue;
       const dx = e.x - x;
       const dy = e.y - y;
@@ -3829,7 +3862,7 @@
     G.combo = G.comboTimer > 0 ? Math.min(G.combo + 1, 9) : 1;
     G.comboTimer = 2.4;
     const mult = 1 + (G.combo - 1) * 0.25;
-    G.score += Math.round(e.score * mult * scoreMul());
+    addScore(Math.round(e.score * mult * scoreMul()));
     if (e.type === "boss") G.waveKills++;
     else if (!G.bossWave) G.waveKills++;
 
@@ -3875,7 +3908,6 @@
       });
     }
 
-    if (G.score > G.best) { G.best = G.score; store.best = G.best; }
     updateHud();
   }
 
@@ -3976,7 +4008,7 @@
       queueExplosion(m.x, m.y, rand(0.1, 0.7), {
         size: 22, color: m.color, smoke: false
       });
-      G.score += m.score;
+      addScore(m.score);
     }
 
     grantBossWeapon();
@@ -3993,7 +4025,6 @@
     G.upgradeQueue = 1.6;
     G.waveDelay = 2.6;
     banner(F("{0} ПОВЕРЖЕН", L(e.name)), "оружие в арсенале, готовь модернизацию");
-    if (G.score > G.best) { G.best = G.score; store.best = G.best; }
   }
 
   function hurtPlayer() {
@@ -4060,6 +4091,8 @@
     }
   }
 
+  let overTimer = 0;
+
   function gameOver() {
     resetPointer();
     G.ship.alive = false;
@@ -4095,7 +4128,7 @@
     G.flash = 1;
     if (G.victory) Audio.unique(); else Audio.gameover();
     buzz(70);
-    setTimeout(() => {
+    overTimer = setTimeout(() => {
       renderOverStats();
       el.newBest.classList.toggle("on", !!G.newRecord);
       el.over.classList.remove("hidden");
@@ -4208,7 +4241,7 @@
     G.pointer.y = p.y;
     G.pointer.active = true;
     G.pointer.moved = 0.6;
-    if (e.pointerType !== "mouse") G.pointer.touch = true;
+    G.pointer.touch = e.pointerType !== "mouse";
   }, { passive: true });
 
   canvas.addEventListener("pointerdown", (e) => {
@@ -4298,6 +4331,7 @@
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
+      G.keys = Object.create(null);
       resetPointer();
       if (G.mode === "play" && !G.paused) togglePause();
     }
@@ -4336,6 +4370,8 @@
 
   /* ---------------- reset / start ---------------- */
   function resetGame() {
+    // старый таймер оверлея не должен открыть прошлый результат в новом заходе
+    if (overTimer) { clearTimeout(overTimer); overTimer = 0; }
     G.score = 0;
     G.mods = {};
     G.boons = {};
@@ -4758,7 +4794,7 @@
     } else if (id === "drift") {
       banner("ДРЕЙФ", F("под щитом скорость +{0}%", 8 * G.boons.drift));
     } else if (id === "score") {
-      G.score += 750;
+      addScore(750);
       banner("ДАНЬ", "+750 очков");
     }
 
@@ -4881,6 +4917,19 @@
   }
 
   /* ---------------- update ---------------- */
+  // отложенные взрывы должны доиграть и после смерти: gameOver() ставит
+  // их в очередь, а экран результата больше не заходит в игровую ветку
+  function updateQueuedExplosions(dt) {
+    for (let i = G.queued.length - 1; i >= 0; i--) {
+      const q = G.queued[i];
+      q.t -= dt;
+      if (q.t <= 0) {
+        explode(q.x, q.y, q.opts);
+        G.queued.splice(i, 1);
+      }
+    }
+  }
+
   function update(dt) {
     G.time += dt;
     G.pointer.moved = Math.max(0, G.pointer.moved - dt);
@@ -4894,6 +4943,8 @@
     updateStars(dt);
 
     if (G.mode !== "play" || G.paused) {
+      // пауза и меню замораживают очередь; экран результата — нет
+      if (G.mode === "over") updateQueuedExplosions(dt);
       updateParticles(dt);
       return;
     }
@@ -5052,20 +5103,16 @@
 
     updateBullets(dt);
     updateEBullets(dt);
-    updateEnemies(dt);
-    updatePowerups(dt);
+    // смерть или победа уже зафиксирована — враги и бонусы больше не меняют
+    // состояние, но отложенные взрывы должны доиграть до конца
+    if (G.mode === "play") updateEnemies(dt);
+    if (G.mode === "play") updatePowerups(dt);
 
     // отложенные взрывы
-    for (let i = G.queued.length - 1; i >= 0; i--) {
-      const q = G.queued[i];
-      q.t -= dt;
-      if (q.t <= 0) {
-        explode(q.x, q.y, q.opts);
-        G.queued.splice(i, 1);
-      }
-    }
-
+    updateQueuedExplosions(dt);
     updateParticles(dt);
+
+    if (G.mode !== "play") return;
 
     // рост сложности: арена больше не «очищается», поток врагов не прерывается
     G.waveDelay = Math.max(0, G.waveDelay - dt);
@@ -5092,26 +5139,33 @@
   function updateBullets(dt) {
     for (let i = G.bullets.length - 1; i >= 0; i--) {
       const b = G.bullets[i];
+      const px = b.x, py = b.y;
       b.x += b.vx * dt;
       b.y += b.vy * dt;
+      const vx = b.x - px, vy = b.y - py;
+      const seg2 = vx * vx + vy * vy;
       b.life -= dt;
       if (b.life <= 0 || b.y < -20 || b.x < -20 || b.x > G.w + 20) {
         G.bullets.splice(i, 1);
         continue;
       }
-      for (const e of G.enemies) {
+      for (const e of G.enemies.slice()) {
         if (e.dead) continue;
         if (b.hit && b.hit.has(e.id)) continue;
-        const dx = e.x - b.x;
-        const dy = e.y - b.y;
+        // проверяем весь пройденный за кадр отрезок, а не только конечную точку:
+        // быстрая плазма иначе проскакивает сквозь мелкие цели
+        const k = seg2 > 0 ? clamp(((e.x - px) * vx + (e.y - py) * vy) / seg2, 0, 1) : 0;
+        const hx = px + vx * k, hy = py + vy * k;
+        const dx = e.x - hx;
+        const dy = e.y - hy;
         if (dx * dx + dy * dy < (e.r + b.r) * (e.r + b.r)) {
           if (e.type === "guardian" && e.shieldHp > 0) {
-            let diff = Math.atan2(b.y - e.y, b.x - e.x) - e.arc;
+            let diff = Math.atan2(hy - e.y, hx - e.x) - e.arc;
             diff = Math.atan2(Math.sin(diff), Math.cos(diff));
             if (Math.abs(diff) < 0.8) {
               e.shieldHp--;
               e.flash = 0.08;
-              addParticles(b.x, b.y, 5, {
+              addParticles(hx, hy, 5, {
                 color: e.color, speed: 190, size: 1.8, life: 0.26, kind: "spark"
               });
               if (e.shieldHp <= 0) {
@@ -5133,8 +5187,8 @@
             }
           }
           damageEnemy(e, b.dmg);
-          if (b.splash) applySplash(b.x, b.y, b.splash, b.dmg * (b.splashMul || 0.55), b.color, e);
-          addParticles(b.x, b.y, b.heavy ? 8 : 5, {
+          if (b.splash) applySplash(hx, hy, b.splash, b.dmg * (b.splashMul || 0.55), b.color, e);
+          addParticles(hx, hy, b.heavy ? 8 : 5, {
             color: b.color || COLORS.white, speed: 150, size: 1.7, life: 0.22, kind: "spark"
           });
           if (b.pierce > 0) {
@@ -5333,7 +5387,7 @@
           const rr = s.r + e.r * 0.8;
           if (dx * dx + dy * dy < rr * rr) {
             hurtPlayer();
-            damageEnemy(e, 1);
+            if (s.alive) damageEnemy(e, 1);
           }
         }
         continue;
@@ -5347,7 +5401,7 @@
           const rr = s.r + e.r;
           if (dx * dx + dy * dy < rr * rr) {
             hurtPlayer();
-            damageEnemy(e, 2);
+            if (s.alive) damageEnemy(e, 2);
           }
         }
         continue;
@@ -5489,7 +5543,7 @@
         const rr = s.r + e.r;
         if (dx * dx + dy * dy < rr * rr) {
           hurtPlayer();
-          damageEnemy(e, 2);
+          if (s.alive) damageEnemy(e, 2);
         }
       }
 
@@ -5626,7 +5680,7 @@
         if (Math.abs(x - gapX) < gap / 2) continue;
         pushEBullet({
           x,
-          y: -16 - rand(0, 24),
+          y: -26 - rand(0, 3),
           vx: 0,
           vy: sp,
           r: a.r,
@@ -5649,6 +5703,7 @@
       for (let i = 0; i < n; i++) {
         const angle = Math.PI / 2 + (i - (n - 1) / 2) * 0.5;
         const b = bossBullet(e, angle, a.speed, a.r, col);
+        if (!b) continue; // лимит боссовых пуль достигнут — пропускаем выстрел
         b.kind = "homing";
         b.speed = a.speed * (IS_TOUCH ? 0.82 : 1);
         b.turn = a.turn || 1.5;
@@ -5659,6 +5714,7 @@
       const n = a.n + (enr ? 1 : 0);
       for (let i = 0; i < n; i++) {
         const b = bossBullet(e, Math.PI / 2 + rand(-0.35, 0.35), a.speed, a.r, col);
+        if (!b) continue; // лимит боссовых пуль достигнут — пропускаем мину
         b.x = clamp(b.x, 22, G.w - 22);
         b.kind = "mine";
         b.fuse = a.fuse || 2.6;
@@ -5686,7 +5742,7 @@
       for (let i = 0; i < n; i++) {
         pushEBullet({
           x: rand(24, G.w - 24),
-          y: -14 - rand(0, 46),
+          y: -24 - rand(0, 5),
           vx: rand(-26, 26),
           vy: a.speed * (IS_TOUCH ? 0.82 : 1),
           r: a.r, color: col, trail: true, boss: true
@@ -5854,9 +5910,12 @@
     if (e.laser) {
       const L = e.laser;
       L.t += dt;
-      if (L.t >= L.warn && !L.hit) {
+      // луч виден всё время горения, поэтому попадание проверяем каждый кадр,
+      // а не только в момент окончания предупреждения
+      if (L.t >= L.warn && L.t < L.warn + L.live && !L.hit && s.invuln <= 0 &&
+          Math.abs(s.x - L.x) <= L.w * 0.5 + 9) {
         L.hit = true;
-        if (Math.abs(s.x - L.x) <= L.w * 0.5 + 9) hurtPlayer();
+        hurtPlayer();
       }
       if (L.t >= L.warn + L.live) e.laser = null;
     }
@@ -5929,7 +5988,7 @@
             const max = maxLives();
             const full = s.lives >= max;
             s.lives = Math.min(max, s.lives + 1);
-            if (full) G.score += 250;
+            if (full) addScore(250);
             syncLives();
             updateHud();
             banner(
@@ -7592,7 +7651,7 @@
     }
 
     const cache = new Map();
-    const MAX_SPRITES = 40;
+    const MAX_SPRITES = 56;
 
     function makeSprite(def, color, gen, hot) {
       const c = document.createElement("canvas");
@@ -7608,7 +7667,12 @@
     function spriteFor(def, color, gen, hot) {
       const key = hot ? `${def.id}|hot` : `${def.id}|${color}|${clamp(gen, 1, FLEET_GENS.length - 1)}`;
       let s = cache.get(key);
-      if (s) return s;
+      if (s) {
+        // обновляем порядок, чтобы вытеснялся действительно давний спрайт
+        cache.delete(key);
+        cache.set(key, s);
+        return s;
+      }
       if (cache.size >= MAX_SPRITES) {
         const oldest = cache.keys().next().value;
         if (oldest) cache.delete(oldest);
@@ -7678,14 +7742,16 @@
     if (charge <= 0) return;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    const beam = ctx.createLinearGradient(0, r * 1.5, 0, 320);
+    // линия предупреждения должна дойти до игрока, а не обрываться на 320 px
+    const reach = clamp(Math.hypot(G.ship.x - e.x, G.ship.y - e.y) + 40, 200, Math.max(G.h, 900));
+    const beam = ctx.createLinearGradient(0, r * 1.5, 0, reach);
     beam.addColorStop(0, `rgba(159,232,255,${0.35 * charge})`);
     beam.addColorStop(1, "rgba(159,232,255,0)");
     ctx.strokeStyle = beam;
     ctx.lineWidth = 1.1 + charge * 1.7;
     ctx.beginPath();
     ctx.moveTo(0, r * 1.5);
-    ctx.lineTo(0, 320);
+    ctx.lineTo(0, reach);
     ctx.stroke();
     ctx.restore();
     lightDot(0, r * 1.55, r * 0.14 + Math.sin(e.t * 16) * r * 0.03, "#9fe8ff", 0.35 + charge * 0.4);
@@ -8942,7 +9008,9 @@
       return;
     }
     Audio.unlock();
-    Music.setPaused(G.mode === "play" && G.paused);
+    // не включаем музыку в меню и на обязательном выборе улучшения:
+    // туда она была намеренно заглушена
+    Music.setPaused(G.mode === "menu" || G.mode === "upgrade" || (G.mode === "play" && G.paused));
   });
 })();
 </script>
