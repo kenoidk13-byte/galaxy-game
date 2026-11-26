@@ -5530,6 +5530,7 @@
       life: speed ? bulletLifeFor(speed, 8) : 9,
       trail: true,
       boss: false,
+      phase: Math.random() * TAU,
       ...o
     };
     G.ebullets.push(b);
@@ -6237,47 +6238,81 @@
     ctx.restore();
   }
 
-  // На телефоне градиенты пуль пекутся один раз в маленькую текстуру:
-  // 80+ createRadialGradient за кадр — заметная трата времени на main thread.
-  const EB_TEX_Q = 2;
-  const ebulletTextures = new Map();
-  function ebulletTexture(color, rad, ring) {
+  // Плазменные сгустки: несколько кадров горения пекутся один раз в атлас,
+  // а в кадре остаётся только drawImage. Никаких градиентов на каждую пулю —
+  // пульсация и «пламя» меняются выбором кадра из кэша.
+  const EB_FRAMES = 6;
+  const EB_Q = 2;
+  const MAX_EB_ATLASES = 48;
+  const ebulletAtlases = new Map();
+  function ebulletAtlas(color, rad, ring) {
     const r = Math.round(rad * 10) / 10;
     const key = color + "|" + r + "|" + (ring ? 1 : 0);
-    let tex = ebulletTextures.get(key);
-    if (tex) return tex;
-    const size = Math.ceil(r * (ring ? 1.7 : 1.55) * 2 + 4);
-    const c0 = size / 2;
+    let atlas = ebulletAtlases.get(key);
+    if (atlas) return atlas;
+
+    const cell = Math.ceil(r * (ring ? 2.1 : 1.9) * 2 + 6);
+    const c0 = cell / 2;
     const cv = document.createElement("canvas");
-    cv.width = cv.height = Math.ceil(size * EB_TEX_Q);
+    cv.width = cell * EB_FRAMES * EB_Q;
+    cv.height = cell * EB_Q;
     const c = cv.getContext("2d");
-    c.scale(EB_TEX_Q, EB_TEX_Q);
+    c.scale(EB_Q, EB_Q);
 
-    c.fillStyle = rgba(color, 0.9);
-    c.beginPath();
-    c.arc(c0, c0, r * 1.5, 0, TAU);
-    c.fill();
+    for (let f = 0; f < EB_FRAMES; f++) {
+      const ph = (f / EB_FRAMES) * TAU;
+      const pulse = 0.94 + 0.09 * Math.sin(ph);
+      const flick = 0.82 + 0.18 * Math.sin(ph * 2 + 0.8);
+      c.save();
+      c.translate(f * cell, 0);
 
-    const body = c.createRadialGradient(c0, c0, 0, c0, c0, r);
-    body.addColorStop(0, "rgba(255,255,255,0.92)");
-    body.addColorStop(0.55, rgba(color, 0.95));
-    body.addColorStop(1, rgba(color, 0.55));
-    c.fillStyle = body;
-    c.beginPath();
-    c.arc(c0, c0, r, 0, TAU);
-    c.fill();
-
-    if (ring) {
-      c.strokeStyle = rgba(color, 0.7);
-      c.lineWidth = 1;
+      const halo = c.createRadialGradient(c0, c0, 0, c0, c0, r * 1.75 * pulse);
+      halo.addColorStop(0, rgba(color, 0.72 * flick));
+      halo.addColorStop(0.42, rgba(color, 0.28 * flick));
+      halo.addColorStop(1, rgba(color, 0));
+      c.fillStyle = halo;
       c.beginPath();
-      c.arc(c0, c0, r * 1.55, 0, TAU);
-      c.stroke();
+      c.arc(c0, c0, r * 1.75 * pulse, 0, TAU);
+      c.fill();
+
+      // короткие язычки пламени по кругу — смещаются от кадра к кадру
+      for (let k = 0; k < 3; k++) {
+        const a = ph + (k / 3) * TAU;
+        const er = r * (1.32 + 0.12 * Math.sin(ph * 3 + k));
+        c.fillStyle = rgba(color, 0.4 * flick);
+        c.beginPath();
+        c.arc(c0 + Math.cos(a) * er, c0 + Math.sin(a) * er, Math.max(0.5, r * 0.11), 0, TAU);
+        c.fill();
+      }
+
+      const body = c.createRadialGradient(c0, c0, 0, c0, c0, r * pulse);
+      body.addColorStop(0, "rgba(255,255,255,0.98)");
+      body.addColorStop(0.34, rgba(color, 0.95));
+      body.addColorStop(0.76, rgba(color, 0.62));
+      body.addColorStop(1, rgba(color, 0));
+      c.fillStyle = body;
+      c.beginPath();
+      c.arc(c0, c0, r * pulse, 0, TAU);
+      c.fill();
+
+      // тяжёлые/боссовые сгустки — тонкое кольцо, пульсирует вместе с ядром
+      if (ring) {
+        c.strokeStyle = rgba(color, 0.68 * flick);
+        c.lineWidth = Math.max(0.8, r * 0.1);
+        c.beginPath();
+        c.arc(c0, c0, r * 1.5 * pulse, 0, TAU);
+        c.stroke();
+      }
+      c.restore();
     }
 
-    tex = { cv, size, c0 };
-    ebulletTextures.set(key, tex);
-    return tex;
+    if (ebulletAtlases.size >= MAX_EB_ATLASES) {
+      const oldest = ebulletAtlases.keys().next().value;
+      if (oldest) ebulletAtlases.delete(oldest);
+    }
+    atlas = { cv, cell, c0, q: EB_Q };
+    ebulletAtlases.set(key, atlas);
+    return atlas;
   }
 
   function drawEBullets() {
@@ -6285,42 +6320,12 @@
     ctx.globalCompositeOperation = "lighter";
     for (const b of G.ebullets) {
       const rad = b.r * 1.3;
-      const glow = rad * 3;
-
-      if (IS_TOUCH) {
-        const tex = ebulletTexture(b.color || COLORS.white, rad, !!b.trail);
-        ctx.drawImage(tex.cv, b.x - tex.c0, b.y - tex.c0, tex.size, tex.size);
-      } else {
-        const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, glow);
-        grd.addColorStop(0, rgba(b.color, 0.9));
-        grd.addColorStop(0.36, rgba(b.color, 0.36));
-        grd.addColorStop(1, rgba(b.color, 0));
-        ctx.fillStyle = grd;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, glow, 0, TAU);
-        ctx.fill();
-      }
-
-      if (!IS_TOUCH) {
-        // тело — круглый сгусток (на телефоне уже запечено в текстуру)
-        const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
-        body.addColorStop(0, "rgba(255,255,255,0.92)");
-        body.addColorStop(0.55, rgba(b.color, 0.95));
-        body.addColorStop(1, rgba(b.color, 0.55));
-        ctx.fillStyle = body;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, rad, 0, TAU);
-        ctx.fill();
-
-        // тяжёлые/боссовые сгустки — с тонким кольцом
-        if (b.trail) {
-          ctx.strokeStyle = rgba(b.color, 0.7);
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(b.x, b.y, rad * 1.55, 0, TAU);
-          ctx.stroke();
-        }
-      }
+      const atlas = ebulletAtlas(b.color || COLORS.white, rad, !!b.trail);
+      const f = Math.floor((NOW * 8 + (b.phase || 0)) % EB_FRAMES);
+      const sx = f * atlas.cell * atlas.q;
+      const sw = atlas.cell * atlas.q;
+      ctx.drawImage(atlas.cv, sx, 0, sw, sw,
+        b.x - atlas.c0, b.y - atlas.c0, atlas.cell, atlas.cell);
 
       if (b.kind === "mine") {
         const pulse = 1 + Math.sin((b.spin || 0) * 3) * 0.12;
