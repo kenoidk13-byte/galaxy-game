@@ -1850,7 +1850,7 @@
       G.wave <= G.bossesDefeated * CONFIG.bossTuning.waveStep + POST_BOSS.waves;
   }
 
-  const OBJ_SCALE = IS_TOUCH ? 0.7 : 1;
+  const OBJ_SCALE = IS_TOUCH ? 0.8 : 1;
   const MUZZLE_TIME = 0.075; // как долго видна вспышка у дула после выстрела
 
   // корабль игрока — пререндер 3D-модели (SM_Humans_Fighter02.glb)
@@ -7030,8 +7030,12 @@
     let ctx = null;
 
     const BASE_R = 64;
+    // На телефоне корпус рисуется в меньшем спрайте: 275 -> 155 px исходника,
+    // а на экране остаётся того же размера. Мелкие штрихи при сжатии не тонут.
+    const MOBILE_ART = IS_TOUCH;
     const PAD = 2.15;
-    const SIZE = Math.ceil(BASE_R * PAD * 2);
+    const ART_R = MOBILE_ART ? 36 : BASE_R;
+    const SIZE = Math.ceil(ART_R * PAD * 2);
     // размер спрайта на экране: нос корабля ложится примерно на 1.45r
     const SCALE = 4.15;
 
@@ -7061,7 +7065,7 @@
     }
     function lines(r, segs, color, w) {
       ctx.strokeStyle = color;
-      ctx.lineWidth = Math.max(0.5, r * w);
+      ctx.lineWidth = Math.max(MOBILE_ART ? 1.1 : 0.5, r * w * (MOBILE_ART ? 1.2 : 1));
       ctx.beginPath();
       for (const s of segs) {
         ctx.moveTo(s[0] * r, s[1] * r);
@@ -7072,20 +7076,21 @@
     function dot(r, x, y, rad, color, alpha = 0.9) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
-      const g = ctx.createRadialGradient(x * r, y * r, 0, x * r, y * r, rad * r * 3.2);
+      const R = rad * r * (MOBILE_ART ? 1.3 : 1);
+      const g = ctx.createRadialGradient(x * r, y * r, 0, x * r, y * r, R * 3.2);
       g.addColorStop(0, rgba(color, alpha * 0.6));
       g.addColorStop(1, rgba(color, 0));
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(x * r, y * r, rad * r * 3.2, 0, TAU2);
+      ctx.arc(x * r, y * r, R * 3.2, 0, TAU2);
       ctx.fill();
       ctx.fillStyle = rgba("#ffffff", alpha * 0.6);
       ctx.beginPath();
-      ctx.arc(x * r, y * r, rad * r * 1.2, 0, TAU2);
+      ctx.arc(x * r, y * r, R * 1.2, 0, TAU2);
       ctx.fill();
       ctx.fillStyle = rgba(color, alpha);
       ctx.beginPath();
-      ctx.arc(x * r, y * r, rad * r, 0, TAU2);
+      ctx.arc(x * r, y * r, R, 0, TAU2);
       ctx.fill();
       ctx.restore();
     }
@@ -7100,7 +7105,7 @@
       ctx.save();
       shape(r, pts);
       ctx.clip();
-      ctx.lineWidth = w * 2;
+      ctx.lineWidth = w * (MOBILE_ART ? 2.6 : 2);
       ctx.lineCap = "butt";
       for (let i = 0; i < n; i++) {
         const a = pts[i], b = pts[(i + 1) % n];
@@ -7162,14 +7167,18 @@
       bevel(r, pts, P, r * (o.b ?? 0.05));
       shape(r, pts);
       ctx.lineJoin = "miter";
-      ctx.lineWidth = 1.4;
+      ctx.lineWidth = MOBILE_ART ? 2 : 1.4;
       ctx.strokeStyle = "rgba(2,3,8,0.95)";
       ctx.stroke();
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = MOBILE_ART ? 1.1 : 0.6;
       ctx.strokeStyle = rgba(P.rim, 0.5);
       ctx.stroke();
     }
     function seam(r, segs, a = 0.6) {
+      if (MOBILE_ART) {
+        lines(r, segs, `rgba(0,0,6,${a})`, 0.035);
+        return;
+      }
       ctx.save();
       ctx.translate(r * 0.012, -r * 0.012);
       lines(r, segs, "rgba(255,255,255,0.13)", 0.03);
@@ -7181,7 +7190,7 @@
       ctx.globalCompositeOperation = "lighter";
       lines(r, segs, rgba(P.accent, a * 0.25), 0.1);
       lines(r, segs, rgba(P.accent, a), 0.035);
-      lines(r, segs, "rgba(255,255,255,0.7)", 0.012);
+      if (!MOBILE_ART) lines(r, segs, "rgba(255,255,255,0.7)", 0.012);
       ctx.restore();
     }
     function cyl(r, x, y0, y1, w, P, glow = true) {
@@ -7201,7 +7210,7 @@
       ctx.fill();
       ctx.restore();
       ctx.strokeStyle = "rgba(2,3,8,0.9)";
-      ctx.lineWidth = 0.9;
+      ctx.lineWidth = MOBILE_ART ? 1.5 : 0.9;
       ctx.stroke();
       lines(r, [[x - w * 0.22, y0 + 0.03, x - w * 0.22, y1 - 0.03]], "rgba(255,255,255,0.4)", 0.012);
       if (glow) dot(r, x, y1 - 0.02, w * 0.4, P.accent, 0.95);
@@ -7226,13 +7235,14 @@
       roundRectPath(x * r - (w * r) / 2, y * r, w * r, h * r, r * 0.03);
       ctx.fill();
       ctx.strokeStyle = rgba(P.accent, 0.5);
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = MOBILE_ART ? 1.1 : 0.6;
       ctx.stroke();
       for (let i = 1; i <= n; i++) {
         lines(r, [[x - w * 0.34, y + (h * i) / (n + 1), x + w * 0.34, y + (h * i) / (n + 1)]], rgba(P.accent, 0.5), 0.015);
       }
     }
     const bolts = (r, pts, P, a = 0.5) => {
+      if (MOBILE_ART) return;
       for (const p of pts) dot(r, p[0], p[1], 0.013, P.trim, a);
     };
     function canopy(r, x, y, rx, ry, tint) {
@@ -7253,7 +7263,7 @@
       ctx.ellipse((x - rx * 0.35) * r, (y + ry * 0.35) * r, rx * r * 0.22, ry * r * 0.5, 0.35, 0, TAU2);
       ctx.fill();
       ctx.strokeStyle = "rgba(255,255,255,0.5)";
-      ctx.lineWidth = 0.6;
+      ctx.lineWidth = MOBILE_ART ? 1.1 : 0.6;
       ctx.beginPath();
       ctx.ellipse(x * r, y * r, rx * r, ry * r, 0, 0, TAU2);
       ctx.stroke();
@@ -7585,7 +7595,7 @@
       const g = c.getContext("2d");
       g.translate(SIZE / 2, SIZE / 2);
       ctx = g;
-      def.fn(BASE_R, { ...palette(def, color, gen, hot), still: true }, 0);
+      def.fn(ART_R, { ...palette(def, color, gen, hot), still: true }, 0);
       ctx = null;
       return c;
     }
@@ -7976,7 +7986,10 @@
   let NOW = 0;
   /* ======== Новые хелперы ======== */
   const STEEL = ["#3f4c78", "#1c2442", "#090d19"];
-  function stk(fill, a, lw) { ctx.strokeStyle = rgba(fill, a); ctx.lineWidth = lw; ctx.stroke(); }
+  // На телефоне боссы чуть меньше, поэтому контур утолщается — иначе
+  // тонкие штрихи сливаются и корпус выглядит мыльным.
+  const BOSS_LINE_K = IS_TOUCH ? 1.25 : 1;
+  function stk(fill, a, lw) { ctx.strokeStyle = rgba(fill, a); ctx.lineWidth = lw * BOSS_LINE_K; ctx.stroke(); }
   /* симметричный корпус: pts — правая половина от носа (x=0) до кормы (x=0), единицы r, нос +y */
   /* объём: свет сверху-слева, тень на кромке, блик на ребре (вызывать сразу после fill, путь ещё активен) */
   function vol(r, hot) {
@@ -7985,10 +7998,10 @@
     const g = ctx.createLinearGradient(-r, -r * .6, r, r * .6);
     g.addColorStop(0, "rgba(190,215,255,.24)"); g.addColorStop(.45, "rgba(255,255,255,0)"); g.addColorStop(1, "rgba(0,0,10,.5)");
     ctx.fillStyle = g; ctx.fillRect(-r * 2.5, -r * 2.5, r * 5, r * 5);
-    ctx.strokeStyle = "rgba(0,0,10,.55)"; ctx.lineWidth = r * .16; ctx.stroke();
+    ctx.strokeStyle = "rgba(0,0,10,.55)"; ctx.lineWidth = r * .16 * BOSS_LINE_K; ctx.stroke();
     const h = ctx.createLinearGradient(-r, -r * .8, r * .3, r * .2);
     h.addColorStop(0, "rgba(255,255,255,.6)"); h.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.strokeStyle = h; ctx.lineWidth = r * .07; ctx.stroke();
+    ctx.strokeStyle = h; ctx.lineWidth = r * .07 * BOSS_LINE_K; ctx.stroke();
     ctx.restore();
   }
   function symPath(r, pts, k = 1, dx = 0, dy = 0) {
@@ -8008,7 +8021,7 @@
     if (hot) return;
     const cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
     for (const [k, col, w] of [[.8, "rgba(255,255,255,.11)", 1], [.58, rgba(fill, .2), 1]]) {   // бронепластины
-      symPath(r, pts, k, 0, cy * r * (1 - k)); ctx.strokeStyle = col; ctx.lineWidth = w; ctx.stroke();
+      symPath(r, pts, k, 0, cy * r * (1 - k)); ctx.strokeStyle = col; ctx.lineWidth = w * BOSS_LINE_K; ctx.stroke();
     }
     ctx.fillStyle = "rgba(255,255,255,.32)";                                                       // заклёпки
     for (let i = 1; i < pts.length - 1; i++) for (const s of [-1, 1]) {
