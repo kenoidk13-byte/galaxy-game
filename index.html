@@ -1527,7 +1527,11 @@
       scoreBase: 400,
       scorePerLevel: 250,
       radiusPerLevel: 4,
-      radiusMaxLevels: 4
+      radiusMaxLevels: 4,
+      // отдельный, гораздо более высокий потолок для атак босса:
+      // обычный лимит потока обрывал узоры на середине экрана
+      maxBullets: 180,
+      maxBulletsMobile: 80
     },
 
     // поток врагов: жёсткий потолок одновременно живых врагов и пуль —
@@ -3773,13 +3777,14 @@
       bcol = COLORS.ice;
     }
     for (const off of shots) {
-      G.ebullets.push({
+      pushEBullet({
         x: e.x, y: e.y + e.r * 0.4,
         vx: Math.cos(a + off) * sp,
         vy: Math.sin(a + off) * sp,
         r: br,
         life: 5,
-        color: bcol
+        color: bcol,
+        trail: false
       });
     }
   }
@@ -3849,10 +3854,10 @@
     if (!e.elite && e.type === "bomber") {
       for (let k = 0; k < 10; k++) {
         const a = (k / 10) * TAU + rand(-0.08, 0.08);
-        G.ebullets.push({
+        pushEBullet({
           x: e.x, y: e.y,
           vx: Math.cos(a) * 190, vy: Math.sin(a) * 190,
-          r: 4, life: 3.2, color: COLORS.amber
+          r: 4, life: 3.2, color: COLORS.amber, trail: false
         });
       }
       addParticles(e.x, e.y, 14, {
@@ -5148,8 +5153,8 @@
 
   function updateEBullets(dt) {
     const s = G.ship;
-    const guard = FLOW.maxEBullets;
-    if (G.ebullets.length > guard) G.ebullets.splice(0, G.ebullets.length - guard);
+    // Пули больше не режутся oldest-first: лимит стоит на спавне
+    // (см. pushEBullet), поэтому летящий шар доходит до края экрана.
     for (let i = G.ebullets.length - 1; i >= 0; i--) {
       const b = G.ebullets[i];
 
@@ -5496,24 +5501,54 @@
     G.enemies = G.enemies.filter((e) => !e.dead);
   }
 
+  // Время полёта с запасом на диагональ экрана: медленный шар не должен
+  // истекать на середине пути, особенно на тач-устройствах.
+  function bulletLifeFor(speed, min = 9) {
+    return Math.max(min, Math.hypot(G.w, G.h) / Math.max(80, speed) + 2);
+  }
+
+  // Лимит проверяется на спавне, а не удалением старых пуль: уже летящий
+  // шар всегда доходит до края. У босса свой, намного более высокий потолок —
+  // обычный лимит потока обрывал его узоры на середине экрана.
+  function bulletCount(boss) {
+    let n = 0;
+    for (const b of G.ebullets) if (!!b.boss === boss) n++;
+    return n;
+  }
+
+  function bulletLimit(boss) {
+    if (!boss) return FLOW.maxEBullets;
+    return IS_TOUCH
+      ? CONFIG.bossTuning.maxBulletsMobile
+      : CONFIG.bossTuning.maxBullets;
+  }
+
   function pushEBullet(o) {
-    G.ebullets.push({ life: 6, trail: true, ...o });
+    if (bulletCount(!!o.boss) >= bulletLimit(!!o.boss)) return null;
+    const speed = Math.hypot(o.vx || 0, o.vy || 0);
+    const b = {
+      life: speed ? bulletLifeFor(speed, 8) : 9,
+      trail: true,
+      boss: false,
+      ...o
+    };
+    G.ebullets.push(b);
+    return b;
   }
 
   function bossBullet(e, angle, speed, r, color) {
     const sp = speed * (IS_TOUCH ? 0.82 : 1);
-    const b = {
+    return pushEBullet({
       x: e.x + Math.cos(angle) * e.r * 0.55,
       y: e.y + Math.sin(angle) * e.r * 0.55,
       vx: Math.cos(angle) * sp,
       vy: Math.sin(angle) * sp,
       r,
-      life: 6,
+      life: bulletLifeFor(sp, 10),
       color,
-      trail: true
-    };
-    G.ebullets.push(b);
-    return b;
+      trail: true,
+      boss: true
+    });
   }
 
   // мина висит на поле, затем рвётся кольцом осколков
@@ -5525,7 +5560,7 @@
       pushEBullet({
         x: b.x, y: b.y,
         vx: Math.cos(a) * 205, vy: Math.sin(a) * 205,
-        r: 4, color: b.color
+        r: 4, color: b.color, boss: !!b.boss
       });
     }
     explode(b.x, b.y, { size: 23, color: b.color, rings: 1, shake: 4, sound: false, debris: false });
@@ -5594,7 +5629,8 @@
           vx: 0,
           vy: sp,
           r: a.r,
-          color: col
+          color: col,
+          boss: true
         });
       }
       Audio.boom(false);
@@ -5615,7 +5651,7 @@
         b.kind = "homing";
         b.speed = a.speed * (IS_TOUCH ? 0.82 : 1);
         b.turn = a.turn || 1.5;
-        b.life = 7;
+        b.life = bulletLifeFor(b.speed, 10);
       }
       Audio.bossShot();
     } else if (a.kind === "mine") {
@@ -5628,7 +5664,7 @@
         b.spin = rand(0, TAU);
         b.vx *= 0.35;
         b.vy = Math.max(30, a.speed * 0.5) * (IS_TOUCH ? 0.82 : 1);
-        b.life = 12;
+        b.life = bulletLifeFor(Math.max(60, b.vy), 12);
       }
       Audio.bossShot();
     } else if (a.kind === "sweep") {
@@ -5652,7 +5688,7 @@
           y: -14 - rand(0, 46),
           vx: rand(-26, 26),
           vy: a.speed * (IS_TOUCH ? 0.82 : 1),
-          r: a.r, color: col, trail: true
+          r: a.r, color: col, trail: true, boss: true
         });
       }
       Audio.bossShot();
@@ -6201,6 +6237,49 @@
     ctx.restore();
   }
 
+  // На телефоне градиенты пуль пекутся один раз в маленькую текстуру:
+  // 80+ createRadialGradient за кадр — заметная трата времени на main thread.
+  const EB_TEX_Q = 2;
+  const ebulletTextures = new Map();
+  function ebulletTexture(color, rad, ring) {
+    const r = Math.round(rad * 10) / 10;
+    const key = color + "|" + r + "|" + (ring ? 1 : 0);
+    let tex = ebulletTextures.get(key);
+    if (tex) return tex;
+    const size = Math.ceil(r * (ring ? 1.7 : 1.55) * 2 + 4);
+    const c0 = size / 2;
+    const cv = document.createElement("canvas");
+    cv.width = cv.height = Math.ceil(size * EB_TEX_Q);
+    const c = cv.getContext("2d");
+    c.scale(EB_TEX_Q, EB_TEX_Q);
+
+    c.fillStyle = rgba(color, 0.9);
+    c.beginPath();
+    c.arc(c0, c0, r * 1.5, 0, TAU);
+    c.fill();
+
+    const body = c.createRadialGradient(c0, c0, 0, c0, c0, r);
+    body.addColorStop(0, "rgba(255,255,255,0.92)");
+    body.addColorStop(0.55, rgba(color, 0.95));
+    body.addColorStop(1, rgba(color, 0.55));
+    c.fillStyle = body;
+    c.beginPath();
+    c.arc(c0, c0, r, 0, TAU);
+    c.fill();
+
+    if (ring) {
+      c.strokeStyle = rgba(color, 0.7);
+      c.lineWidth = 1;
+      c.beginPath();
+      c.arc(c0, c0, r * 1.55, 0, TAU);
+      c.stroke();
+    }
+
+    tex = { cv, size, c0 };
+    ebulletTextures.set(key, tex);
+    return tex;
+  }
+
   function drawEBullets() {
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
@@ -6209,10 +6288,8 @@
       const glow = rad * 3;
 
       if (IS_TOUCH) {
-        ctx.fillStyle = rgba(b.color, 0.9);
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, rad * 1.5, 0, TAU);
-        ctx.fill();
+        const tex = ebulletTexture(b.color || COLORS.white, rad, !!b.trail);
+        ctx.drawImage(tex.cv, b.x - tex.c0, b.y - tex.c0, tex.size, tex.size);
       } else {
         const grd = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, glow);
         grd.addColorStop(0, rgba(b.color, 0.9));
@@ -6224,23 +6301,25 @@
         ctx.fill();
       }
 
-      // тело — круглый сгусток
-      const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
-      body.addColorStop(0, "rgba(255,255,255,0.92)");
-      body.addColorStop(0.55, rgba(b.color, 0.95));
-      body.addColorStop(1, rgba(b.color, 0.55));
-      ctx.fillStyle = body;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, rad, 0, TAU);
-      ctx.fill();
-
-      // тяжёлые/боссовые сгустки — с тонким кольцом
-      if (b.trail) {
-        ctx.strokeStyle = rgba(b.color, 0.7);
-        ctx.lineWidth = 1;
+      if (!IS_TOUCH) {
+        // тело — круглый сгусток (на телефоне уже запечено в текстуру)
+        const body = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rad);
+        body.addColorStop(0, "rgba(255,255,255,0.92)");
+        body.addColorStop(0.55, rgba(b.color, 0.95));
+        body.addColorStop(1, rgba(b.color, 0.55));
+        ctx.fillStyle = body;
         ctx.beginPath();
-        ctx.arc(b.x, b.y, rad * 1.55, 0, TAU);
-        ctx.stroke();
+        ctx.arc(b.x, b.y, rad, 0, TAU);
+        ctx.fill();
+
+        // тяжёлые/боссовые сгустки — с тонким кольцом
+        if (b.trail) {
+          ctx.strokeStyle = rgba(b.color, 0.7);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, rad * 1.55, 0, TAU);
+          ctx.stroke();
+        }
       }
 
       if (b.kind === "mine") {
