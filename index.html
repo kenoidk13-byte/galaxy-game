@@ -678,6 +678,29 @@
   .lang__btn.on { background: rgba(77, 225, 255, 0.16); color: var(--cyan); }
   .lang__btn:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
+  /* контакты внизу заставки */
+  #menu .menu-contact {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 36px);
+    margin: 0;
+    color: rgba(238, 240, 255, 0.55);
+    font-size: 11px;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+  }
+  .menu-contact a {
+    color: var(--violet);
+    font-weight: 400;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(124, 92, 255, 0.55);
+    text-underline-offset: 3px;
+  }
+  .menu-contact a:hover { color: #b5a5ff; }
+  .menu-contact a:focus-visible { outline: 1px solid var(--violet); outline-offset: 3px; border-radius: 2px; }
+
   /* ---------- предполётный выбор ---------- */
   .panel--upgrade { max-width: 760px; }
   .upgrade__title {
@@ -1068,6 +1091,7 @@
       padding-top: calc(env(safe-area-inset-top, 0px) + 12px);
       padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
     }
+    #menu .menu-contact { position: static; margin-top: 16px; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -1149,6 +1173,7 @@
         <button class="lang__btn" type="button" data-lang="en" aria-pressed="false">EN</button>
       </div>
     </div>
+    <p class="menu-contact">По всем вопросам и предложениям пишите: <a href="mailto:Kenoid@yandex.ru">Kenoid@yandex.ru</a></p>
   </section>
 
   <section class="screen hidden" id="upgrade" role="dialog" aria-modal="true" aria-label="Модернизация" tabindex="-1">
@@ -1914,6 +1939,7 @@
     "Полёт окончен": "Flight over",
     "Громкость музыки": "Music volume",
     "Язык / Language": "Language / Язык",
+    "По всем вопросам и предложениям пишите": "For any questions and suggestions, write to:",
 
     // оружие
     "Шторм": "Storm",
@@ -2360,7 +2386,9 @@
     return {
       unlock,
       state() { return actx ? actx.state : "none"; },
-      shoot() { tone({ freq: 880, to: 320, dur: 0.09, type: "square", gain: 0.032 }); },
+      // На телефоне короткий выстрел тонет в музыке: поднимаем только
+      // звуки стрельбы, остальные эффекты и так хорошо слышны.
+      shoot() { tone({ freq: 880, to: 320, dur: 0.09, type: "square", gain: IS_TOUCH ? 0.13 : 0.032 }); },
       boom(big = false) {
         noise({ dur: big ? 0.55 : 0.3, gain: big ? 0.5 : 0.28, low: big ? 500 : 800 });
         tone({ freq: big ? 120 : 190, to: 40, dur: big ? 0.4 : 0.22, type: "sine", gain: big ? 0.35 : 0.16 });
@@ -2387,7 +2415,7 @@
         noise({ dur: 1.2, gain: 0.18, low: 320 });
       },
       bossHit() {
-        tone({ freq: 160, to: 90, dur: 0.08, type: "square", gain: 0.06 });
+        tone({ freq: 160, to: 90, dur: 0.08, type: "square", gain: IS_TOUCH ? 0.10 : 0.06 });
       },
       bossDie() {
         noise({ dur: 1.4, gain: 0.55, low: 420 });
@@ -2403,10 +2431,10 @@
         tone({ freq: 988, to: 1568, dur: 0.3, type: "sine", gain: 0.14, delay: 0.22 });
       },
       bossShot() {
-        tone({ freq: 260, to: 120, dur: 0.14, type: "sawtooth", gain: 0.0256 });
+        tone({ freq: 260, to: 120, dur: 0.14, type: "sawtooth", gain: IS_TOUCH ? 0.10 : 0.0256 });
       },
       droneShoot() {
-        tone({ freq: 1240, to: 820, dur: 0.055, type: "triangle", gain: 0.014 });
+        tone({ freq: 1240, to: 820, dur: 0.055, type: "triangle", gain: IS_TOUCH ? 0.055 : 0.014 });
       },
       droneHit() {
         tone({ freq: 420, to: 160, dur: 0.12, type: "square", gain: 0.05 });
