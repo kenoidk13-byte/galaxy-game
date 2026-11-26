@@ -1865,6 +1865,10 @@
     ((navigator.deviceMemory && navigator.deviceMemory <= 2) ||
       (navigator.hardwareConcurrency && navigator.hardwareConcurrency <= 2));
 
+  // Космическая пыль — первый эффект, который гасится при падении FPS.
+  // Виньетка запекается в статичный фон и в кадре ничего не стоит.
+  let AMBIENT_ON = !REDUCED_MOTION && !LOW_END;
+
   function buzz(ms) {
     if (IS_TOUCH && navigator.vibrate) {
       // вибрация на телефоне тоже ощущается вдвое сильнее — половинная длительность
@@ -2738,6 +2742,17 @@
       n.fillStyle = rg;
       n.fillRect(0, 0, w, h);
     }
+
+    // Виньетка печётся прямо в фоновую картинку: отдельного слоя в кадре нет.
+    const vg = n.createRadialGradient(
+      w * 0.5, h * 0.5, Math.min(w, h) * 0.3,
+      w * 0.5, h * 0.5, Math.max(w, h) * 0.72
+    );
+    vg.addColorStop(0, "rgba(0,0,0,0)");
+    vg.addColorStop(0.62, "rgba(0,0,0,0.05)");
+    vg.addColorStop(1, "rgba(0,0,0,0.62)");
+    n.fillStyle = vg;
+    n.fillRect(0, 0, w, h);
     return c;
   }
 
@@ -2756,6 +2771,68 @@
         hue: Math.random() < 0.12 ? (Math.random() < 0.5 ? "cyan" : "violet") : "white"
       });
     }
+  }
+
+  /* ---------------- пыль и параллакс ----------------
+     Небольшое число медленных мотет в трёх цветах. Спрайты пекутся один раз,
+     в кадре только drawImage без градиентов и без новых частиц. */
+  const DUST_COUNT = IS_TOUCH ? 18 : 26;
+  let dust = [];
+  let dustTex = null;
+
+  function dustTexture(hue) {
+    if (!dustTex) {
+      dustTex = {};
+      const cols = {
+        white: "225,235,255",
+        cyan: "150,235,255",
+        violet: "185,165,255"
+      };
+      for (const key in cols) {
+        const c = document.createElement("canvas");
+        c.width = c.height = 24;
+        const g = c.getContext("2d");
+        const gr = g.createRadialGradient(12, 12, 0, 12, 12, 12);
+        gr.addColorStop(0, `rgba(${cols[key]},0.85)`);
+        gr.addColorStop(0.35, `rgba(${cols[key]},0.28)`);
+        gr.addColorStop(1, `rgba(${cols[key]},0)`);
+        g.fillStyle = gr;
+        g.fillRect(0, 0, 24, 24);
+        dustTex[key] = c;
+      }
+    }
+    return dustTex[hue] || dustTex.white;
+  }
+
+  function initDust() {
+    dust = [];
+    const hues = ["white", "white", "cyan", "violet"];
+    for (let i = 0; i < DUST_COUNT; i++) {
+      dust.push({
+        x: Math.random() * G.w,
+        y: Math.random() * G.h,
+        k: rand(0.15, 0.55),
+        s: rand(1.6, 3.4),
+        hue: hues[(Math.random() * hues.length) | 0],
+        tw: Math.random() * TAU
+      });
+    }
+  }
+
+  function drawDust() {
+    if (!AMBIENT_ON) return;
+    if (!dust.length) initDust();
+    const px = (G.ship.x - G.w * 0.5) * 0.035;
+    const py = (G.ship.y - G.h * 0.78) * 0.02;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (const d of dust) {
+      const x = (((d.x - px * d.k) % G.w) + G.w) % G.w;
+      const y = (((d.y - py * d.k) % G.h) + G.h) % G.h;
+      const size = d.s * (5 + 0.5 * Math.sin(NOW * 0.8 + d.tw));
+      ctx.drawImage(dustTexture(d.hue), x - size / 2, y - size / 2, size, size);
+    }
+    ctx.restore();
   }
 
   /* ---------------- particles / explosions ---------------- */
@@ -6026,6 +6103,7 @@
     }
 
     drawStars();
+    drawDust();
     drawPowerups();
     drawEnemies();
     drawBossBeams();
@@ -8888,6 +8966,9 @@
         const fps = perf.n / perf.acc;
         perf.acc = 0;
         perf.n = 0;
+        // Пыль гасится раньше, чем начнём снижать DPR: дешёвый эффект
+        // убирается первым, чтобы не тащить за собой разрешение экрана.
+        if (fps < 52 && AMBIENT_ON) AMBIENT_ON = false;
         if (fps < 48 && dprCap > DPR_MIN + 0.001 && perf.drops < 2) {
           dprCap = Math.max(DPR_MIN, dprCap - 0.2);
           perf.drops++;
